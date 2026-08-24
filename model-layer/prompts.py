@@ -369,6 +369,58 @@ class PromptRegistry:
         "Return valid JSON only."
     )
 
+    # ------------------------------------------------------------------
+    # YouTube summary templates
+    # ------------------------------------------------------------------
+
+    _YOUTUBE_SUMMARY_SYSTEM = (
+        "You are a research assistant that summarizes YouTube educational content. "
+        "Extract the key points from the video description and any provided transcript. "
+        "Be concise, factual, and highlight practical takeaways. "
+        "Return ONLY valid JSON — no prose, no markdown fences."
+    )
+
+    _YOUTUBE_SUMMARY_USER_BASE = (
+        "Summarize this YouTube video about {topic}:\n\n"
+        "Title: {title}\n"
+        "Channel: {channel}\n"
+        "URL: {url}\n"
+        "Description:\n{description}\n\n"
+        "Return a JSON object with this structure:\n"
+        "{{\n"
+        '  "summary": "<1-3 paragraph summary of the video content>",\n'
+        '  "key_takeaways": [\n'
+        '    "<key point 1>",\n'
+        '    "<key point 2>",\n'
+        '    "<key point 3>"\n'
+        "  ]\n"
+        "}}\n\n"
+        "Requirements:\n"
+        "- Summary must be informative but concise (100-300 words)\n"
+        "- Key takeaways should be actionable insights\n"
+        "- Include at least 2-5 key points\n"
+        "- Return valid JSON only."
+    )
+
+    _YOUTUBE_SUMMARY_RETRY_SYSTEM = (
+        "You previously generated a video summary that failed schema "
+        "validation. Fix the errors below and return a corrected JSON "
+        "object with the same structure. Return valid JSON only — no "
+        "prose, no markdown fences."
+    )
+
+    _YOUTUBE_SUMMARY_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "Summarize this YouTube video about {topic}:\n\n"
+        "Title: {title}\n"
+        "Channel: {channel}\n"
+        "URL: {url}\n"
+        "Description:\n{description}\n\n"
+        "Generate a corrected summary following the same schema as before.\n"
+        "Return valid JSON only."
+    )
+
     def _register_builtins(self) -> None:
         """
         Contract: populate the registry with the templates required
@@ -386,6 +438,9 @@ class PromptRegistry:
           - resume_enhance_retry: feedback template for resume enhance failure
           - podcast_script_generate: primary template for podcast script
           - podcast_script_retry: feedback template for podcast script failure
+          - bilingual_generate / bilingual_retry: Bilingual Pair lesson
+          - youtube_summary_generate / youtube_summary_retry: traceable
+            video summaries (P1.6)
         """
         self._templates["journey_generate"] = PromptTemplate(
             name="journey_generate",
@@ -456,6 +511,20 @@ class PromptRegistry:
             user=self._BILINGUAL_RETRY_USER_TEMPLATE,
             schema_key="bilingual",
             metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["youtube_summary_generate"] = PromptTemplate(
+            name="youtube_summary_generate",
+            system=self._YOUTUBE_SUMMARY_SYSTEM,
+            user=self._YOUTUBE_SUMMARY_USER_BASE,
+            schema_key="youtube_summary",
+            metadata={"default_max_tokens": 1024, "default_temperature": 0.3},
+        )
+        self._templates["youtube_summary_retry"] = PromptTemplate(
+            name="youtube_summary_retry",
+            system=self._YOUTUBE_SUMMARY_RETRY_SYSTEM,
+            user=self._YOUTUBE_SUMMARY_RETRY_USER_TEMPLATE,
+            schema_key="youtube_summary",
+            metadata={"default_max_tokens": 1024, "default_temperature": 0.3},
         )
 
     # ------------------------------------------------------------------

@@ -23,7 +23,7 @@ DONE:opencode: P1.2 one fake-client suite proving pipeline contract + live-marke
 OPEN: P1.3 migrate journey-core generate_journey onto Pipeline (public interface unchanged)
 OPEN: P1.4 migrate career-engine generate()/enhance(); Enhancement changes list survives retries; reconcile resume validator with RESUME_SCHEMA (dead contact required-check)
 DONE:opencode: P1.5 migrate podcast_script + bilingual generation onto Pipeline; both broken _call_model copies DELETED (defect #1 closed); their suites inject scripted clients through the public seam; live-guard tests in export-integration now use the real error taxonomy
-OPEN: P1.6 migrate YouTube summarization onto Pipeline + schema-validate summary output
+CLAIMED:opencode: P1.6 migrate YouTube summarization onto Pipeline + schema-validate summary output
 OPEN: P2.1 narration backend selection only among available backends; Piper truly default until Kokoro implemented
 OPEN: P2.2 fix podcast_audio.py:160 WAV check ([8:] → [8:12]) + regression test with real-shaped WAV bytes
 OPEN: P2.3 create Voice Catalog module consolidating narration/podcast/bilingual voice tables into one (language, role) → voice map

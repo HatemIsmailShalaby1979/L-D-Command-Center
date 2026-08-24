@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from model_layer.client import LmStudioClient, ModelRequest
+from model_layer.client import ApiError, LmStudioClient
+from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
 from model_layer.prompts import PromptRegistry
 
 logger = logging.getLogger(__name__)
@@ -245,34 +246,28 @@ class YouTubeSearchClient:
 # ---------------------------------------------------------------------------
 
 # Prompt template for video summarization (rendered at runtime)
-_SUMMARY_SYSTEM = (
-    "You are a research assistant that summarizes YouTube educational content. "
-    "Extract the key points from the video description and any provided transcript. "
-    "Be concise, factual, and highlight practical takeaways. "
-    "Return ONLY valid JSON — no prose, no markdown fences."
-)
+def validate_video_summary(data: Any) -> tuple[bool, list[str]]:
+    """
+    Contract: schema-validate a video-summary payload from the model.
 
-_SUMMARY_USER_TEMPLATE = (
-    "Summarize this YouTube video about {topic}:\n\n"
-    "Title: {title}\n"
-    "Channel: {channel}\n"
-    "URL: {url}\n"
-    "Description:\n{description}\n\n"
-    "Return a JSON object with this structure:\n"
-    "{{\n"
-    '  "summary": "<1-3 paragraph summary of the video content>",\n'
-    '  "key_takeaways": [\n'
-    '    "<key point 1>",\n'
-    '    "<key point 2>",\n'
-    '    "<key point 3>"\n'
-    "  ]\n"
-    "}}\n\n"
-    "Requirements:\n"
-    "- Summary must be informative but concise (100-300 words)\n"
-    "- Key takeaways should be actionable insights\n"
-    "- Include at least 2-5 key points\n"
-    "- Return valid JSON only."
-)
+    A valid summary has a non-empty `summary` string and a non-empty list
+    of non-empty `key_takeaways` strings. Enforced by the Generation
+    Pipeline with feedback retry (P1.6) — no more best-effort parsing.
+    """
+    if not isinstance(data, dict):
+        return False, [f"expected a JSON object, got {type(data).__name__}"]
+    errors = []
+    summary = data.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        errors.append("missing or empty 'summary'")
+    takeaways = data.get("key_takeaways")
+    if (
+        not isinstance(takeaways, list)
+        or len(takeaways) == 0
+        or not all(isinstance(t, str) and t.strip() for t in takeaways)
+    ):
+        errors.append("'key_takeaways' must be a non-empty list of strings")
+    return not errors, errors
 
 
 def _generate_summary(
@@ -281,77 +276,41 @@ def _generate_summary(
     client: Optional[LmStudioClient] = None,
 ) -> tuple[str, list[str]]:
     """
-    Contract: generate an AI summary for a YouTube video via the model layer.
+    Contract: generate an AI summary for a YouTube video through the
+    Generation Pipeline (schema-validated, retry-with-feedback).
+
+    The video URL is embedded in the prompt so every summary is traceable
+    to its source — no summary without its URL (CONSTITUTION.md §3).
 
     Args:
         video: the YouTubeVideo to summarize
         topic: the original search topic (for context)
-        client: optional LmStudioClient (uses default if not provided)
+        client: optional LmStudioClient (or test double)
 
     Returns:
         Tuple of (summary_text, key_takeaways_list)
 
     Raises:
-        RuntimeError: if model generation fails
+        SchemaValidationError: output invalid after all retry attempts.
+        ConnectionError / ApiError: per the pipeline error taxonomy.
     """
-    from model_layer.client import LmStudioClient as _Client
-
-    model_client = client or _Client()
-
-    # Render prompt template
-    registry = PromptRegistry()
-    # Create a temporary template for video summarization
-    system_prompt = _SUMMARY_SYSTEM
-    user_prompt = _SUMMARY_USER_TEMPLATE.format(
-        topic=topic,
-        title=video.title,
-        channel=video.channel,
-        url=video.url,
-        description=video.description[:2000] if video.description else "No description available.",
-    )
-
-    request = ModelRequest(
-        model="local-model",  # Will use LM Studio default
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+    parsed = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="youtube_summary_generate",
+        retry_template="youtube_summary_retry",
+        variables={
+            "topic": topic,
+            "title": video.title,
+            "channel": video.channel,
+            "url": video.url,
+            "description": video.description[:2000] if video.description else "No description available.",
+        },
+        validator=validate_video_summary,
         max_tokens=1024,
         temperature=0.3,
     )
-
-    try:
-        response = model_client.generate(request)
-    except Exception as e:
-        logger.error("Model generation failed: %s", e)
-        raise RuntimeError(f"Failed to generate summary: {e}") from e
-
-    # Parse JSON response
-    content = response.content or ""
-    try:
-        result = json.loads(content)
-        summary = result.get("summary", "")
-        takeaways = result.get("key_takeaways", [])
-    except json.JSONDecodeError:
-        # Fallback: extract JSON from text
-        match = re.search(r'\{[^}]+\}', content, re.DOTALL)
-        if match:
-            try:
-                result = json.loads(match.group())
-                summary = result.get("summary", "")
-                takeaways = result.get("key_takeaways", [])
-            except json.JSONDecodeError:
-                summary = content
-                takeaways = []
-        else:
-            summary = content
-            takeaways = []
-
-    # Validate: summary must not be empty
-    if not summary:
-        raise RuntimeError("Generated summary is empty — regeneration required")
-
-    return summary, takeaways
+    return parsed["summary"], parsed["key_takeaways"]
 
 
 # ---------------------------------------------------------------------------

@@ -273,15 +273,17 @@ class TestSummaryGeneration:
             description="Test",
         )
 
+        from model_layer.schema import SchemaValidationError
+
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Not valid JSON"
         mock_client.generate.return_value = mock_response
 
-        # Should not raise, but return the raw content
-        summary_text, takeaways = _generate_summary(video, "Test", client=mock_client)
-
-        assert "Not valid JSON" in summary_text
+        # Guardrail contract (P1.6): unparseable output is retried then
+        # raises — never passed through as a "summary".
+        with pytest.raises(SchemaValidationError, match="could not extract JSON"):
+            _generate_summary(video, "Test", client=mock_client)
 
     def test_generate_summary_requires_non_empty(self):
         """
@@ -296,12 +298,15 @@ class TestSummaryGeneration:
             description="Test",
         )
 
+        from model_layer.schema import SchemaValidationError
+
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.content = json.dumps({"summary": "", "key_takeaways": []})
         mock_client.generate.return_value = mock_response
 
-        with pytest.raises(RuntimeError, match="empty"):
+        # Empty summaries are a validation failure: retry, then typed error.
+        with pytest.raises(SchemaValidationError, match="empty 'summary'"):
             _generate_summary(video, "Test", client=mock_client)
 
 
