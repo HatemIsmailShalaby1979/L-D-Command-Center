@@ -51,7 +51,7 @@ DONE:opencode: P7.4 LanguageLabRenderer — interactive HTML pack: flip/self-gra
 DONE:opencode: P7.5 per-segment audio via assembly.render_segments — render_pack_audio() emits one WAV per dialogue turn named per the renderer contract (<stem>-dialogue-<i>.wav); speakers resolved to distinct language-scoped voices through the Voice Catalog; optional output_path persistence; mp3 off by default (browser plays wav)
 DONE:opencode: P7.6 spaced-repetition-lite (SM-2) — pure scheduler (ladder/ease-floor/lapse rules, injectable today) + SrsStore persisted through Storage preferences blob; due-card selection and cross-restart persistence tested
 DONE:opencode: P7.7 Media Workspace core — engines/playground-bridge/media_workspace.py: pure MediaSpec planners (convert/trim/scale/pad/volume/mix/concat/overlay) + injectable-runner execute + ffprobe probe + collision-safe ingest; 18 tests, no ffmpeg required; conftest gains playground_bridge alias
-OPEN: P7.8 storage kinds extension (media/*) + Import Inbox watch-folder (drop files from any no-API service: Suno/Udio/Runway web exports…)
+DONE:opencode: P7.8 storage media/* kinds + Import Inbox — persistence.py accepts namespaced "media/<subkind>" (validated); scan_inbox() one-shot watch-folder moves drops into storage with collision-safe names, ext filter, delete-after semantics, per-failure isolation; shell timer drives it in P7.12
 OPEN: P7.9 Connector Hub seam — single adapter interface (capabilities/send/poll) + gradio_client adapter to keyless Hugging Face Spaces (images/audio/video/upscalers)
 OPEN: P7.10 Figma REST adapter (free account) — import designs/frames as PNG/SVG assets
 OPEN: P7.11 Pollinations keyless image-generation adapter (no account needed)

@@ -459,3 +459,9 @@ Task: P7.7 Media Workspace core (continuing authorized run).
 Touched: engines/playground-bridge/media_workspace.py (new), test_media_workspace.py (new), conftest.py (+playground_bridge alias — dir existed README-only when P0.1 enumerated aliases), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
 Why: Plan B1 honored exactly: editing is local, planners are pure data (frozen MediaSpec with exact argv, side_files for concat demuxer listings, injectable runner) so the entire command surface is provable without ffmpeg installed; execution is one call that materializes side files, creates parents, and maps failures to MediaToolError carrying a stderr tail or an install hint. ffprobe parses into a typed ProbeResult; ingest copies originals collision-safe and never transcodes (normalization stays an explicit plan_convert).
 Suite state: **613 passed / 1 skipped / 0 failed**, coverage 94.64%, gates green.
+
+## [2026-08-25 04:15] — opencode/ox-alpha (x-preview-f-free)
+Task: P7.8 storage media/* kinds + Import Inbox (continuing authorized run).
+Touched: storage/persistence.py (namespaced media/<subkind> kinds, regex-validated), engines/playground-bridge/import_inbox.py (new), test_import_inbox.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
+Why: Plan B2: one watch-folder makes every no-API free service a citizen. Scan is a pure one-shot (shell timer drives it in P7.12 — no threads/watchers to leak). Data-loss surface handled with discipline: delete-after only on verified save; extension rejects and per-file failures stay in the inbox and are REPORTED per record, never raised past the caller; collisions rename via suffix scan against live kind-dir contents.
+Suite state: **632 passed / 1 skipped / 0 failed**, coverage 94.71%, gates green.

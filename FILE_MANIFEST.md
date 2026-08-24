@@ -163,6 +163,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_srs.py` | 22 tests: SM-2 table (first/second/nth recalls, ease deltas q=5/4/3, floor after repeated hard cycles, lapse reset+restart), invalid-quality rejections, state roundtrip with unknown-key tolerance, persistence across instances, due-card filtering/sorting, forget |
 | `/engines/playground-bridge/media_workspace.py` | P7.7 Media Workspace core — pure ffmpeg plan functions (convert/trim/scale/pad/volume/mix amix/concat demuxer w/ side-file listing/overlay) returning frozen MediaSpec argv data + one thin executor with injectable runner; ffprobe→typed ProbeResult; ingest copies collision-safe then probes; missing binary → install-hint MediaToolError |
 | `/engines/playground-bridge/test_media_workspace.py` | 18 tests: verbatim argv contracts per planner, spec purity/determinism, concat side-file materialization, failure stderr-tail mapping, parent-dir creation, canned ffprobe JSON parsing, collision-safe ingest |
+| `/engines/playground-bridge/import_inbox.py` | P7.8 Import Inbox watch-folder — one-shot scan_inbox() moves dropped files into storage media/<subkind> with collision-safe names, case-insensitive extension filter (rejected files stay), delete-after-import semantics, per-failure isolation; storage/persistence.py gains namespaced media/<subkind> kinds |
+| `/engines/playground-bridge/test_import_inbox.py` | 19 tests: media subkind roundtrip + invalid-subkind rejection, unique-name suffixing, import+delete, filter leave-in-place, case-insensitivity, collision rename, delete_after=false, dir/absent-inbox handling, custom subkind |
 
 ## Notes
 

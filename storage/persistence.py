@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -25,6 +26,11 @@ ALLOWED_KINDS = {
     "journeys", "resumes", "podcast_scripts", "bilingual_pairs",
     "narrations", "exports", "preferences", "capabilities", "verdicts",
 }
+
+# Media kinds are namespaced rather than enumerated: "media/<subkind>"
+# with a filesystem-safe subkind (P7.8 Import Inbox / Playground).
+MEDIA_KIND_PREFIX = "media/"
+_MEDIA_SUBKIND_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
 class Storage:
@@ -47,9 +53,20 @@ class Storage:
     # -- internals ------------------------------------------------------
 
     def _kind_dir(self, kind: str) -> Path:
+        if kind.startswith(MEDIA_KIND_PREFIX):
+            subkind = kind[len(MEDIA_KIND_PREFIX):]
+            if not _MEDIA_SUBKIND_RE.match(subkind):
+                raise ValueError(
+                    f"Invalid media subkind {subkind!r}; must match "
+                    f"{_MEDIA_SUBKIND_RE.pattern}"
+                )
+            path = self.root / "media" / subkind
+            path.mkdir(parents=True, exist_ok=True)
+            return path
         if kind not in ALLOWED_KINDS:
             raise ValueError(
-                f"Unknown artifact kind {kind!r}; allowed: {sorted(ALLOWED_KINDS)}"
+                f"Unknown artifact kind {kind!r}; allowed: {sorted(ALLOWED_KINDS)} "
+                f"or 'media/<subkind>'"
             )
         path = self.root / kind
         path.mkdir(parents=True, exist_ok=True)
