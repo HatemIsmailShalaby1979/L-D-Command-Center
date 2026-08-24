@@ -24,8 +24,8 @@ OPEN: P1.3 migrate journey-core generate_journey onto Pipeline (public interface
 OPEN: P1.4 migrate career-engine generate()/enhance(); Enhancement changes list survives retries; reconcile resume validator with RESUME_SCHEMA (dead contact required-check)
 DONE:opencode: P1.5 migrate podcast_script + bilingual generation onto Pipeline; both broken _call_model copies DELETED (defect #1 closed); their suites inject scripted clients through the public seam; live-guard tests in export-integration now use the real error taxonomy
 DONE:opencode: P1.6 YouTube summarization on Pipeline; templates registered; validate_video_summary + feedback retry replace best-effort parsing (malformed/empty now raise SchemaValidationError after retries)
-CLAIMED:opencode: P2.1 narration backend selection only among available backends; Piper truly default until Kokoro implemented
-OPEN: P2.2 fix podcast_audio.py:160 WAV check ([8:] → [8:12]) + regression test with real-shaped WAV bytes
+DONE:opencode: P2.1 KOKORO_IMPLEMENTED gate in tts.py; narration auto-select defaults to Piper until Kokoro exists (defect #2 closed); explicit overrides honored; flag-flip test keeps future behavior covered
+CLAIMED:opencode: P2.2 fix podcast_audio.py:160 WAV check ([8:] → [8:12]) + regression test with real-shaped WAV bytes
 OPEN: P2.3 create Voice Catalog module consolidating narration/podcast/bilingual voice tables into one (language, role) → voice map
 OPEN: P2.4 audio-engine public assembly seam render_segments([(text, voice, speed)]) → AudioResult; migrate all four audio consumers; language-lab stops importing underscore-privates
 OPEN: P2.5 offline Piper voice provisioning kit (downloader/checklist + missing-voices error listing exactly what to fetch)

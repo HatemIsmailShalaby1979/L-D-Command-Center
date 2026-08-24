@@ -148,8 +148,9 @@ def _synthesize_segment(
     if len(wav_bytes) < 44:
         raise ValueError(f"Invalid WAV data: too short ({len(wav_bytes)} bytes)")
 
-    # Check RIFF header
-    if wav_bytes[:4] != b"RIFF" or wav_bytes[8:] != b"WAVE":
+    # Check RIFF header ("WAVE" lives at bytes 8..11; comparing past
+    # offset 12 would reject every real file — audit defect #3)
+    if wav_bytes[:4] != b"RIFF" or wav_bytes[8:12] != b"WAVE":
         raise ValueError("Invalid WAV format")
 
     # Extract sample rate from fmt chunk (offset 24-27)

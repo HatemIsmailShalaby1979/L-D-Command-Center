@@ -17,6 +17,7 @@ import pytest
 # Add paths
 
 from engines.audio_engine.podcast_audio import (
+    DEFAULT_SAMPLE_RATE,
     render_podcast_to_audio,
     _generate_silence,
     _make_wav_header,
@@ -126,6 +127,25 @@ class TestConcatenateWavs:
 # ---------------------------------------------------------------------------
 # Test render_podcast_to_audio() — happy path
 # ---------------------------------------------------------------------------
+
+class TestSynthesizeSegmentParsing:
+    """Regression tests for real-shaped WAV parsing (audit defect #3)."""
+
+    def test_parses_real_shaped_wav(self):
+        """A genuine header+PCM stream must parse, not be rejected."""
+        from unittest.mock import patch as _patch
+        wav = _make_wav_header(4) + b"\x00\x00\x00\x00"
+        with _patch("engines.audio_engine.podcast_audio.synthesize", return_value=wav):
+            pcm, rate = _synthesize_segment("hello", voice="en_US-lessac-medium")
+        assert pcm == b"\x00\x00\x00\x00"
+        assert rate == DEFAULT_SAMPLE_RATE
+
+    def test_rejects_non_wav_payload(self):
+        from unittest.mock import patch as _patch
+        with _patch("engines.audio_engine.podcast_audio.synthesize", return_value=b"not-a-wav-file-at-all"):
+            with pytest.raises(ValueError, match="Invalid WAV"):
+                _synthesize_segment("hello", voice="en_US-lessac-medium")
+
 
 class TestRenderPodcastToAudio:
     """Tests for podcast audio rendering."""
