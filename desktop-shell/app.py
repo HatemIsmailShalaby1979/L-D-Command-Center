@@ -44,11 +44,24 @@ def run() -> None:  # pragma: no cover — needs a display
     def refresh_health():
         res = ctrl.check_model_health()
         if res.ok:
-            status.set("LM Studio: ready")
+            cap = ctrl.capability_summary()
+            line = "LM Studio: ready"
+            if cap.ok and cap.payload:
+                line += f" | {cap.payload}"
+            status.set(line)
             health_label.config(fg="green")
         else:
             status.set(f"LM Studio: {res.detail}")
             health_label.config(fg="red")
+
+    def run_probe():
+        status.set("probing model capabilities…")
+        health_label.config(fg="gray")
+        root.update_idletasks()
+        res = ctrl.run_capability_probe()
+        if not res:
+            return show_error(res)
+        refresh_health()
 
     def show_error(res: FlowResult):
         messagebox.showerror(ERROR_TITLES.get(res.error_kind, "Error"),
@@ -59,6 +72,8 @@ def run() -> None:  # pragma: no cover — needs a display
     health_label = ttk.Label(header, textvariable=status, foreground="gray")
     health_label.pack(side="left")
     ttk.Button(header, text="Refresh", command=refresh_health).pack(side="left", padx=6)
+    ttk.Button(header, text="Probe model",
+               command=run_probe).pack(side="left")
 
     # -- journey tab --------------------------------------------------------
     tab = ttk.Notebook(root); tab.pack(fill="both", expand=True, padx=8, pady=6)

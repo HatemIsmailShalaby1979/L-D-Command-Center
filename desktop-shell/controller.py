@@ -85,6 +85,25 @@ class ShellController:
         return FlowResult(False, error_kind="no_model",
                           detail="LM Studio is not responding on localhost:1234.")
 
+    # -- capabilities -------------------------------------------------------
+
+    @_flow
+    def run_capability_probe(self) -> FlowResult:
+        from model_layer.capabilities import probe_model_capabilities
+        doc = probe_model_capabilities(self.client, storage=self.storage)
+        logger.info("Capability probe: %s", doc.get("overall"))
+        return FlowResult(True, payload=doc)
+
+    @_flow
+    def capability_summary(self) -> FlowResult:
+        """Offline read of the last stored verdict; payload is a
+        one-line health-bar string or None when never probed."""
+        from model_layer.capabilities import latest_verdict, summarize_verdict
+        doc = latest_verdict(self.storage)
+        if doc is None:
+            return FlowResult(True, payload=None)
+        return FlowResult(True, payload=summarize_verdict(doc))
+
     # -- journeys -----------------------------------------------------------
 
     @_flow

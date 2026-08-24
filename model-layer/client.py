@@ -257,3 +257,32 @@ class LmStudioClient:
             return resp.status_code == 200
         except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError):
             return False
+
+    def list_models(self) -> list[str]:
+        """
+        Contract: return the ids of the models LM Studio currently has
+        available (loaded or load-on-demand), via GET /models.
+
+        Raises:
+            ConnectionError: LM Studio is unreachable.
+            ApiError: non-200 response or malformed body.
+        """
+        session = self._get_session()
+        logger.info("Listing models from %s/models", self.base_url)
+        try:
+            resp = session.get("/models")
+        except httpx.ConnectError as exc:
+            raise ConnectionError(f"Cannot reach LM Studio at {self.base_url}: {exc}") from exc
+        except httpx.TimeoutException as exc:
+            raise ApiError(f"Request to LM Studio timed out after {self.timeout}s: {exc}", retryable=True) from exc
+        if resp.status_code != 200:
+            raise ApiError(
+                f"LM Studio returned HTTP {resp.status_code}: {resp.text}",
+                status_code=resp.status_code,
+                retryable=resp.status_code >= 500,
+            )
+        try:
+            data = resp.json()
+            return [entry["id"] for entry in data.get("data", []) if "id" in entry]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ApiError(f"Malformed model list from LM Studio: {exc}") from exc

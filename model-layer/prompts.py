@@ -450,6 +450,26 @@ class PromptRegistry:
         "Return valid JSON only."
     )
 
+    # ------------------------------------------------------------------
+    # Capability probe template (P7.1)
+    # ------------------------------------------------------------------
+
+    _CAPABILITY_PROBE_SYSTEM = (
+        "You are being calibrated. Answer the tiny task below to prove "
+        "you can follow strict JSON output discipline for this task "
+        "family. Return valid JSON only — no prose, no markdown fences, "
+        "no explanation outside the JSON object."
+    )
+
+    _CAPABILITY_PROBE_USER_BASE = (
+        "{task_instruction}\n\n"
+        "Return a JSON object with this exact structure:\n"
+        "{expected_shape}\n\n"
+        "Requirements:\n"
+        "- Keep every string short (one sentence at most).\n"
+        "- Return valid JSON only."
+    )
+
     def _register_builtins(self) -> None:
         """
         Contract: populate the registry with the templates required
@@ -471,6 +491,7 @@ class PromptRegistry:
           - youtube_summary_generate / youtube_summary_retry: traceable
             video summaries (P1.6)
           - bilingual_verify: translation-fidelity verdict (P3.2)
+          - capability_probe: one-shot model calibration prompt (P7.1)
         """
         self._templates["journey_generate"] = PromptTemplate(
             name="journey_generate",
@@ -562,6 +583,12 @@ class PromptRegistry:
             user=self._YOUTUBE_SUMMARY_RETRY_USER_TEMPLATE,
             schema_key="youtube_summary",
             metadata={"default_max_tokens": 1024, "default_temperature": 0.3},
+        )
+        self._templates["capability_probe"] = PromptTemplate(
+            name="capability_probe",
+            system=self._CAPABILITY_PROBE_SYSTEM,
+            user=self._CAPABILITY_PROBE_USER_BASE,
+            metadata={"default_max_tokens": 512, "default_temperature": 0.0},
         )
 
     # ------------------------------------------------------------------

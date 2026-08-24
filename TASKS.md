@@ -20,8 +20,8 @@ DONE:opencode: P0.3 deleted all __pycache__/ and .pytest_cache/ from tree before
 DONE:opencode: P0.4 requirements.txt pinned (httpx 0.28.1, fpdf2 2.8.8, python-docx 1.2.0, pdfplumber 0.11.10, requests 2.32.5, pytest 9.1.1, reportlab 5.0.1; piper-tts optional)
 DONE:opencode: P1.1 build Generation Pipeline deep module in model-layer (render→call→extract→validate→feedback-retry→transient-retry→typed errors); single model-id policy; register youtube summary templates
 DONE:opencode: P1.2 one fake-client suite proving pipeline contract + live-marker smoke tests (skipped when LM Studio absent)
-OPEN: P1.3 migrate journey-core generate_journey onto Pipeline (public interface unchanged)
-OPEN: P1.4 migrate career-engine generate()/enhance(); Enhancement changes list survives retries; reconcile resume validator with RESUME_SCHEMA (dead contact required-check)
+DONE:opencode: P1.3 journey-core generate_journey migrated onto Pipeline (public interface unchanged); verified via run_checks.sh
+DONE:opencode: P1.4 career-engine generate()/enhance() on Pipeline; Enhancement changes list survives retries (envelope validated per-attempt); validator now schema-driven via _validate_object — dead contact required-check gone (defects #4/#6 closed)
 DONE:opencode: P1.5 migrate podcast_script + bilingual generation onto Pipeline; both broken _call_model copies DELETED (defect #1 closed); their suites inject scripted clients through the public seam; live-guard tests in export-integration now use the real error taxonomy
 DONE:opencode: P1.6 YouTube summarization on Pipeline; templates registered; validate_video_summary + feedback retry replace best-effort parsing (malformed/empty now raise SchemaValidationError after retries)
 DONE:opencode: P2.1 KOKORO_IMPLEMENTED gate in tts.py; narration auto-select defaults to Piper until Kokoro exists (defect #2 closed); explicit overrides honored; flag-flip test keeps future behavior covered
@@ -44,7 +44,7 @@ DONE:opencode: P6.1/P6.2/P6.4 error-sweep+gates+docs: run_checks.sh gate (syntax
 
 --- Phase 7 queue: Paradise Playground + Language Lab power-up (see /docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md; owner amended vision 2026-08-24) ---
 
-OPEN: P7.1 model-layer/capabilities.py — task profiles (min model size per task) + one-shot probe that grades the loaded model and stores verdict via Storage; surface in shell health bar
+DONE:opencode: P7.1 model-layer/capabilities.py — six task profiles (min-size + review note; bilingual keeps mandatory verify <14B), best-effort size-from-id estimator, one-shot probe through Pipeline (max_attempts=1, no feedback retries), verdict persisted via new storage kind "capabilities" + preference pointer; client.list_models() added; controller run_capability_probe/capability_summary; health bar shows "ready | model (~NB): ready/degraded — …" with Probe button; 27 tests incl. validator rejection branches
 OPEN: P7.2 LessonPack schema + Pipeline templates (dialogue, grammar cards, vocab cards, evaluation) + generate_lesson_pack() with feedback retry
 OPEN: P7.3 deterministic graders (exact/regex/fill-in-blank/transformation) + model-judge fallback producing inspectable verdict artifacts (reuse P3.2 pattern)
 OPEN: P7.4 LanguageLabRenderer — interactive HTML pack: vocab flashcards, grammar drills, listening items wired to segment audio, final evaluation

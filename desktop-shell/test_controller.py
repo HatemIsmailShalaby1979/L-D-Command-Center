@@ -101,6 +101,37 @@ class TestRenderAndSave:
         assert saved.exists() and b"My Topic" in saved.read_bytes()
 
 
+class TestCapabilities:
+    def test_probe_success_returns_verdict(self, storage, monkeypatch):
+        monkeypatch.setattr(
+            "model_layer.capabilities.probe_model_capabilities",
+            lambda client, storage=None: {"overall": "ready", "tasks": {}},
+        )
+        result = make_controller(OkClient(), storage).run_capability_probe()
+        assert result.ok and result.payload["overall"] == "ready"
+
+    def test_probe_connection_error_maps_to_no_model(self, storage, monkeypatch):
+        def boom(client, storage=None):
+            raise LmConnectionError("refused")
+        monkeypatch.setattr("model_layer.capabilities.probe_model_capabilities", boom)
+        result = make_controller(OkClient(), storage).run_capability_probe()
+        assert not result and result.error_kind == "no_model"
+
+    def test_summary_none_when_never_probed(self, storage):
+        result = make_controller(OkClient(), storage).capability_summary()
+        assert result.ok and result.payload is None
+
+    def test_summary_reads_stored_verdict_offline(self, storage):
+        from model_layer.capabilities import summarize_verdict
+        doc = {"model_id": "gemma-4-12B-it-QAT-GGUF",
+               "estimated_params_b": 12.0, "overall": "ready", "tasks": {}}
+        storage.save_artifact("capabilities", "gemma.json", doc)
+        storage.set_preference("capability_verdict", "gemma.json")
+        result = make_controller(OkClient(), storage).capability_summary()
+        assert result.ok
+        assert result.payload == summarize_verdict(doc)
+
+
 class TestExportAndLibrary:
     JOURNEY = {"topic": "T", "level": "beginner",
                "cards": [{"id": "c", "title": "t", "content": "c",

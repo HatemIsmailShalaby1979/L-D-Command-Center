@@ -91,3 +91,9 @@ class TestPreferences:
 
     def test_allowed_kinds_covers_preferences(self):
         assert "preferences" in ALLOWED_KINDS
+
+    def test_capability_verdict_roundtrip(self, store):
+        doc = {"model_id": "gemma-4-12B-it-QAT-GGUF", "overall": "ready"}
+        store.save_artifact("capabilities", "gemma.json", doc)
+        assert "capabilities" in ALLOWED_KINDS
+        assert store.load_artifact("capabilities", "gemma.json") == doc
