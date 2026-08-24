@@ -477,3 +477,8 @@ Task: P7.10 Figma REST adapter (continuing authorized run).
 Touched: engines/playground-bridge/connectors_figma.py (new), test_connectors_figma.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
 Why: Roster slot "auth: account" filled per plan B3. Token flows only through the P5.1 secrets seam (FIGMA_TOKEN in *.secrets); its absence is a failed Job with setup instructions, never a leak into errors/logs. Export is the real two-leg REST dance (GET /images/{key} for a temporary asset URL, then fetch bytes) — pinned by request-shape tests including scale omission for SVG. list_frames walks depth-limited page trees for an in-app node picker.
 Suite state: **659 passed / 1 skipped / 0 failed**, coverage 94.78%, gates green.
+## [2026-08-25 06:30] — opencode/ox-alpha (x-preview-f-free)
+Task: P7.11 Pollinations keyless image adapter (continuing authorized run).
+Touched: engines/playground-bridge/connectors_pollinations.py (new), test_connectors_pollinations.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
+Why: Roster slot "auth: none, zero accounts" per plan B0 principle 1. One GET returns bytes; the content-type guard is the interesting correctness bit — Pollinations can return in-band HTML error/ratelimit pages with 200s, and saving those as .png would poison the media library. URL encoding via quote_plus pinned; empty prompt fails before any network call.
+Suite state: **669 passed / 1 skipped / 0 failed**, coverage 94.84%, gates green.

@@ -170,6 +170,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/playground-bridge/test_connectors.py` | 15 tests: registry rules (dup/nameless/unknown), sorted capabilities with quota notes, bytes roundtrip, param+api_name forwarding, unexpected output shapes → failed jobs, missing-library soft failure, empty-prompt fast-fail, double-poll reporting, hidden capability for unpinned spaces |
 | `/engines/playground-bridge/connectors_figma.py` | P7.10 Figma REST adapter — free-account token via secrets seam (FIGMA_TOKEN), two-leg export (images URL → asset bytes) for one node per job, PNG/SVG with png-only scale, list_frames() page→frame discovery, injectable httpx transport; all failures → actionable failed Jobs |
 | `/engines/playground-bridge/test_connectors_figma.py` | 12 tests: exact request shape (token header/params/scale omission for svg), two-leg bytes roundtrip, missing-token setup hint, fast-fail before calls, API/node errors, frame walking filters RECTANGLEs, capabilities auth+quota note, default provider reads secrets seam |
+| `/engines/playground-bridge/connectors_pollinations.py` | P7.11 Pollinations keyless image adapter — single GET with urlencoded prompt path + width/height/model/seed/nologo query; content-type guard rejects in-band error pages; injectable transport; failures are data |
+| `/engines/playground-bridge/test_connectors_pollinations.py` | 10 tests: URL shape incl. defaults and encoding, optional param flow, empty-prompt no-network fast-fail, non-200, empty body, text/html rejection, transport exception mapping, none-auth capability note |
 
 ## Notes
 
