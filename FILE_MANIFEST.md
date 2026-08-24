@@ -151,6 +151,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/immersion.py` | Immersion podcast generation — topic+target language → PodcastScript in target language via audio-engine, rendered with two distinct target-language voices; no new TTS logic, just configuration wiring |
 | `/engines/language-lab/test_immersion.py` | 17 tests: ImmersionResult properties, script generation delegation, audio rendering delegation, parameter passing, error handling |
 | `/engines/language-lab/test_bilingual_verification.py` | 10 tests for the P3.2 translation-fidelity pass — verdict schema, review rendering, generate-verify-regenerate audit trail |
+| `/engines/language-lab/lesson_pack.py` | P7.2 whole-lesson generation — topic+languages+level → one validated LessonPack dict (two-voice dialogue, vocab cards, grammar cards with drills, mixed evaluation items); LESSON_PACK_SCHEMA via _validate_object + semantic pass (exactly 2 speakers; per-type eval shapes) |
+| `/engines/language-lab/test_lesson_pack.py` | 28 tests: pipeline generation with feedback retry, typed failure, input guards, schema+semantic rejection branches, template registration |
 
 ## Notes
 

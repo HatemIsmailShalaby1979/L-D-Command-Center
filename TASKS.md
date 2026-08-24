@@ -45,7 +45,7 @@ DONE:opencode: P6.1/P6.2/P6.4 error-sweep+gates+docs: run_checks.sh gate (syntax
 --- Phase 7 queue: Paradise Playground + Language Lab power-up (see /docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md; owner amended vision 2026-08-24) ---
 
 DONE:opencode: P7.1 model-layer/capabilities.py — six task profiles (min-size + review note; bilingual keeps mandatory verify <14B), best-effort size-from-id estimator, one-shot probe through Pipeline (max_attempts=1, no feedback retries), verdict persisted via new storage kind "capabilities" + preference pointer; client.list_models() added; controller run_capability_probe/capability_summary; health bar shows "ready | model (~NB): ready/degraded — …" with Probe button; 27 tests incl. validator rejection branches
-OPEN: P7.2 LessonPack schema + Pipeline templates (dialogue, grammar cards, vocab cards, evaluation) + generate_lesson_pack() with feedback retry
+DONE:opencode: P7.2 LessonPack schema + Pipeline templates (lesson_pack_generate/lesson_pack_retry) + generate_lesson_pack() with feedback retry — one validated pack: two-voice dialogue (exactly 2 distinct speakers, feeds two-voice rendering), vocab_cards, grammar_cards with drills, evaluation[] in 3 grader-friendly types (multiple_choice/fill_in_blank w/ ___ marker/translation)
 OPEN: P7.3 deterministic graders (exact/regex/fill-in-blank/transformation) + model-judge fallback producing inspectable verdict artifacts (reuse P3.2 pattern)
 OPEN: P7.4 LanguageLabRenderer — interactive HTML pack: vocab flashcards, grammar drills, listening items wired to segment audio, final evaluation
 OPEN: P7.5 per-segment audio via assembly.render_segments; lesson pack references segment audio by artifact name

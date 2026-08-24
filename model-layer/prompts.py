@@ -451,6 +451,110 @@ class PromptRegistry:
     )
 
     # ------------------------------------------------------------------
+    # Lesson pack templates (P7.2)
+    # ------------------------------------------------------------------
+
+    _LESSON_PACK_SYSTEM = (
+        "You are a language teacher producing one complete interactive "
+        "lesson pack. Every generation must follow the exact JSON "
+        "structure requested — dialogue, vocabulary cards, grammar "
+        "cards, and evaluation items together. Return valid JSON only "
+        "— no prose, no markdown fences, no explanation outside the "
+        "JSON object."
+    )
+
+    _LESSON_PACK_USER_BASE = (
+        "Create a lesson pack on the topic \"{topic}\".\n"
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n"
+        "Learner level: {level}\n\n"
+        "Return a JSON object with this exact structure:\n"
+        "{{\n"
+        '  "topic": "<the topic string>",\n'
+        '  "target_language": "{target_language}",\n'
+        '  "known_language": "{known_language}",\n'
+        '  "level": "{level}",\n'
+        '  "dialogue": [\n'
+        '    {{\n'
+        '      "speaker": "<speaker name>",\n'
+        '      "content": "<sentence ENTIRELY in {target_language}>"\n'
+        '    }}\n'
+        "  ],\n"
+        '  "vocab_cards": [\n'
+        '    {{\n'
+        '      "term": "<word or phrase in {target_language}>",\n'
+        '      "reading": "<pronunciation hint or transliteration>",\n'
+        '      "translation": "<meaning in {known_language}>",\n'
+        '      "example": "<example sentence in {target_language}>"\n'
+        '    }}\n'
+        "  ],\n"
+        '  "grammar_cards": [\n'
+        '    {{\n'
+        '      "point": "<grammar point>",\n'
+        '      "explanation": "<short explanation in {known_language}>",\n'
+        '      "drills": [\n'
+        '        {{"prompt": "<item in {target_language}>", '
+        '"answer": "<correct answer>"}},\n'
+        '        {{"prompt": "...", "answer": "..."}}\n'
+        "      ]\n"
+        '    }}\n'
+        "  ],\n"
+        '  "evaluation": [\n'
+        '    {{\n'
+        '      "type": "multiple_choice",\n'
+        '      "question": "<question in {known_language}>",\n'
+        '      "options": ["<option A>", "<option B>", "<option C>"],\n'
+        '      "correct_index": <0-based index into options>\n'
+        '    }},\n'
+        '    {{\n'
+        '      "type": "fill_in_blank",\n'
+        '      "sentence_with_blank": "<sentence in {target_language} '
+        'with ___ marking the blank>",\n'
+        '      "answer": "<the missing word or phrase>"\n'
+        '    }},\n'
+        '    {{\n'
+        '      "type": "translation",\n'
+        '      "prompt": "<sentence in {known_language}>",\n'
+        '      "answer": "<faithful translation in {target_language}>"\n'
+        '    }}\n'
+        "  ]\n"
+        "}}\n\n"
+        "Requirements:\n"
+        "- Produce exactly {num_dialogue} dialogue turns between EXACTLY "
+        "two distinct named speakers.\n"
+        "- All dialogue content and vocab terms/examples MUST be entirely "
+        "in {target_language}; explanations, questions, translations in "
+        "{known_language}.\n"
+        "- Produce exactly {num_vocab} vocab cards, {num_grammar} grammar "
+        "cards (each with at least 2 drills), and {num_eval} evaluation "
+        "items mixing all three types.\n"
+        "- fill_in_blank sentences must contain a ___ blank marker.\n"
+        "- correct_index must be an integer within range of options.\n"
+        "- Content must suit {level} learners.\n"
+        "- Return valid JSON only."
+    )
+
+    _LESSON_PACK_RETRY_SYSTEM = (
+        "You previously generated a lesson pack that failed schema "
+        "validation. Fix the errors below and return a corrected JSON "
+        "object with the same structure. Return valid JSON only — no "
+        "prose, no markdown fences."
+    )
+
+    _LESSON_PACK_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "Topic: \"{topic}\"\n"
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n"
+        "Learner level: {level}\n"
+        "Generate a corrected lesson pack following the same schema as "
+        "before ({num_dialogue} dialogue turns, {num_vocab} vocab cards, "
+        "{num_grammar} grammar cards, {num_eval} evaluation items).\n"
+        "Return valid JSON only."
+    )
+
+    # ------------------------------------------------------------------
     # Capability probe template (P7.1)
     # ------------------------------------------------------------------
 
@@ -492,6 +596,9 @@ class PromptRegistry:
             video summaries (P1.6)
           - bilingual_verify: translation-fidelity verdict (P3.2)
           - capability_probe: one-shot model calibration prompt (P7.1)
+          - lesson_pack_generate / lesson_pack_retry: whole-lesson pack
+            (dialogue + vocab + grammar + evaluation) for the Language
+            Lab flagship (P7.2)
         """
         self._templates["journey_generate"] = PromptTemplate(
             name="journey_generate",
@@ -589,6 +696,18 @@ class PromptRegistry:
             system=self._CAPABILITY_PROBE_SYSTEM,
             user=self._CAPABILITY_PROBE_USER_BASE,
             metadata={"default_max_tokens": 512, "default_temperature": 0.0},
+        )
+        self._templates["lesson_pack_generate"] = PromptTemplate(
+            name="lesson_pack_generate",
+            system=self._LESSON_PACK_SYSTEM,
+            user=self._LESSON_PACK_USER_BASE,
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["lesson_pack_retry"] = PromptTemplate(
+            name="lesson_pack_retry",
+            system=self._LESSON_PACK_RETRY_SYSTEM,
+            user=self._LESSON_PACK_RETRY_USER_TEMPLATE,
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
         )
 
     # ------------------------------------------------------------------
