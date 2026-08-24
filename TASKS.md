@@ -18,8 +18,8 @@ DONE:opencode: P0.1 root conftest.py (hyphen-dir alias packages) + pytest.ini (-
 DONE:opencode: P0.2 all 8 previously-failing tests now pass under pinned deps; old failures not reproducible post-migration (likely fpdf2 API drift + env drift); permanent guard = pinned requirements.txt + one-command suite. NOTE: 5 live-skips confirm audit defects #1/#2 in un-mocked paths — closed by P1.5/P2.1
 DONE:opencode: P0.3 deleted all __pycache__/ and .pytest_cache/ from tree before baseline commit
 DONE:opencode: P0.4 requirements.txt pinned (httpx 0.28.1, fpdf2 2.8.8, python-docx 1.2.0, pdfplumber 0.11.10, requests 2.32.5, pytest 9.1.1, reportlab 5.0.1; piper-tts optional)
-OPEN: P1.1 build Generation Pipeline deep module in model-layer (render→call→extract→validate→feedback-retry→transient-retry→typed errors); single model-id policy; register youtube summary templates
-OPEN: P1.2 one fake-client suite proving pipeline contract + live-marker smoke tests (skipped when LM Studio absent)
+DONE:opencode: P1.1 build Generation Pipeline deep module in model-layer (render→call→extract→validate→feedback-retry→transient-retry→typed errors); single model-id policy; register youtube summary templates
+DONE:opencode: P1.2 one fake-client suite proving pipeline contract + live-marker smoke tests (skipped when LM Studio absent)
 OPEN: P1.3 migrate journey-core generate_journey onto Pipeline (public interface unchanged)
 OPEN: P1.4 migrate career-engine generate()/enhance(); Enhancement changes list survives retries; reconcile resume validator with RESUME_SCHEMA (dead contact required-check)
 OPEN: P1.5 migrate podcast_script + bilingual generation onto Pipeline (deletes both broken _call_model copies)

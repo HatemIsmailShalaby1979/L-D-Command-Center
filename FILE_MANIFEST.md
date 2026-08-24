@@ -51,6 +51,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/model-layer/client.py` | Real LM Studio HTTP client (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check |
 | `/model-layer/schema.py` | Journey JSON schema + validate_journey() + SchemaValidator with 3-attempt retry loop + extract_json_from_text() bracket-scanner |
 | `/model-layer/prompts.py` | PromptRegistry with journey_generate and journey_retry templates, {placeholder} rendering, schema_key wiring |
+| `/model-layer/pipeline.py` | Generation Pipeline — the single Guardrail Loop (render→call→extract→validate→retry→typed error) every engine generates through; owns model-id defaults and transient-error policy |
+| `/model-layer/test_pipeline.py` | 11 contract tests for the Pipeline via a ScriptedClient matching the real LmStudioClient interface (retry counts, feedback formatting, error taxonomy) |
 
 ## Journey-Core Engine (implementation)
 
