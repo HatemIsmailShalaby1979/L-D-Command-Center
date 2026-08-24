@@ -53,6 +53,6 @@ DONE:opencode: P7.6 spaced-repetition-lite (SM-2) — pure scheduler (ladder/eas
 DONE:opencode: P7.7 Media Workspace core — engines/playground-bridge/media_workspace.py: pure MediaSpec planners (convert/trim/scale/pad/volume/mix/concat/overlay) + injectable-runner execute + ffprobe probe + collision-safe ingest; 18 tests, no ffmpeg required; conftest gains playground_bridge alias
 DONE:opencode: P7.8 storage media/* kinds + Import Inbox — persistence.py accepts namespaced "media/<subkind>" (validated); scan_inbox() one-shot watch-folder moves drops into storage with collision-safe names, ext filter, delete-after semantics, per-failure isolation; shell timer drives it in P7.12
 DONE:opencode: P7.9 Connector Hub seam + gradio_client adapter — connectors_hub.py (Connector ABC capabilities/send/poll, failures-as-data) + connectors_gradio.py (pinned keyless HF Spaces: FLUX image gen, ACE-Step music; injectable client factory keeps gradio_client optional)
-OPEN: P7.10 Figma REST adapter (free account) — import designs/frames as PNG/SVG assets
+DONE:opencode: P7.10 Figma REST adapter — connectors_figma.py on the Hub seam: free-account FIGMA_TOKEN via secrets seam, two-leg export (images endpoint → asset bytes), png/svg + scale, list_frames() picker, injectable transport; failures are actionable failed Jobs
 OPEN: P7.11 Pollinations keyless image-generation adapter (no account needed)
 OPEN: P7.12 Playground tab in desktop shell — canvas list, import inbox drop target, connector panel with quota notes
