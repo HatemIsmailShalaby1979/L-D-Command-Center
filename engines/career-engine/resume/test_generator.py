@@ -10,39 +10,18 @@
 
 from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
-# Path setup
-_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-# Load local resume schema explicitly
-_local_schema_path = _ROOT / "engines" / "career-engine" / "resume" / "schema.py"
-_spec = importlib.util.spec_from_file_location("resume_schema", _local_schema_path)
-_resume_schema = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_resume_schema)
-validate_resume = _resume_schema.validate_resume
-
-# Add model-layer to path
-sys.path.insert(0, str(_ROOT / "model-layer"))
-
-# model-layer modules
-import client as _ml_client
-import prompts as _ml_prompts
-import schema as _ml_schema
-
-# Module under test
-import generator as _gen
-from generator import generate, enhance, SchemaValidationError
-
-# Re-export
-generate = _gen.generate
-SchemaValidationError = _ml_schema.SchemaValidationError
+from engines.career_engine.resume import generator as _gen
+from engines.career_engine.resume.generator import enhance, generate
+from engines.career_engine.resume.schema import validate_resume
+from model_layer import client as _ml_client
+from model_layer import prompts as _ml_prompts
+from model_layer import schema as _ml_schema
+from model_layer.schema import SchemaValidationError
 
 
 # ---------------------------------------------------------------------------

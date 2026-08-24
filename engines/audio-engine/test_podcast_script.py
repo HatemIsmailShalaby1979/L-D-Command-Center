@@ -18,10 +18,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add paths
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "model-layer"))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from podcast_script import (
+from engines.audio_engine.podcast_script import (
     PodcastScript,
     PodcastSegment,
     validate_podcast_script,
@@ -269,7 +267,7 @@ class TestGeneratePodcastScriptErrors:
 class TestGeneratePodcastScript:
     """Tests for generate_podcast_script() success cases."""
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_generates_from_topic(self, mock_call):
         mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
         script = generate_podcast_script(topic=SAMPLE_TOPIC)
@@ -277,7 +275,7 @@ class TestGeneratePodcastScript:
         assert script.topic == SAMPLE_TOPIC
         mock_call.assert_called_once()
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_generates_from_journey(self, mock_call):
         mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
         script = generate_podcast_script(journey=SAMPLE_JOURNEY)
@@ -288,7 +286,7 @@ class TestGeneratePodcastScript:
         assert SAMPLE_JOURNEY["topic"] in call_args[0][1]  # user prompt should contain journey topic
         mock_call.assert_called_once()
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_passes_num_segments(self, mock_call):
         mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
         generate_podcast_script(topic=SAMPLE_TOPIC, num_segments=10)
@@ -296,21 +294,21 @@ class TestGeneratePodcastScript:
         call_args = mock_call.call_args
         assert "10" in call_args[0][1]  # user prompt should contain num_segments
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_passes_duration_minutes(self, mock_call):
         mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
         generate_podcast_script(topic=SAMPLE_TOPIC, duration_minutes=30)
         call_args = mock_call.call_args
         assert "30" in call_args[0][1]
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_passes_host_name(self, mock_call):
         mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
         generate_podcast_script(topic=SAMPLE_TOPIC, host_name="Custom Host")
         # Verify the function doesn't crash and calls the model
         mock_call.assert_called_once()
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_retries_on_validation_failure(self, mock_call):
         """Should retry when initial validation fails."""
         # First call returns invalid JSON, second call returns valid
@@ -322,20 +320,20 @@ class TestGeneratePodcastScript:
         assert isinstance(script, PodcastScript)
         assert mock_call.call_count == 2
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_raises_after_max_retries(self, mock_call):
         """Should raise after exhausting retries."""
-        from schema import SchemaValidationError
+        from model_layer.schema import SchemaValidationError
         # All calls return invalid data
         mock_call.return_value = json.dumps({"invalid": "data"})
         with pytest.raises(SchemaValidationError):
             generate_podcast_script(topic=SAMPLE_TOPIC)
 
-    @patch("podcast_script._call_model")
+    @patch("engines.audio_engine.podcast_script._call_model")
     def test_raises_on_extract_failure(self, mock_call):
         """Should raise when JSON extraction fails."""
         mock_call.return_value = "Not valid JSON at all"
-        from schema import SchemaValidationError
+        from model_layer.schema import SchemaValidationError
         with pytest.raises(SchemaValidationError, match="Could not extract JSON"):
             generate_podcast_script(topic=SAMPLE_TOPIC)
 
@@ -347,14 +345,14 @@ class TestGeneratePodcastScript:
 class TestConvenienceFunctions:
     """Tests for convenience functions."""
 
-    @patch("podcast_script.generate_podcast_script")
+    @patch("engines.audio_engine.podcast_script.generate_podcast_script")
     def test_generate_script_from_journey(self, mock_generate):
         mock_generate.return_value = SAMPLE_SCRIPT
         result = generate_script_from_journey(SAMPLE_JOURNEY)
         mock_generate.assert_called_once_with(journey=SAMPLE_JOURNEY)
         assert result == SAMPLE_SCRIPT
 
-    @patch("podcast_script.generate_podcast_script")
+    @patch("engines.audio_engine.podcast_script.generate_podcast_script")
     def test_generate_script_from_topic(self, mock_generate):
         mock_generate.return_value = SAMPLE_SCRIPT
         result = generate_script_from_topic(SAMPLE_TOPIC)

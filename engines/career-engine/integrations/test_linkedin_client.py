@@ -15,9 +15,8 @@ import pytest
 
 # Add paths
 _ENGINE_PATH = Path(__file__).resolve().parent
-sys.path.insert(0, str(_ENGINE_PATH))
 
-from linkedin_client import (
+from engines.career_engine.integrations.linkedin_client import (
     LinkedInClient,
     LinkedInProfile,
     RateLimiter,
@@ -200,7 +199,7 @@ class TestLinkedInClient:
         """
         Contract: client should work without token (but not authenticated).
         """
-        with patch("linkedin_client._load_token", return_value=None):
+        with patch("engines.career_engine.integrations.linkedin_client._load_token", return_value=None):
             client = LinkedInClient()
 
         assert not client.is_authenticated
@@ -272,7 +271,7 @@ class TestLinkedInClient:
         Contract: token should never appear in logs or error messages.
         """
         import logging
-        with patch("linkedin_client.logger") as mock_logger:
+        with patch("engines.career_engine.integrations.linkedin_client.logger") as mock_logger:
             client = LinkedInClient(token="linkedin_secret_token_xyz")
             # Simulate some logging
             mock_logger.info("Test message")

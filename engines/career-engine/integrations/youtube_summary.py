@@ -11,16 +11,12 @@ from __future__ import annotations
 import json
 import logging
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-# Add model-layer to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "model-layer"))
-
-from client import LmStudioClient, ModelRequest
-from prompts import PromptRegistry
+from model_layer.client import LmStudioClient, ModelRequest
+from model_layer.prompts import PromptRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -298,7 +294,7 @@ def _generate_summary(
     Raises:
         RuntimeError: if model generation fails
     """
-    from client import LmStudioClient as _Client
+    from model_layer.client import LmStudioClient as _Client
 
     model_client = client or _Client()
 

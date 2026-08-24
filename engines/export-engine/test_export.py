@@ -14,13 +14,7 @@ from io import BytesIO
 
 import pytest
 
-# Add paths so the module is importable
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent))
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent / "model-layer"))
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent / "engines" / "journey-core"))
-
-# Module under test
-import export as _export_mod
+from engines.export_engine import export as _export_mod
 
 export_to_plain_text = _export_mod.export_to_plain_text
 export_to_pdf = _export_mod.export_to_pdf

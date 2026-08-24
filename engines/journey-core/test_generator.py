@@ -22,20 +22,12 @@ from unittest.mock import patch, MagicMock
 # valid Python package name, so we import generator.py directly as a
 # module from its directory.
 # ------------------------------------------------------------------
-_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(_ROOT))
-sys.path.insert(0, str(_ROOT / "engines" / "journey-core"))
-sys.path.insert(0, str(_ROOT / "model-layer"))
-
-# model-layer modules (bare filenames, not packages)
-import client as _ml_client
-import prompts as _ml_prompts
-import schema as _ml_schema
+from engines.journey_core import generator as _journey_gen
+from model_layer import client as _ml_client
+from model_layer import prompts as _ml_prompts
+from model_layer import schema as _ml_schema
 
 import pytest
-
-# generator module (direct import from journey-core directory)
-import generator as _journey_gen
 
 # Re-export for test use
 generate_journey = _journey_gen.generate_journey

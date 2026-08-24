@@ -15,9 +15,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add model-layer to path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tts import (
+from model_layer.tts import (
     TtsBackend,
     TtsConfig,
     DEFAULT_VOICE,
@@ -102,14 +101,14 @@ class TestSynthesizeErrors:
 class TestSynthesizePiper:
     """Tests for Piper backend synthesis."""
 
-    @patch("tts._synthesize_piper")
+    @patch("model_layer.tts._synthesize_piper")
     def test_uses_piper_by_default(self, mock_piper):
         mock_piper.return_value = MOCK_WAV_BYTES
         result = synthesize(SAMPLE_TEXT)
         mock_piper.assert_called_once()
         assert result == MOCK_WAV_BYTES
 
-    @patch("tts._synthesize_piper")
+    @patch("model_layer.tts._synthesize_piper")
     def test_uses_explicit_piper_backend(self, mock_piper):
         mock_piper.return_value = MOCK_WAV_BYTES
         result = synthesize(SAMPLE_TEXT, backend=TtsBackend.PIPER)
@@ -118,7 +117,7 @@ class TestSynthesizePiper:
 
     def test_piper_passes_correct_args(self):
         """Verify synthesize passes args to _synthesize_piper correctly."""
-        with patch("tts._synthesize_piper", return_value=MOCK_WAV_BYTES) as mock:
+        with patch("model_layer.tts._synthesize_piper", return_value=MOCK_WAV_BYTES) as mock:
             synthesize(
                 SAMPLE_TEXT,
                 voice="es_MX-diana-medium",
@@ -166,14 +165,16 @@ class TestSynthesizePiperImpl:
 
     def test_model_not_found_raises(self, tmp_path):
         """If the voice model file doesn't exist, raise FileNotFoundError."""
-        with pytest.raises(FileNotFoundError, match="Piper voice model not found"):
-            _synthesize_piper(
-                SAMPLE_TEXT,
-                SAMPLE_VOICE,
-                SAMPLE_LANGUAGE,
-                tmp_path,  # Empty dir, no model files
-                SAMPLE_SPEED,
-            )
+        # Stub piper so the test is hermetic (model check happens before Voice.load)
+        with patch.dict("sys.modules", {"piper": MagicMock()}):
+            with pytest.raises(FileNotFoundError, match="Piper voice model not found"):
+                _synthesize_piper(
+                    SAMPLE_TEXT,
+                    SAMPLE_VOICE,
+                    SAMPLE_LANGUAGE,
+                    tmp_path,  # Empty dir, no model files
+                    SAMPLE_SPEED,
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -186,11 +187,11 @@ class TestSynthesizeKokoro:
     def test_kokoro_not_implemented(self, tmp_path):
         """Kokoro backend raises NotImplementedError (placeholder)."""
         # Mock the imports and path.exists to reach the NotImplementedError
-        with patch("tts.Path.exists", return_value=True):
+        with patch("model_layer.tts.Path.exists", return_value=True):
             with patch.dict("sys.modules", {"torch": MagicMock(), "onnxruntime": MagicMock()}):
                 # Reload the module to pick up mocked imports
                 import importlib
-                import tts as tts_module
+                import model_layer.tts as tts_module
                 importlib.reload(tts_module)
 
                 with pytest.raises(NotImplementedError, match="Kokoro-82M backend requires additional setup"):
@@ -260,13 +261,13 @@ class TestGetAvailableVoices:
 class TestGenerateAudio:
     """Tests for the generate_audio() convenience function."""
 
-    @patch("tts.synthesize", return_value=MOCK_WAV_BYTES)
+    @patch("model_layer.tts.synthesize", return_value=MOCK_WAV_BYTES)
     def test_returns_memory_when_no_output_path(self, mock_synthesize):
         result = generate_audio(SAMPLE_TEXT)
         assert result == "memory"
         mock_synthesize.assert_called_once()
 
-    @patch("tts.synthesize", return_value=MOCK_WAV_BYTES)
+    @patch("model_layer.tts.synthesize", return_value=MOCK_WAV_BYTES)
     def test_saves_to_file(self, mock_synthesize, tmp_path):
         output_path = str(tmp_path / "output.wav")
         result = generate_audio(SAMPLE_TEXT, output_path=output_path)
@@ -274,7 +275,7 @@ class TestGenerateAudio:
         assert Path(output_path).exists()
         assert Path(output_path).read_bytes() == MOCK_WAV_BYTES
 
-    @patch("tts.synthesize", return_value=MOCK_WAV_BYTES)
+    @patch("model_layer.tts.synthesize", return_value=MOCK_WAV_BYTES)
     def test_passes_kwargs_to_synthesize(self, mock_synthesize):
         generate_audio(SAMPLE_TEXT, voice="es_MX-diana-medium", language="es")
         mock_synthesize.assert_called_once_with(

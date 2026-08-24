@@ -23,22 +23,11 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any, Optional
 
-# Add model-layer to path
-_MODEL_LAYER = Path(__file__).resolve().parent.parent.parent / "model-layer"
-sys.path.insert(0, str(_MODEL_LAYER))
-
-from client import LmStudioClient
-
-# Add audio-engine to path
-_AUDIO_ENGINE = Path(__file__).resolve().parent.parent / "audio-engine"
-sys.path.insert(0, str(_AUDIO_ENGINE))
-
-from podcast_script import generate_podcast_script, PodcastScript
-from podcast_audio import render_podcast_to_audio, PodcastAudioResult
+from engines.audio_engine.podcast_audio import PodcastAudioResult, render_podcast_to_audio
+from engines.audio_engine.podcast_script import PodcastScript, generate_podcast_script
+from model_layer.client import LmStudioClient
 
 
 # ---------------------------------------------------------------------------

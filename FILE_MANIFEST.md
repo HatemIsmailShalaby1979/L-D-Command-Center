@@ -40,6 +40,9 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/desktop-shell/README.md` | Packaging and installer pipeline for the desktop-native, offline-first executable. |
 | `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
 | `/docs/PRODUCTION_PLAN.md` | Phased v1 production-readiness plan: task IDs (P0–P6) used by TASKS.md, exit criteria, decision log, defect register |
+| `/requirements.txt` | Pinned dependency versions for reproducible offline installs (exit criterion E8) |
+| `/conftest.py` | Root pytest bootstrap — registers underscore alias packages for hyphenated engine dirs so dotted imports resolve; the single import convention |
+| `/pytest.ini` | Runner config — testpaths, importlib mode, `live` marker registration |
 
 ## Model-Layer Implementation
 

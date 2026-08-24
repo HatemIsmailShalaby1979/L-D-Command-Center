@@ -14,12 +14,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add paths
-_this_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(_this_dir.parent.parent.parent / "model-layer"))
-sys.path.insert(0, str(_this_dir))
-sys.path.insert(0, str(_this_dir.parent.parent / "audio-engine"))
 
-from bilingual import (
+from engines.language_lab.bilingual import (
     generate_bilingual_pair,
     render_bilingual_audio,
     generate_and_render,
@@ -205,7 +201,7 @@ class TestValidateBilingualPair:
 class TestGenerateBilingualPair:
     """Tests for generation with mocked model."""
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_generates_from_topic(self, mock_call):
         mock_call.return_value = '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
         pair = generate_bilingual_pair("Test", "es", "en")
@@ -213,7 +209,7 @@ class TestGenerateBilingualPair:
         assert pair.topic == "Test"
         mock_call.assert_called_once()
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_passes_num_segments(self, mock_call):
         mock_call.return_value = '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
         generate_bilingual_pair("Test", "es", "en", num_segments=15)
@@ -221,21 +217,21 @@ class TestGenerateBilingualPair:
         call_args = mock_call.call_args[0]
         assert "15" in call_args[1]
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_passes_target_language(self, mock_call):
         mock_call.return_value = '{"topic": "Test", "target_language": "fr", "known_language": "en", "segments": [{"target_text": "Bonjour", "translation_text": "Hello"}]}'
         generate_bilingual_pair("Test", "fr", "en")
         call_args = mock_call.call_args[0]
         assert "fr" in call_args[1]
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_passes_known_language(self, mock_call):
         mock_call.return_value = '{"topic": "Test", "target_language": "es", "known_language": "zh", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
         generate_bilingual_pair("Test", "es", "zh")
         call_args = mock_call.call_args[0]
         assert "zh" in call_args[1]
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_retries_on_validation_failure (self, mock_call):
         """Should retry when initial validation fails."""
         mock_call.side_effect = [
@@ -246,18 +242,18 @@ class TestGenerateBilingualPair:
         assert isinstance(pair, BilingualPair)
         assert mock_call.call_count == 2
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_raises_after_max_retries(self, mock_call):
         """Should raise after exhausting retries."""
-        from schema import SchemaValidationError
+        from model_layer.schema import SchemaValidationError
         mock_call.return_value = '{"invalid": "data"}'
         with pytest.raises(SchemaValidationError):
             generate_bilingual_pair("Test", "es", "en")
 
-    @patch("bilingual._call_model")
+    @patch("engines.language_lab.bilingual._call_model")
     def test_raises_on_extract_failure(self, mock_call):
         """Should raise when JSON extraction fails."""
-        from schema import SchemaValidationError
+        from model_layer.schema import SchemaValidationError
         mock_call.return_value = "Not valid JSON at all"
         with pytest.raises(SchemaValidationError, match="Could not extract JSON"):
             generate_bilingual_pair("Test", "es", "en")
@@ -290,23 +286,23 @@ class TestGenerateBilingualPairErrors:
 class TestRenderBilingualAudio:
     """Tests for audio rendering."""
 
-    @patch("bilingual._synthesize_segment")
+    @patch("engines.language_lab.bilingual._synthesize_segment")
     def test_synthesizes_all_segments(self, mock_synthesize):
         """Should synthesize each segment twice (target + translation)."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("bilingual._wav_to_mp3", return_value=b""):
+        with patch("engines.language_lab.bilingual._wav_to_mp3", return_value=b""):
             result = render_bilingual_audio(SAMPLE_PAIR)
 
         assert result.total_segments == 4  # 2 segments × 2 voices
         assert mock_synthesize.call_count == 4
 
-    @patch("bilingual._synthesize_segment")
+    @patch("engines.language_lab.bilingual._synthesize_segment")
     def test_uses_target_voice_for_target_text(self, mock_synthesize):
         """Should use target language voice for target_text."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("bilingual._wav_to_mp3", return_value=b""):
+        with patch("engines.language_lab.bilingual._wav_to_mp3", return_value=b""):
             render_bilingual_audio(SAMPLE_PAIR)
 
         # First call should use Spanish voice
@@ -314,12 +310,12 @@ class TestRenderBilingualAudio:
         assert first_call[1].get('voice') == TARGET_VOICES["es"] or \
                (len(first_call[0]) > 1 and first_call[0][1] == TARGET_VOICES["es"])
 
-    @patch("bilingual._synthesize_segment")
+    @patch("engines.language_lab.bilingual._synthesize_segment")
     def test_uses_known_voice_for_translation(self, mock_synthesize):
         """Should use known language voice for translation_text."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("bilingual._wav_to_mp3", return_value=b""):
+        with patch("engines.language_lab.bilingual._wav_to_mp3", return_value=b""):
             render_bilingual_audio(SAMPLE_PAIR)
 
         # Second call should use English voice
@@ -327,8 +323,8 @@ class TestRenderBilingualAudio:
         assert second_call[1].get('voice') == KNOWN_VOICES["en"] or \
                (len(second_call[0]) > 1 and second_call[0][1] == KNOWN_VOICES["en"])
 
-    @patch("bilingual._synthesize_segment")
-    @patch("bilingual._wav_to_mp3", return_value=b"mock-mp3")
+    @patch("engines.language_lab.bilingual._synthesize_segment")
+    @patch("engines.language_lab.bilingual._wav_to_mp3", return_value=b"mock-mp3")
     def test_includes_mp3_by_default(self, mock_mp3, mock_synthesize):
         """Should include MP3 by default."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
@@ -337,8 +333,8 @@ class TestRenderBilingualAudio:
 
         assert result.mp3_bytes == b"mock-mp3"
 
-    @patch("bilingual._synthesize_segment")
-    @patch("bilingual._wav_to_mp3", return_value=b"mock-mp3")
+    @patch("engines.language_lab.bilingual._synthesize_segment")
+    @patch("engines.language_lab.bilingual._wav_to_mp3", return_value=b"mock-mp3")
     def test_can_skip_mp3(self, mock_mp3, mock_synthesize):
         """Should skip MP3 when include_mp3=False."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
@@ -347,12 +343,12 @@ class TestRenderBilingualAudio:
 
         assert result.mp3_bytes == b""
 
-    @patch("bilingual._synthesize_segment")
+    @patch("engines.language_lab.bilingual._synthesize_segment")
     def test_passes_speed_parameter(self, mock_synthesize):
         """Should pass speed parameter to synthesis."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("bilingual._wav_to_mp3", return_value=b""):
+        with patch("engines.language_lab.bilingual._wav_to_mp3", return_value=b""):
             render_bilingual_audio(SAMPLE_PAIR, speed=0.8)
 
         for call in mock_synthesize.call_args_list:
@@ -380,16 +376,16 @@ class TestRenderBilingualAudioErrors:
         with pytest.raises(TypeError, match="Expected BilingualPair"):
             render_bilingual_audio("not a pair")  # type: ignore
 
-    @patch("bilingual._synthesize_segment", side_effect=RuntimeError("TTS failed"))
+    @patch("engines.language_lab.bilingual._synthesize_segment", side_effect=RuntimeError("TTS failed"))
     def test_tts_failure_propagates(self, mock_synthesize):
         """Should propagate TTS errors."""
         with pytest.raises(RuntimeError, match="TTS failed"):
             render_bilingual_audio(SAMPLE_PAIR)
 
-    @patch("bilingual._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
+    @patch("engines.language_lab.bilingual._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
     def test_mp3_failure_graceful(self, mock_mp3):
         """Should continue with WAV-only if MP3 conversion fails."""
-        with patch("bilingual._synthesize_segment", return_value=(b"\x00" * 100, 22050)):
+        with patch("engines.language_lab.bilingual._synthesize_segment", return_value=(b"\x00" * 100, 22050)):
             result = render_bilingual_audio(SAMPLE_PAIR)
             assert result.mp3_bytes == b""
 
@@ -401,8 +397,8 @@ class TestRenderBilingualAudioErrors:
 class TestGenerateAndRender:
     """Tests for the convenience function."""
 
-    @patch("bilingual.generate_bilingual_pair")
-    @patch("bilingual.render_bilingual_audio")
+    @patch("engines.language_lab.bilingual.generate_bilingual_pair")
+    @patch("engines.language_lab.bilingual.render_bilingual_audio")
     def test_calls_both_functions(self, mock_render, mock_generate):
         mock_generate.return_value = SAMPLE_PAIR
         mock_render.return_value = MagicMock(

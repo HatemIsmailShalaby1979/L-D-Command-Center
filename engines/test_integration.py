@@ -19,17 +19,13 @@ from unittest.mock import MagicMock, patch
 
 # Path setup
 _ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_ROOT))
-sys.path.insert(0, str(_ROOT / "engines" / "journey-core"))
-sys.path.insert(0, str(_ROOT / "engines" / "export-engine"))
-sys.path.insert(0, str(_ROOT / "model-layer"))
 
-import generator as _gen
-import renderer as _rend
-import export as _exp
+from engines.export_engine import export as _exp
+from engines.journey_core import generator as _gen
+from engines.journey_core import renderer as _rend
 
 # Also import schema for validation
-import schema as _schema
+from model_layer import schema as _schema
 
 
 # ---------------------------------------------------------------------------

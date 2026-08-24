@@ -12,43 +12,20 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
-import sys
-from pathlib import Path
 from typing import Any
 
+from engines.career_engine.resume.schema import RESUME_SCHEMA, validate_resume
+from model_layer.client import ApiError, LmStudioClient, ModelRequest
+from model_layer.prompts import PromptRegistry
+from model_layer.schema import (
+    SchemaValidationError,
+    SchemaValidator,
+    extract_json_from_text,
+)
+
 logger = logging.getLogger(__name__)
-
-# Resolve paths
-_ROOT = Path(__file__).resolve().parent.parent.parent
-_MODEL_LAYER = _ROOT / "model-layer"
-
-# Load local resume schema explicitly to avoid conflict with model-layer/schema
-_local_schema_path = Path(__file__).parent / "schema.py"
-_spec = importlib.util.spec_from_file_location("resume_schema", _local_schema_path)
-_resume_schema = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_resume_schema)
-
-RESUME_SCHEMA = _resume_schema.RESUME_SCHEMA
-validate_resume = _resume_schema.validate_resume
-
-# Add model-layer to path after local schema is loaded
-sys.path.insert(0, str(_MODEL_LAYER))
-
-# Import model-layer modules
-import client as _ml_client
-import prompts as _ml_prompts
-import schema as _ml_schema
-
-# Re-export for use in this module
-LmStudioClient = _ml_client.LmStudioClient
-ModelRequest = _ml_client.ModelRequest
-ApiError = _ml_client.ApiError
-SchemaValidationError = _ml_schema.SchemaValidationError
-PromptRegistry = _ml_prompts.PromptRegistry
-SchemaValidator = _ml_schema.SchemaValidator
 
 # Public API
 __all__ = ["generate", "enhance"]
@@ -106,7 +83,7 @@ def enhance(
             retry_result = json.loads(raw_retry)
             return json.dumps(retry_result.get("enhanced_resume", retry_result))
         except json.JSONDecodeError:
-            return _ml_schema.extract_json_from_text(raw_retry) or raw_retry
+            return extract_json_from_text(raw_retry) or raw_retry
 
     # First attempt: enhance the resume
     system, user, _ = registry.render(
@@ -123,7 +100,7 @@ def enhance(
         result = json.loads(raw_output)
     except json.JSONDecodeError:
         # Try to extract JSON from the response
-        result = _ml_schema.extract_json_from_text(raw_output)
+        result = extract_json_from_text(raw_output)
         if result is None:
             raise SchemaValidationError(["Invalid JSON in model response"], 1)
 

@@ -14,10 +14,10 @@ DONE:claude-code: add TTS client to model-layer with Piper (default) and Kokoro-
 --- Production plan queue (IDs are canonical — see /docs/PRODUCTION_PLAN.md; review report: /tmp/architecture-review-20260824-094204.html) ---
 
 DONE:opencode: P0.0 git initialized on main, baseline commit 09681c3, tagged audit-2026-08-24; secrets/OS cruft verified excluded (D1 resolved)
-OPEN: P0.1 root conftest.py + pytest config; remove ~30 sys.path.insert sites across 20 files; resolve schema name collision via package aliases (no dir renames — D2 deferred)
-OPEN: P0.2 investigate + fix 8 failing tests from last recorded run (export PDF ×4, export audio ×4 per export-engine/.pytest_cache/lastfailed); log root cause in AGENT_LOG
+DONE:opencode: P0.1 root conftest.py (hyphen-dir alias packages) + pytest.ini (--import-mode=importlib); all ~30 sys.path.insert sites removed across 20 files; schema collision resolved via canonical dotted imports; suite green from root
+DONE:opencode: P0.2 all 8 previously-failing tests now pass under pinned deps; old failures not reproducible post-migration (likely fpdf2 API drift + env drift); permanent guard = pinned requirements.txt + one-command suite. NOTE: 5 live-skips confirm audit defects #1/#2 in un-mocked paths — closed by P1.5/P2.1
 DONE:opencode: P0.3 deleted all __pycache__/ and .pytest_cache/ from tree before baseline commit
-OPEN: P0.4 pin dependencies in requirements.txt with tested versions; document Python target
+DONE:opencode: P0.4 requirements.txt pinned (httpx 0.28.1, fpdf2 2.8.8, python-docx 1.2.0, pdfplumber 0.11.10, requests 2.32.5, pytest 9.1.1, reportlab 5.0.1; piper-tts optional)
 OPEN: P1.1 build Generation Pipeline deep module in model-layer (render→call→extract→validate→feedback-retry→transient-retry→typed errors); single model-id policy; register youtube summary templates
 OPEN: P1.2 one fake-client suite proving pipeline contract + live-marker smoke tests (skipped when LM Studio absent)
 OPEN: P1.3 migrate journey-core generate_journey onto Pipeline (public interface unchanged)

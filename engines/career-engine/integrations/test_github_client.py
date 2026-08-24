@@ -16,9 +16,8 @@ import pytest
 
 # Add paths
 _ENGINE_PATH = Path(__file__).resolve().parent
-sys.path.insert(0, str(_ENGINE_PATH))
 
-from github_client import (
+from engines.career_engine.integrations.github_client import (
     GitHubClient,
     GitHubRepo,
     GitHubREADME,
@@ -129,7 +128,7 @@ class TestGitHubClient:
         """
         Contract: client should work without token (rate-limited).
         """
-        with patch("github_client._load_token", return_value=None):
+        with patch("engines.career_engine.integrations.github_client._load_token", return_value=None):
             client = GitHubClient()
 
         assert not client.is_authenticated
@@ -203,7 +202,7 @@ class TestGitHubClient:
         Contract: token should never appear in logs or error messages.
         """
         import logging
-        with patch("github_client.logger") as mock_logger:
+        with patch("engines.career_engine.integrations.github_client.logger") as mock_logger:
             client = GitHubClient(token="ghp_secret_token_123")
             # Simulate some logging
             mock_logger.info("Test message")

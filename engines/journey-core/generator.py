@@ -13,43 +13,19 @@
 
 from __future__ import annotations
 
-import importlib.util
 import logging
-import sys
-from pathlib import Path
 from typing import Any
 
+from model_layer.client import ApiError, LmStudioClient, ModelRequest
+from model_layer.prompts import PromptRegistry
+from model_layer.schema import (
+    SchemaValidationError,
+    SchemaValidator,
+    validate_journey,
+)
+
 logger = logging.getLogger(__name__)
-
-# Resolve paths so we can import sibling modules without package naming
-# constraints (the directory is "journey-core" with a hyphen, which
-# cannot be a Python package name).
-_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(_ROOT))
-
-_MODEL_LAYER_PATH = _ROOT / "model-layer"
-sys.path.insert(0, str(_MODEL_LAYER_PATH))
-
-# Import model-layer modules directly by file path
-import client as _client_module
-import prompts as _prompts_module
-import schema as _schema_module
-
-# Re-export for test imports
-client = _client_module
-prompts = _prompts_module
-schema = _schema_module
-
-# Public API from model-layer (renamed for local use)
-LmStudioClient = _client_module.LmStudioClient
-ModelRequest = _client_module.ModelRequest
-ApiError = _client_module.ApiError
-PromptRegistry = _prompts_module.PromptRegistry
-SchemaValidator = _schema_module.SchemaValidator
-validate_journey = _schema_module.validate_journey
-SchemaValidationError = _schema_module.SchemaValidationError
-
-logger.info("journey-core generator loaded (model-layer path: %s)", _MODEL_LAYER_PATH)
+logger.info("journey-core generator loaded")
 
 # Default number of cards to generate per journey
 DEFAULT_NUM_CARDS = 5

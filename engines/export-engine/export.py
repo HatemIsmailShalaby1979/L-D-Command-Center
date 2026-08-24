@@ -11,9 +11,7 @@
 from __future__ import annotations
 
 import logging
-import sys
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -723,8 +721,7 @@ def export_audio_narrate(
     Returns a dict with keys 'wav_bytes', 'mp3_bytes', 'sample_rate',
     'backend_used', 'voice_used'.
     """
-    sys.path.insert(0, str(Path(__file__).parent.parent / "audio-engine"))
-    from narration import narrate
+    from engines.audio_engine.narration import narrate
     result = narrate(text, include_mp3=include_mp3, output_path=output_path)
     return {
         "wav_bytes": result.wav_bytes,
@@ -751,9 +748,8 @@ def export_audio_podcast(
     Returns a dict with keys 'wav_bytes', 'mp3_bytes', 'duration_seconds',
     'total_segments', 'backend_used'.
     """
-    sys.path.insert(0, str(Path(__file__).parent.parent / "audio-engine"))
-    from podcast_script import generate_podcast_script
-    from podcast_audio import render_podcast_to_audio
+    from engines.audio_engine.podcast_audio import render_podcast_to_audio
+    from engines.audio_engine.podcast_script import generate_podcast_script
     script = generate_podcast_script(
         topic=topic,
         num_segments=num_segments,
@@ -791,9 +787,10 @@ def export_audio_bilingual(
     Returns a dict with keys 'wav_bytes', 'mp3_bytes', 'duration_seconds',
     'total_segments', 'backend_used'.
     """
-    sys.path.insert(0, str(Path(__file__).parent.parent / "language-lab"))
-    sys.path.insert(0, str(Path(__file__).parent.parent / "audio-engine"))
-    from bilingual import generate_bilingual_pair, render_bilingual_audio
+    from engines.language_lab.bilingual import (
+        generate_bilingual_pair,
+        render_bilingual_audio,
+    )
     pair = generate_bilingual_pair(
         topic, target_language, known_language, num_segments=num_segments
     )
@@ -825,9 +822,7 @@ def export_audio_immersion(
     Returns a dict with keys 'wav_bytes', 'mp3_bytes', 'duration_seconds',
     'total_segments', 'backend_used'.
     """
-    sys.path.insert(0, str(Path(__file__).parent.parent / "language-lab"))
-    sys.path.insert(0, str(Path(__file__).parent.parent / "audio-engine"))
-    from immersion import generate_immersion_podcast
+    from engines.language_lab.immersion import generate_immersion_podcast
     result = generate_immersion_podcast(
         topic,
         target_language,

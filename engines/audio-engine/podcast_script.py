@@ -26,20 +26,18 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Any, Optional
 
+from model_layer.client import LmStudioClient
+from model_layer.prompts import PromptRegistry
+from model_layer.schema import (
+    SchemaValidationError,
+    SchemaValidator,
+    extract_json_from_text,
+)
+
 logger = logging.getLogger(__name__)
-
-# Add model-layer to path
-_MODEL_LAYER = Path(__file__).resolve().parent.parent.parent / "model-layer"
-sys.path.insert(0, str(_MODEL_LAYER))
-
-from client import LmStudioClient
-from prompts import PromptRegistry
-from schema import SchemaValidator, SchemaValidationError, extract_json_from_text
 
 
 # ---------------------------------------------------------------------------

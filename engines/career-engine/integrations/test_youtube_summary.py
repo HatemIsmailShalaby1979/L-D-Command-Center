@@ -16,10 +16,8 @@ import pytest
 
 # Add paths
 _ENGINE_PATH = Path(__file__).resolve().parent
-sys.path.insert(0, str(_ENGINE_PATH))
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "model-layer"))
 
-from youtube_summary import (
+from engines.career_engine.integrations.youtube_summary import (
     YouTubeVideo,
     VideoSummary,
     YouTubeSearchClient,
@@ -169,7 +167,7 @@ class TestYouTubeSearchClient:
         """
         Contract: client should work without key (but not authenticated).
         """
-        with patch("youtube_summary._load_api_key", return_value=None):
+        with patch("engines.career_engine.integrations.youtube_summary._load_api_key", return_value=None):
             client = YouTubeSearchClient()
 
         assert not client.is_authenticated
@@ -220,7 +218,7 @@ class TestYouTubeSearchClient:
         """
         Contract: API key should never appear in logs or error messages.
         """
-        with patch("youtube_summary.logger") as mock_logger:
+        with patch("engines.career_engine.integrations.youtube_summary.logger") as mock_logger:
             client = YouTubeSearchClient(api_key="AIzaSySecretKey123")
             # Simulate some logging
             mock_logger.info("Test message")
@@ -318,7 +316,7 @@ class TestSummarizeYoutubeVideos:
         """
         Contract: summarize_youtube_videos should return list of VideoSummary.
         """
-        with patch("youtube_summary.YouTubeSearchClient") as MockClient:
+        with patch("engines.career_engine.integrations.youtube_summary.YouTubeSearchClient") as MockClient:
             mock_search = MagicMock()
             mock_search.is_authenticated = True
             mock_search.search_videos.return_value = [
@@ -333,8 +331,8 @@ class TestSummarizeYoutubeVideos:
             ]
             MockClient.return_value = mock_search
 
-            with patch("youtube_summary._generate_summary", return_value=("Summary", ["Point 1"])):
-                with patch("youtube_summary.LmStudioClient"):
+            with patch("engines.career_engine.integrations.youtube_summary._generate_summary", return_value=("Summary", ["Point 1"])):
+                with patch("engines.career_engine.integrations.youtube_summary.LmStudioClient"):
                     results = summarize_youtube_videos("Python tutorial", max_videos=1)
 
         assert len(results) == 1
@@ -345,7 +343,7 @@ class TestSummarizeYoutubeVideos:
         """
         Contract: summarize_youtube_videos should raise without API key.
         """
-        with patch("youtube_summary.YouTubeSearchClient") as MockClient:
+        with patch("engines.career_engine.integrations.youtube_summary.YouTubeSearchClient") as MockClient:
             mock_search = MagicMock()
             mock_search.is_authenticated = False
             MockClient.return_value = mock_search
@@ -357,13 +355,13 @@ class TestSummarizeYoutubeVideos:
         """
         Contract: summarize_youtube_videos should return empty list when no videos found.
         """
-        with patch("youtube_summary.YouTubeSearchClient") as MockClient:
+        with patch("engines.career_engine.integrations.youtube_summary.YouTubeSearchClient") as MockClient:
             mock_search = MagicMock()
             mock_search.is_authenticated = True
             mock_search.search_videos.return_value = []
             MockClient.return_value = mock_search
 
-            with patch("youtube_summary.LmStudioClient"):
+            with patch("engines.career_engine.integrations.youtube_summary.LmStudioClient"):
                 results = summarize_youtube_videos("Nonexistent topic")
 
         assert results == []

@@ -25,34 +25,28 @@
 
 from __future__ import annotations
 
-import sys
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
-
-# Add model-layer to path
-_MODEL_LAYER = Path(__file__).resolve().parent.parent.parent / "model-layer"
-sys.path.insert(0, str(_MODEL_LAYER))
-
-from client import LmStudioClient
-from prompts import PromptRegistry
-from schema import SchemaValidator, SchemaValidationError, extract_json_from_text
-
-# Add audio-engine to path for TTS client
-_AUDIO_ENGINE = Path(__file__).resolve().parent.parent / "audio-engine"
-sys.path.insert(0, str(_AUDIO_ENGINE))
-
-from podcast_audio import (
-    _synthesize_segment,
-    _generate_silence,
-    _concatenate_wavs,
-    _wav_to_mp3,
-    PodcastAudioResult,
+from engines.audio_engine.podcast_audio import (
     DEFAULT_SAMPLE_RATE,
+    PodcastAudioResult,
+    _concatenate_wavs,
+    _generate_silence,
+    _synthesize_segment,
+    _wav_to_mp3,
 )
+from model_layer.client import LmStudioClient
+from model_layer.prompts import PromptRegistry
+from model_layer.schema import (
+    SchemaValidationError,
+    SchemaValidator,
+    extract_json_from_text,
+)
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -324,8 +318,6 @@ def render_bilingual_audio(
         ValueError: If pair has no segments.
         RuntimeError: If TTS synthesis fails.
     """
-    from bilingual import BilingualPair  # noqa: F811 — circular import guard
-
     if not isinstance(pair, BilingualPair):
         raise TypeError(f"Expected BilingualPair, got {type(pair).__name__}")
 

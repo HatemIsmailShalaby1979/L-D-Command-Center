@@ -18,21 +18,19 @@ import pytest
 
 # Add paths
 _ENGINE_PATH = Path(__file__).resolve().parent
-sys.path.insert(0, str(_ENGINE_PATH))
-sys.path.insert(0, str(_ENGINE_PATH / "resume"))
-sys.path.insert(0, str(_ENGINE_PATH / "integrations"))
-sys.path.insert(0, str(_ENGINE_PATH.parent.parent / "export-engine"))
-sys.path.insert(0, str(_ENGINE_PATH.parent.parent / "model-layer"))
 
-from generator import generate, enhance
-from resume.schema import validate_resume
-from github_client import GitHubClient, propose_resume_projects
-from linkedin_client import LinkedInClient
-from youtube_summary import YouTubeSearchClient, summarize_youtube_videos
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "export-engine"))
-import export as export_engine
-export = export_engine.export
+from engines.career_engine.integrations.github_client import (
+    GitHubClient,
+    propose_resume_projects,
+)
+from engines.career_engine.integrations.linkedin_client import LinkedInClient
+from engines.career_engine.integrations.youtube_summary import (
+    YouTubeSearchClient,
+    summarize_youtube_videos,
+)
+from engines.career_engine.resume.generator import enhance, generate
+from engines.career_engine.resume.schema import validate_resume
+from engines.export_engine.export import export
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +79,7 @@ class TestCareerPipeline:
         Contract: Can generate a resume and enhance it against a job description.
         """
         # Generate a base resume
-        with patch("generator._call_model") as mock_call:
+        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
             mock_response = json.dumps({
                 "contact": {"name": "John Doe", "email": "john@example.com"},
                 "summary": "Experienced engineer",
@@ -114,7 +112,7 @@ class TestCareerPipeline:
             "projects": [{"name": "Project A", "description": "A project", "tech": ["Python"]}]
         }
 
-        with patch("generator._call_model") as mock_call:
+        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
             mock_response = json.dumps({
                 "enhanced_resume": {
                     "contact": {"name": "John Doe", "email": "john@example.com"},
@@ -174,7 +172,7 @@ class TestCareerPipeline:
         """
         Contract: Can fetch GitHub repos and propose resume projects.
         """
-        with patch("github_client._load_token", return_value="ghp_test_token"):
+        with patch("engines.career_engine.integrations.github_client._load_token", return_value="ghp_test_token"):
             client = GitHubClient(token="ghp_test_token")
             assert client.is_authenticated
 
@@ -185,7 +183,7 @@ class TestCareerPipeline:
                 assert repos[1].name == "web-app"
 
             # Propose projects from repos
-            from github_client import GitHubRepo
+            from engines.career_engine.integrations.github_client import GitHubRepo
             repo_objects = [
                 GitHubRepo(
                     name=r["name"],
@@ -206,7 +204,7 @@ class TestCareerPipeline:
         """
         Contract: LinkedIn client works with mocked token (no live credentials).
         """
-        from linkedin_client import LinkedInProfile
+        from engines.career_engine.integrations.linkedin_client import LinkedInProfile
 
         client = LinkedInClient(token="linkedin_token_123")
         assert client.is_authenticated
@@ -265,7 +263,7 @@ class TestCareerPipeline:
         All external services are mocked.
         """
         # Step 1: Generate resume (mocked model)
-        with patch("generator._call_model") as mock_call:
+        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
             mock_call.return_value = json.dumps({
                 "contact": {"name": "Test User", "email": "test@example.com"},
                 "summary": "Test summary",
@@ -277,7 +275,7 @@ class TestCareerPipeline:
             resume = generate("Software Engineer")
 
         # Step 2: Enhance resume (mocked model)
-        with patch("generator._call_model") as mock_call:
+        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
             mock_call.return_value = json.dumps({
                 "enhanced_resume": resume,
                 "changes": [{"field": "summary", "change": "Enhanced", "reason": "Better alignment"}]
@@ -294,7 +292,7 @@ class TestCareerPipeline:
         assert docx_bytes[:4] == b"PK\x03\x04"
 
         # Step 4: GitHub integration (mocked)
-        with patch("integrations.github_client._load_token", return_value="ghp_test"):
+        with patch("engines.career_engine.integrations.github_client._load_token", return_value="ghp_test"):
             client = GitHubClient()
             with patch.object(client, "_get", return_value=MOCK_GITHUB_REPOS):
                 repos = client.get_user_repos("testuser")

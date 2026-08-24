@@ -16,14 +16,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add paths so the module is importable
-_this_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(_this_dir.parent.parent.parent))
-sys.path.insert(0, str(_this_dir.parent.parent / "model-layer"))
-sys.path.insert(0, str(_this_dir.parent.parent / "audio-engine"))
-sys.path.insert(0, str(_this_dir.parent.parent / "language-lab"))
 
 # Module under test
-import export as _export_mod
+from engines.export_engine import export as _export_mod
 
 export = _export_mod.export
 _detect_type = _export_mod._detect_type
@@ -153,7 +148,7 @@ class TestDetectType:
 class TestExportAudio:
     """Tests for the export_audio() dispatcher."""
 
-    @patch("export.export_audio_narrate")
+    @patch("engines.export_engine.export.export_audio_narrate")
     def test_dispatches_narration(self, mock_narrate):
         mock_narrate.return_value = {"wav_bytes": b"test", "mp3_bytes": b""}
         result = export_audio(_NARRATION_CONTENT, include_mp3=False)
@@ -164,21 +159,21 @@ class TestExportAudio:
         )
         assert result["wav_bytes"] == b"test"
 
-    @patch("export.export_audio_podcast")
+    @patch("engines.export_engine.export.export_audio_podcast")
     def test_dispatches_podcast(self, mock_podcast):
         mock_podcast.return_value = {"wav_bytes": b"test", "mp3_bytes": b""}
         result = export_audio(_PODCAST_CONTENT, include_mp3=False)
         mock_podcast.assert_called_once()
         assert result["wav_bytes"] == b"test"
 
-    @patch("export.export_audio_bilingual")
+    @patch("engines.export_engine.export.export_audio_bilingual")
     def test_dispatches_bilingual(self, mock_bilingual):
         mock_bilingual.return_value = {"wav_bytes": b"test", "mp3_bytes": b""}
         result = export_audio(_BILINGUAL_CONTENT, include_mp3=False)
         mock_bilingual.assert_called_once()
         assert result["wav_bytes"] == b"test"
 
-    @patch("export.export_audio_immersion")
+    @patch("engines.export_engine.export.export_audio_immersion")
     def test_dispatches_immersion(self, mock_immersion):
         mock_immersion.return_value = {"wav_bytes": b"test", "mp3_bytes": b""}
         result = export_audio(_IMMERSION_CONTENT, include_mp3=False)
@@ -208,35 +203,35 @@ class TestExportDispatcher:
         assert isinstance(result, str)
         assert "JOHN SMITH" in result.upper()
 
-    @patch("export.export_audio_narrate")
+    @patch("engines.export_engine.export.export_audio_narrate")
     def test_export_narration_wav(self, mock_narrate):
         """Should dispatch narration content to wav export."""
         mock_narrate.return_value = {"wav_bytes": b"test-wav", "mp3_bytes": b"", "sample_rate": 22050}
         result = export(_NARRATION_CONTENT, format="wav")
         assert result["wav_bytes"] == b"test-wav"
 
-    @patch("export.export_audio_podcast")
+    @patch("engines.export_engine.export.export_audio_podcast")
     def test_export_podcast_wav(self, mock_podcast):
         """Should dispatch podcast content to wav export."""
         mock_podcast.return_value = {"wav_bytes": b"test-wav", "mp3_bytes": b"", "duration_seconds": 300.0}
         result = export(_PODCAST_CONTENT, format="wav")
         assert result["duration_seconds"] == 300.0
 
-    @patch("export.export_audio_bilingual")
+    @patch("engines.export_engine.export.export_audio_bilingual")
     def test_export_bilingual_wav(self, mock_bilingual):
         """Should dispatch bilingual content to wav export."""
         mock_bilingual.return_value = {"wav_bytes": b"test-wav", "mp3_bytes": b"", "duration_seconds": 120.0}
         result = export(_BILINGUAL_CONTENT, format="wav")
         assert result["duration_seconds"] == 120.0
 
-    @patch("export.export_audio_immersion")
+    @patch("engines.export_engine.export.export_audio_immersion")
     def test_export_immersion_wav(self, mock_immersion):
         """Should dispatch immersion content to wav export."""
         mock_immersion.return_value = {"wav_bytes": b"test-wav", "mp3_bytes": b"", "duration_seconds": 180.0}
         result = export(_IMMERSION_CONTENT, format="wav")
         assert result["duration_seconds"] == 180.0
 
-    @patch("export.export_audio_narrate")
+    @patch("engines.export_engine.export.export_audio_narrate")
     def test_export_narration_mp3(self, mock_narrate):
         """Should include MP3 when format=mp3."""
         mock_narrate.return_value = {"wav_bytes": b"test-wav", "mp3_bytes": b"test-mp3"}
@@ -321,10 +316,10 @@ class TestIntegrationAllAudioTypes:
         except (TypeError, ConnectionError) as e:
             pytest.skip(f"Live audio not available: {e}")
 
-    @patch("export.export_audio_narrate")
-    @patch("export.export_audio_podcast")
-    @patch("export.export_audio_bilingual")
-    @patch("export.export_audio_immersion")
+    @patch("engines.export_engine.export.export_audio_narrate")
+    @patch("engines.export_engine.export.export_audio_podcast")
+    @patch("engines.export_engine.export.export_audio_bilingual")
+    @patch("engines.export_engine.export.export_audio_immersion")
     def test_all_four_audio_types_via_unified_export(
         self, mock_immersion, mock_bilingual, mock_podcast, mock_narrate
     ):
@@ -364,7 +359,7 @@ class TestIntegrationAllAudioTypes:
 class TestExportFileWriting:
     """Tests for exporting audio to files."""
 
-    @patch("export.export_audio_narrate")
+    @patch("engines.export_engine.export.export_audio_narrate")
     def test_narration_to_file(self, mock_narrate, tmp_path):
         """Should write narration audio to file."""
         mock_narrate.return_value = {"wav_bytes": b"RIFF" + b"\x00" * 1000, "mp3_bytes": b""}
@@ -372,7 +367,7 @@ class TestExportFileWriting:
         result = export(_NARRATION_CONTENT, format="wav", filepath=filepath)
         assert result == filepath
 
-    @patch("export.export_audio_podcast")
+    @patch("engines.export_engine.export.export_audio_podcast")
     def test_podcast_to_file(self, mock_podcast, tmp_path):
         """Should write podcast audio to file."""
         mock_podcast.return_value = {"wav_bytes": b"RIFF" + b"\x00" * 2000, "mp3_bytes": b""}

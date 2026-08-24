@@ -20,10 +20,8 @@ _ENGINE_PATH = Path(__file__).resolve().parent
 _MODEL_LAYER = _ROOT / "model-layer"
 
 import sys
-sys.path.insert(0, str(_ENGINE_PATH))
-sys.path.insert(0, str(_MODEL_LAYER))
 
-from parser import (
+from engines.career_engine.resume.parser import (
     parse_resume_file,
     parse_text,
     ConfidenceFlag,

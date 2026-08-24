@@ -15,11 +15,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add paths
-_this_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(_this_dir.parent.parent.parent / "model-layer"))
-sys.path.insert(0, str(_this_dir))
 
-from narration import (
+from engines.audio_engine.narration import (
     narrate,
     narrate_journey_card,
     narrate_resume_summary,
@@ -156,31 +153,31 @@ class TestNarrateErrors:
 class TestNarrate:
     """Tests for narrate() success cases."""
 
-    @patch("narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
+    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_returns_narration_result(self, mock_mp3, mock_synthesize):
         result = narrate(SAMPLE_TEXT_EN)
         assert hasattr(result, 'wav_bytes')
         assert result.wav_bytes == b"mock-wav-bytes"
 
-    @patch("narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
+    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_uses_auto_selected_backend(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN)
         call_kwargs = mock_synthesize.call_args
         assert call_kwargs[1].get('backend') == TtsBackend.KOKORO or \
                (len(call_kwargs[0]) > 2 and call_kwargs[0][2] == TtsBackend.KOKORO)
 
-    @patch("narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("narration._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
+    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
+    @patch("engines.audio_engine.narration._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
     def test_continues_with_wav_only_on_mp3_failure(self, mock_mp3, mock_synthesize):
         """Should still return result even if MP3 conversion fails."""
         result = narrate(SAMPLE_TEXT_EN)
         assert result.wav_bytes == b"mock-wav-bytes"
         assert result.mp3_bytes == b""
 
-    @patch("narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
+    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_saves_to_output_path(self, mock_mp3, mock_synthesize, tmp_path):
         output_path = str(tmp_path / "audio")
         result = narrate(SAMPLE_TEXT_EN, output_path=output_path)
@@ -188,16 +185,16 @@ class TestNarrate:
         assert (tmp_path / "audio" / "narration.wav").exists()
         assert (tmp_path / "audio" / "narration.mp3").exists()
 
-    @patch("narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
+    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_explicit_voice_override(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN, voice="custom_voice")
         call_kwargs = mock_synthesize.call_args
         assert call_kwargs[1].get('voice') == "custom_voice" or \
                (len(call_kwargs[0]) > 1 and call_kwargs[0][1] == "custom_voice")
 
-    @patch("narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
+    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_speed_parameter_passed(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN, speed=1.5)
         call_kwargs = mock_synthesize.call_args
@@ -212,7 +209,7 @@ class TestNarrate:
 class TestNarrateJourneyCard:
     """Tests for narrate_journey_card() convenience function."""
 
-    @patch("narration.narrate")
+    @patch("engines.audio_engine.narration.narrate")
     def test_combines_title_and_content(self, mock_narrate):
         mock_narrate.return_value = MagicMock(wav_bytes=b"test", mp3_bytes=b"test")
         narrate_journey_card(SAMPLE_JOURNEY_CARD)
@@ -221,14 +218,14 @@ class TestNarrateJourneyCard:
         assert "What is Python?" in call_args
         assert "Python is a high-level programming language." in call_args
 
-    @patch("narration.narrate")
+    @patch("engines.audio_engine.narration.narrate")
     def test_handles_missing_title(self, mock_narrate):
         card = dict(SAMPLE_JOURNEY_CARD)
         del card["title"]
         narrate_journey_card(card)
         mock_narrate.assert_called_once()
 
-    @patch("narration.narrate")
+    @patch("engines.audio_engine.narration.narrate")
     def test_handles_missing_content(self, mock_narrate):
         card = dict(SAMPLE_JOURNEY_CARD)
         del card["content"]
@@ -243,7 +240,7 @@ class TestNarrateJourneyCard:
 class TestNarrateResumeSummary:
     """Tests for narrate_resume_summary() convenience function."""
 
-    @patch("narration.narrate")
+    @patch("engines.audio_engine.narration.narrate")
     def test_includes_name_and_summary(self, mock_narrate):
         mock_narrate.return_value = MagicMock(wav_bytes=b"test", mp3_bytes=b"test")
         narrate_resume_summary(SAMPLE_RESUME)
@@ -252,7 +249,7 @@ class TestNarrateResumeSummary:
         assert "John Doe" in call_args
         assert "Experienced software engineer" in call_args
 
-    @patch("narration.narrate")
+    @patch("engines.audio_engine.narration.narrate")
     def test_handles_missing_name(self, mock_narrate):
         resume = dict(SAMPLE_RESUME)
         resume["contact"] = {}
@@ -261,7 +258,7 @@ class TestNarrateResumeSummary:
         call_args = mock_narrate.call_args[0][0]
         assert "Candidate" in call_args
 
-    @patch("narration.narrate")
+    @patch("engines.audio_engine.narration.narrate")
     def test_handles_missing_summary(self, mock_narrate):
         resume = dict(SAMPLE_RESUME)
         resume["summary"] = ""
@@ -276,14 +273,14 @@ class TestNarrateResumeSummary:
 class TestWavToMp3:
     """Tests for WAV to MP3 conversion."""
 
-    @patch("narration.subprocess.run")
+    @patch("engines.audio_engine.narration.subprocess.run")
     def test_calls_ffmpeg(self, mock_run):
         mock_run.return_value = MagicMock(stdout=b"mp3-data")
         result = _wav_to_mp3(b"wav-data")
         mock_run.assert_called_once()
         assert result == b"mp3-data"
 
-    @patch("narration.subprocess.run", side_effect=RuntimeError("ffmpeg not found"))
+    @patch("engines.audio_engine.narration.subprocess.run", side_effect=RuntimeError("ffmpeg not found"))
     def test_raises_on_ffmpeg_failure(self, mock_run):
         with pytest.raises(RuntimeError, match="ffmpeg"):
             _wav_to_mp3(b"wav-data")

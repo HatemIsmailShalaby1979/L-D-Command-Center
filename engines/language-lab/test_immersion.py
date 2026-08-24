@@ -16,12 +16,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add paths
-_this_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(_this_dir.parent.parent.parent / "model-layer"))
-sys.path.insert(0, str(_this_dir.parent.parent / "audio-engine"))
-sys.path.insert(0, str(_this_dir))
 
-from immersion import (
+from engines.language_lab.immersion import (
     generate_immersion_podcast,
     generate_and_save_immersion,
     ImmersionResult,
@@ -29,7 +25,7 @@ from immersion import (
     DEFAULT_DURATION_MINUTES,
     DEFAULT_SPEED,
 )
-from podcast_script import PodcastScript, PodcastSegment
+from engines.audio_engine.podcast_script import PodcastScript, PodcastSegment
 
 
 # ---------------------------------------------------------------------------
@@ -97,8 +93,8 @@ class TestImmersionResult:
 class TestGenerateImmersionPodcast:
     """Tests for immersion podcast generation."""
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_calls_script_generation(self, mock_render, mock_generate):
         """Should call podcast script generation."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -121,8 +117,8 @@ class TestGenerateImmersionPodcast:
             model="default",
         )
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_calls_audio_rendering(self, mock_render, mock_generate):
         """Should call audio rendering with the generated script."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -143,8 +139,8 @@ class TestGenerateImmersionPodcast:
             speed=DEFAULT_SPEED,
         )
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_passes_num_segments(self, mock_render, mock_generate):
         """Should pass num_segments to script generation."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -161,8 +157,8 @@ class TestGenerateImmersionPodcast:
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs['num_segments'] == 10
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_passes_duration_minutes(self, mock_render, mock_generate):
         """Should pass duration_minutes to script generation."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -179,8 +175,8 @@ class TestGenerateImmersionPodcast:
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs['duration_minutes'] == 30
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_passes_include_mp3(self, mock_render, mock_generate):
         """Should pass include_mp3 to audio rendering."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -197,8 +193,8 @@ class TestGenerateImmersionPodcast:
         call_kwargs = mock_render.call_args[1]
         assert call_kwargs['include_mp3'] is False
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_passes_output_path(self, mock_render, mock_generate):
         """Should pass output_path to audio rendering."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -215,8 +211,8 @@ class TestGenerateImmersionPodcast:
         call_kwargs = mock_render.call_args[1]
         assert call_kwargs['output_path'] == "/tmp/output"
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_passes_speed(self, mock_render, mock_generate):
         """Should pass speed to audio rendering."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -233,8 +229,8 @@ class TestGenerateImmersionPodcast:
         call_kwargs = mock_render.call_args[1]
         assert call_kwargs['speed'] == 0.8
 
-    @patch("immersion.generate_podcast_script")
-    @patch("immersion.render_podcast_to_audio")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
     def test_returns_immersion_result(self, mock_render, mock_generate):
         """Should return an ImmersionResult."""
         mock_generate.return_value = SAMPLE_SCRIPT
@@ -251,26 +247,26 @@ class TestGenerateImmersionPodcast:
         assert isinstance(result, ImmersionResult)
         assert result.script == SAMPLE_SCRIPT
 
-    @patch("immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
     def test_raises_on_empty_topic(self, mock_generate):
         """Should raise if topic is empty."""
         with pytest.raises(ValueError, match="Topic"):
             generate_immersion_podcast("", SAMPLE_TARGET_LANG)
 
-    @patch("immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.generate_podcast_script")
     def test_raises_on_empty_target_language(self, mock_generate):
         """Should raise if target language is empty."""
         with pytest.raises(ValueError, match="Target language"):
             generate_immersion_podcast(SAMPLE_TOPIC, "")
 
-    @patch("immersion.generate_podcast_script", side_effect=Exception("LM Studio error"))
+    @patch("engines.language_lab.immersion.generate_podcast_script", side_effect=Exception("LM Studio error"))
     def test_propagates_generation_errors(self, mock_generate):
         """Should propagate errors from script generation."""
         with pytest.raises(Exception, match="LM Studio error"):
             generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
 
-    @patch("immersion.generate_podcast_script", return_value=SAMPLE_SCRIPT)
-    @patch("immersion.render_podcast_to_audio", side_effect=Exception("Audio error"))
+    @patch("engines.language_lab.immersion.generate_podcast_script", return_value=SAMPLE_SCRIPT)
+    @patch("engines.language_lab.immersion.render_podcast_to_audio", side_effect=Exception("Audio error"))
     def test_propagates_rendering_errors(self, mock_render, mock_generate):
         """Should propagate errors from audio rendering."""
         with pytest.raises(Exception, match="Audio error"):
@@ -284,7 +280,7 @@ class TestGenerateImmersionPodcast:
 class TestGenerateAndSaveImmersion:
     """Tests for convenience function."""
 
-    @patch("immersion.generate_immersion_podcast")
+    @patch("engines.language_lab.immersion.generate_immersion_podcast")
     def test_calls_generate_with_output_path(self, mock_generate):
         """Should pass output_path to generate function."""
         mock_generate.return_value = ImmersionResult(
@@ -306,7 +302,7 @@ class TestGenerateAndSaveImmersion:
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs['output_path'] == "/tmp/output"
 
-    @patch("immersion.generate_immersion_podcast")
+    @patch("engines.language_lab.immersion.generate_immersion_podcast")
     def test_returns_immersion_result(self, mock_generate):
         """Should return ImmersionResult."""
         mock_generate.return_value = ImmersionResult(

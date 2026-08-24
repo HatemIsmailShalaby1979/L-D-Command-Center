@@ -26,20 +26,12 @@ from __future__ import annotations
 
 import io
 import struct
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-# Add model-layer to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "model-layer"))
-
-from tts import TtsBackend, synthesize
-
-# Add narration to path for _wav_to_mp3 helper
-sys.path.insert(0, str(Path(__file__).parent))
-
-from narration import _wav_to_mp3  # noqa: E402 — imported after path setup
+from engines.audio_engine.narration import _wav_to_mp3
+from model_layer.tts import TtsBackend, synthesize
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +229,7 @@ def render_podcast_to_audio(
         ValueError: If script has no segments or speakers.
         RuntimeError: If TTS synthesis fails.
     """
-    from podcast_script import PodcastScript  # noqa: F811 — circular import guard
+    from engines.audio_engine.podcast_script import PodcastScript
 
     if not isinstance(script, PodcastScript):
         raise TypeError(f"Expected PodcastScript, got {type(script).__name__}")

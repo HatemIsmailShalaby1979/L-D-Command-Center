@@ -14,10 +14,8 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(_ROOT))
-sys.path.insert(0, str(_ROOT / "engines" / "journey-core"))
 
-from renderer import JourneyRenderer, render_journey_html
+from engines.journey_core.renderer import JourneyRenderer, render_journey_html
 
 
 # ---------------------------------------------------------------------------

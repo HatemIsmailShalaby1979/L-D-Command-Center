@@ -1,0 +1,29 @@
+# requirements.txt — pinned toolchain for L&D Command Center
+#
+# WHAT: Tested dependency versions for running the full offline test suite
+#       and every implemented engine feature.
+# WHY:  P0.4 of docs/PRODUCTION_PLAN.md — reproducible installs across
+#       machines; E8 of the exit criteria. Versions verified 2026-08-24
+#       against CPython 3.14 / Linux with the complete suite green
+#       (354 passed, 5 skipped-live).
+# BREAKS IF DELETED: Fresh machines cannot reproduce a working environment;
+#       dependency drift reopens class-R1 failures.
+
+# --- generation core ---
+httpx==0.28.1            # model-layer LM Studio HTTP client
+
+# --- exports ---
+fpdf2==2.8.8             # Journey/Resume PDF export
+python-docx==1.2.0       # Resume DOCX export
+
+# --- career-engine parsing & integrations ---
+pdfplumber==0.11.10      # resume upload (PDF text extraction)
+requests==2.32.5         # GitHub/LinkedIn/YouTube HTTP integrations
+
+# --- test toolchain ---
+pytest==9.1.1            # runner; suite: python -m pytest -m "not live"
+reportlab==5.0.1         # test-only: generates sample PDFs for parser tests
+
+# --- optional audio backends (not required for the mocked suite) ---
+# piper-tts==1.7.0       # default TTS backend (pulls onnxruntime); install for real narration
+# kokoro==not-implemented  # placeholder backend; see PRODUCTION_PLAN P2.1
