@@ -13,10 +13,10 @@ DONE:claude-code: add TTS client to model-layer with Piper (default) and Kokoro-
 
 --- Production plan queue (IDs are canonical — see /docs/PRODUCTION_PLAN.md; review report: /tmp/architecture-review-20260824-094204.html) ---
 
-BLOCKED:owner-decision: P0.0 initialize git repository, baseline commit, tag audit-2026-08-24 (BOOT_ROOT protocol is git-worktree based; .gitignore exists but repo never created)
+DONE:opencode: P0.0 git initialized on main, baseline commit 09681c3, tagged audit-2026-08-24; secrets/OS cruft verified excluded (D1 resolved)
 OPEN: P0.1 root conftest.py + pytest config; remove ~30 sys.path.insert sites across 20 files; resolve schema name collision via package aliases (no dir renames — D2 deferred)
 OPEN: P0.2 investigate + fix 8 failing tests from last recorded run (export PDF ×4, export audio ×4 per export-engine/.pytest_cache/lastfailed); log root cause in AGENT_LOG
-OPEN: P0.3 delete generated cruft from tree (__pycache__/ ×9, .pytest_cache/ ×9)
+DONE:opencode: P0.3 deleted all __pycache__/ and .pytest_cache/ from tree before baseline commit
 OPEN: P0.4 pin dependencies in requirements.txt with tested versions; document Python target
 OPEN: P1.1 build Generation Pipeline deep module in model-layer (render→call→extract→validate→feedback-retry→transient-retry→typed errors); single model-id policy; register youtube summary templates
 OPEN: P1.2 one fake-client suite proving pipeline contract + live-marker smoke tests (skipped when LM Studio absent)
@@ -36,7 +36,7 @@ OPEN: P4.2 remove generation from export (delete export_audio_* regeneration); J
 WISHLIST: P4.3 add PPTX + XLSX Journey exporters (MASTER_STORY promise; python-pptx/openpyxl pinned first)
 WISHLIST: P4.4 byte-stability tests for every export format
 WISHLIST: P5.1 storage/ engine v1 — file persistence for artifacts + preferences; consolidate three secrets parsers into storage/secrets.py::load_secret(name)
-BLOCKED:owner-decision(D3): P5.2 desktop app shell (toolkit choice — recommendation: stdlib Tkinter); minimal UI over existing engines
+OPEN: P5.2 desktop app shell — toolkit RESOLVED D3=stdlib Tkinter; minimal UI over existing engines
 WISHLIST: P5.3 wire typed errors to UI surfaces (LM Studio down → actionable message; missing TTS voices → provisioning hint)
-BLOCKED:owner-decision(D4): P5.4 desktop-shell packaging (PyInstaller/Nuitka → installer; offline verification; low-spec perf budget; Windows-first recommended)
+OPEN: P5.4 desktop-shell packaging (PyInstaller → Windows + Linux installers per D4; offline verification both OSes; low-spec perf budget)
 WISHLIST: P6.x hardening & release gates — error-taxonomy sweep, coverage floor, low-spec rehearsal, docs pass, final governance audit (see PRODUCTION_PLAN.md Phase 6)

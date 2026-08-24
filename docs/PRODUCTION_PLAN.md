@@ -1,10 +1,8 @@
 # PRODUCTION_PLAN.md — L&D Command Center v1
 
-Status: PROPOSED (v1 draft, 2026-08-24). Owner approval turns each phase into
-claimable TASKS.md work. Sources: architecture review 2026-08-24
-(`/tmp/architecture-review-20260824-094204.html`), full-file audit, and the
-governance set (CONSTITUTION, BOOT_ROOT, MASTER_STORY, CONTEXT).
-Task IDs below (`P0.1`, `P1.2`, …) are the canonical references used in TASKS.md.
+Status: ACTIVE (owner-approved 2026-08-24 with D1/D3/D4/D5 resolved — see §6).
+D2 stays open-by-default (alias approach). Task IDs below (`P0.1`, `P1.2`, …)
+are the canonical references used in TASKS.md.
 
 ---
 
@@ -179,13 +177,15 @@ decided by the time P4 completes.
 
 ## 6. Decision log — owner inputs gating the plan
 
-| # | Decision | Recommendation | Gates |
-|---|----------|----------------|-------|
-| D1 | Initialize git repository now? | **Yes, immediately** — history, rollback, and the worktree protocol depend on it | P0.0 |
-| D2 | Rename hyphenated engine dirs to underscore packages (requires BOOT_ROOT amendment)? | **Not now** — alias/conftest approach suffices for v1 | P0.1 (only if reversed) |
-| D3 | Desktop UI toolkit for v1 | **Tkinter** (stdlib, zero-install, low-spec-friendly); PySide6/pywebview as v2 options | P5.2 |
-| D4 | Primary packaging target OS | **Windows first** (workspace evidence), Linux second | P5.4 |
-| D5 | v1 scope = all four pillars as built (Learning, Language Lab, Career core), Playground deferred? | **Confirm** — code exists for pillars 1–3; shipping them after correction beats artificial narrowing, but owner may prefer MASTER_STORY's original journeys-first slice | whole plan |
+| # | Decision | Resolution | Gates |
+|---|----------|------------|-------|
+| D1 | Initialize git repository now? | **RESOLVED 2026-08-24: Yes** — repo initialized on `main`, baseline commit `09681c3`, tagged `audit-2026-08-24`; secrets/OS cruft verified excluded | P0.0 ✅ done |
+| D2 | Rename hyphenated engine dirs to underscore packages (requires BOOT_ROOT amendment)? | OPEN — alias/conftest approach for v1; revisit only if friction recurs | P0.1 |
+| D3 | Desktop UI toolkit for v1 | **RESOLVED 2026-08-24: Tkinter** (stdlib, zero-install, low-spec-friendly); PySide6/pywebview remain v2 options | P5.2 unblocked |
+| D4 | Primary packaging target OS | **RESOLVED 2026-08-24: Windows + Linux together** — both installers built and offline-verified in P5.4; adds Linux rehearsal to the packaging task | P5.4 unblocked |
+| D5 | v1 scope = all four pillars as built (Learning, Language Lab, Career core), Playground deferred? | **RESOLVED 2026-08-24: All built pillars ship in v1** once Phases 0–4 correct them; Playground/Notion post-v1 | whole plan |
+
+Repo-local git identity was set during init (`thommyshelby` / `thommyshelby@local`) because no global identity existed — owner may replace it before any push.
 
 ---
 
