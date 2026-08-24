@@ -447,3 +447,9 @@ Task: P7.5 per-segment lesson-pack audio (owner authorized P7.5–P7.12 without 
 Touched: engines/language-lab/pack_audio.py (new), engines/language-lab/test_pack_audio.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
 Why: Fills the audio contract the renderer defined in P7.4: render_pack_audio() renders each dialogue turn as its own artifact through assembly.render_segments (zero private imports, zero voice knowledge — speakers resolve via voice_catalog.speaker_voices language-scoped pool, first-appearance order, distinct by construction). Names are deterministic (<topic-slug>-lesson-dialogue-<i>.wav) and byte-stable, so stored HTML keeps working across re-renders. TTS faked at the same seam all audio suites use (assembly.tts_synthesize with real RIFF bytes); mp3 off by default since <audio> plays wav.
 Suite state: **573 passed / 1 skipped / 0 failed**, coverage 94.32%, gates green.
+
+## [2026-08-25 02:45] — opencode/ox-alpha (x-preview-f-free)
+Task: P7.6 SM-2 spaced repetition (continuing authorized P7.5–P7.12 run).
+Touched: engines/language-lab/srs.py (new), engines/language-lab/test_srs.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
+Why: Classic SM-2 kept pure and frozen-dataclass-backed: recall ladder 1→6→round(prev*ease), quality-driven ease delta floored at 1.3, lapses reset reps/interval and count; today injectable so every rule is clock-independent. SrsStore persists the whole deck as ONE Storage preference blob (srs_progress) — restart-proof, offline, exportable, zero new storage concepts. quality_from_correct maps binary grades onto SM-2 (wrong=2 so near-misses still count as lapses).
+Suite state: **595 passed / 1 skipped / 0 failed**, coverage 94.48%, gates green.

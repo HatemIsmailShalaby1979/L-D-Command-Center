@@ -159,6 +159,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_renderer.py` | 16 tests: section/content presence, determinism, rejection of incomplete packs, injection escaping incl. quote-safe answer attributes, JS/Python grading-rule parity markers, audio wiring contract (dialogue-N / listening-N keys with fallback) |
 | `/engines/language-lab/pack_audio.py` | P7.5 per-segment lesson-pack audio — each dialogue turn rendered through assembly.render_segments into its own WAV artifact named exactly per the renderer contract (<stem>-dialogue-<i>.wav); speaker→voice assignment via Voice Catalog language-scoped pool (distinct speakers = distinct voices); optional output_path persistence; MP3 off by default |
 | `/engines/language-lab/test_pack_audio.py` | 12 tests: renderer-contract naming, slug safety, distinct/stable voice mapping (language-scoped), speed forwarding, empty-dialogue rejection, output_path byte-identical writes |
+| `/engines/language-lab/srs.py` | P7.6 spaced-repetition-lite — pure SM-2 core (interval ladder 1→6→ease-multiplied, quality ease-adjustment floored at 1.3, lapse reset + lapse counter) over a frozen CardState; SrsStore persists all card schedules as one Storage preference blob; today injectable everywhere |
+| `/engines/language-lab/test_srs.py` | 22 tests: SM-2 table (first/second/nth recalls, ease deltas q=5/4/3, floor after repeated hard cycles, lapse reset+restart), invalid-quality rejections, state roundtrip with unknown-key tolerance, persistence across instances, due-card filtering/sorting, forget |
 
 ## Notes
 
