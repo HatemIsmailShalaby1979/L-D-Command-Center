@@ -555,6 +555,57 @@ class PromptRegistry:
     )
 
     # ------------------------------------------------------------------
+    # Lesson-pack judge + verification templates (P7.3)
+    # ------------------------------------------------------------------
+
+    _LESSON_JUDGE_SYSTEM = (
+        "You are a meticulous language teacher grading ONE learner "
+        "answer. Accept an answer only when its meaning is correct and "
+        "it is appropriate for the learner level — minor typos or "
+        "missing accents do not fail an otherwise correct answer. "
+        "Return valid JSON only."
+    )
+
+    _LESSON_JUDGE_USER_BASE = (
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n"
+        "Learner level: {level}\n\n"
+        "Exercise item:\n{item}\n\n"
+        "Learner answer:\n{answer}\n\n"
+        'Return a JSON object: {{"passed": true|false, '
+        '"correct_answer": "<the canonical correct answer>", '
+        '"issues": ["<short reason>", ...]}}\n'
+        "- passed=true ONLY when the learner answer is a correct, "
+        "natural response to the exercise.\n"
+        "- List every defect in issues; use an empty list when passed.\n"
+        "- Return valid JSON only."
+    )
+
+    _LESSON_VERIFY_SYSTEM = (
+        "You are a meticulous reviewer of language-learning material. "
+        "Judge whether each claim below is faithful and correct: vocab "
+        "translations must be accurate, grammar explanations must be "
+        "true for the target language. Accuracy is a correctness "
+        "problem, not a stylistic one. Return valid JSON only."
+    )
+
+    _LESSON_VERIFY_USER_BASE = (
+        "Topic: \"{topic}\"\n"
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n"
+        "Learner level: {level}\n\n"
+        "Claims to review:\n{claims}\n\n"
+        "Return a JSON object: {{\"passed\": true|false, \"issues\": "
+        "[{{\"claim\": \"<claim id, e.g. V0 or G1>\", \"problem\": "
+        "\"<what makes the claim wrong or misleading>\"}}]}}\n"
+        "- passed=false ONLY when at least one claim is factually "
+        "wrong, unfaithful, or would mislead a learner.\n"
+        "- List every problematic claim with its id.\n"
+        "- Do not invent issues for purely stylistic preferences.\n"
+        "- Return valid JSON only."
+    )
+
+    # ------------------------------------------------------------------
     # Capability probe template (P7.1)
     # ------------------------------------------------------------------
 
@@ -599,6 +650,8 @@ class PromptRegistry:
           - lesson_pack_generate / lesson_pack_retry: whole-lesson pack
             (dialogue + vocab + grammar + evaluation) for the Language
             Lab flagship (P7.2)
+          - lesson_judge: one-shot learner-answer grading verdict (P7.3)
+          - lesson_verify: pack explanation/translation fidelity audit (P7.3)
         """
         self._templates["journey_generate"] = PromptTemplate(
             name="journey_generate",
@@ -708,6 +761,18 @@ class PromptRegistry:
             system=self._LESSON_PACK_RETRY_SYSTEM,
             user=self._LESSON_PACK_RETRY_USER_TEMPLATE,
             metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["lesson_judge"] = PromptTemplate(
+            name="lesson_judge",
+            system=self._LESSON_JUDGE_SYSTEM,
+            user=self._LESSON_JUDGE_USER_BASE,
+            metadata={"default_max_tokens": 512, "default_temperature": 0.0},
+        )
+        self._templates["lesson_verify"] = PromptTemplate(
+            name="lesson_verify",
+            system=self._LESSON_VERIFY_SYSTEM,
+            user=self._LESSON_VERIFY_USER_BASE,
+            metadata={"default_max_tokens": 1024, "default_temperature": 0.0},
         )
 
     # ------------------------------------------------------------------

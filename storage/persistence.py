@@ -23,7 +23,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent / "data"
 
 ALLOWED_KINDS = {
     "journeys", "resumes", "podcast_scripts", "bilingual_pairs",
-    "narrations", "exports", "preferences", "capabilities",
+    "narrations", "exports", "preferences", "capabilities", "verdicts",
 }
 
 

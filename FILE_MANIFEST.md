@@ -153,6 +153,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_bilingual_verification.py` | 10 tests for the P3.2 translation-fidelity pass — verdict schema, review rendering, generate-verify-regenerate audit trail |
 | `/engines/language-lab/lesson_pack.py` | P7.2 whole-lesson generation — topic+languages+level → one validated LessonPack dict (two-voice dialogue, vocab cards, grammar cards with drills, mixed evaluation items); LESSON_PACK_SCHEMA via _validate_object + semantic pass (exactly 2 speakers; per-type eval shapes) |
 | `/engines/language-lab/test_lesson_pack.py` | 28 tests: pipeline generation with feedback retry, typed failure, input guards, schema+semantic rejection branches, template registration |
+| `/engines/language-lab/graders.py` | P7.3 grading — deterministic first (normalize/accent-fold/slash alternatives; MC index checks), model-judge fallback for free-form translations (inspectable GradeResult, single pipeline attempt), pack fidelity audit of vocab translations + grammar explanations returning claim-level verdict artifact |
+| `/engines/language-lab/test_graders.py` | 44 tests: normalization table, all grader rules and rejection branches, judge verdict validation/prompt content, dispatch guarantees (deterministic hits never call the model), audit consistency |
 
 ## Notes
 
