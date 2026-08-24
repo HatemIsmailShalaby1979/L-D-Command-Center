@@ -126,6 +126,9 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/audio-engine/podcast_script.py` | Podcast script generation — topic/Journey → structured script with schema validation and retry logic |
 | `/engines/audio-engine/test_podcast_script.py` | 30 tests: dataclass validation, schema validation, generation, retry logic, error cases, convenience functions |
 | `/engines/audio-engine/podcast_audio.py` | Podcast audio renderer — maps each speaker to a distinct Piper voice, synthesizes and concatenates segments with brief pauses; outputs WAV (+ optional MP3 via ffmpeg) |
+| `/engines/audio-engine/assembly.py` | Public audio assembly seam — render_segments(speech|silence) -> AudioResult; owns WAV parse/silence/concat/MP3 so no engine imports another's privates |
+| `/engines/audio-engine/voice_catalog.py` | Voice Catalog — single (language, role) -> voice table (Piper + future Kokoro); English fallback warns |
+| `/engines/audio-engine/provisioning.py` | Offline voice provisioning — catalog id -> HF URLs, missing-voices report, downloader |
 | `/engines/audio-engine/test_podcast_audio.py` | 22 tests: silence/WAV generation, speaker→voice mapping, segment synthesis, duration calculation, error handling, MP3 toggle |
 | `/engines/language-lab/bilingual.py` | Bilingual lesson generation — topic+target/known language → BilingualPair with schema validation and retry; renders to audio using audio-engine TTS with alternating target/translation voices |
 | `/engines/language-lab/test_bilingual.py` | 37 tests: dataclass validation, schema validation, generation with retry, audio rendering with voice mapping, error handling, convenience function |
