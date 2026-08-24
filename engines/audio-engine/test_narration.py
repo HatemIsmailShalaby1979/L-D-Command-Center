@@ -162,30 +162,31 @@ class TestNarrateErrors:
 class TestNarrate:
     """Tests for narrate() success cases."""
 
-    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_returns_narration_result(self, mock_mp3, mock_synthesize):
         result = narrate(SAMPLE_TEXT_EN)
         assert hasattr(result, 'wav_bytes')
-        assert result.wav_bytes == b"mock-wav-bytes"
+        # WAV is now assembled by the seam (RIFF container around PCM)
+        assert result.wav_bytes.startswith(b"RIFF")
 
-    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_uses_auto_selected_backend(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN)
         call_kwargs = mock_synthesize.call_args
         assert call_kwargs[1].get('backend') == TtsBackend.PIPER
 
-    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("engines.audio_engine.narration._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
+    @patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
     def test_continues_with_wav_only_on_mp3_failure(self, mock_mp3, mock_synthesize):
         """Should still return result even if MP3 conversion fails."""
         result = narrate(SAMPLE_TEXT_EN)
-        assert result.wav_bytes == b"mock-wav-bytes"
+        assert result.wav_bytes.startswith(b"RIFF")
         assert result.mp3_bytes == b""
 
-    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_saves_to_output_path(self, mock_mp3, mock_synthesize, tmp_path):
         output_path = str(tmp_path / "audio")
         result = narrate(SAMPLE_TEXT_EN, output_path=output_path)
@@ -193,16 +194,16 @@ class TestNarrate:
         assert (tmp_path / "audio" / "narration.wav").exists()
         assert (tmp_path / "audio" / "narration.mp3").exists()
 
-    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_explicit_voice_override(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN, voice="custom_voice")
         call_kwargs = mock_synthesize.call_args
         assert call_kwargs[1].get('voice') == "custom_voice" or \
                (len(call_kwargs[0]) > 1 and call_kwargs[0][1] == "custom_voice")
 
-    @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
-    @patch("engines.audio_engine.narration._wav_to_mp3", return_value=b"mock-mp3-bytes")
+    @patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3-bytes")
     def test_speed_parameter_passed(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN, speed=1.5)
         call_kwargs = mock_synthesize.call_args
@@ -281,14 +282,14 @@ class TestNarrateResumeSummary:
 class TestWavToMp3:
     """Tests for WAV to MP3 conversion."""
 
-    @patch("engines.audio_engine.narration.subprocess.run")
+    @patch("engines.audio_engine.assembly.subprocess.run")
     def test_calls_ffmpeg(self, mock_run):
         mock_run.return_value = MagicMock(stdout=b"mp3-data")
         result = _wav_to_mp3(b"wav-data")
         mock_run.assert_called_once()
         assert result == b"mp3-data"
 
-    @patch("engines.audio_engine.narration.subprocess.run", side_effect=RuntimeError("ffmpeg not found"))
+    @patch("engines.audio_engine.assembly.subprocess.run", side_effect=RuntimeError("ffmpeg not found"))
     def test_raises_on_ffmpeg_failure(self, mock_run):
         with pytest.raises(RuntimeError, match="ffmpeg"):
             _wav_to_mp3(b"wav-data")

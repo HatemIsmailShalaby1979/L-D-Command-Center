@@ -22,48 +22,26 @@
 
 from __future__ import annotations
 
-import subprocess
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from model_layer.tts import KOKORO_IMPLEMENTED, TtsBackend, synthesize
+from engines.audio_engine import assembly, voice_catalog
+from model_layer.tts import KOKORO_IMPLEMENTED, TtsBackend
 
 
 # ---------------------------------------------------------------------------
-# Constants
+# Constants — voice tables live in the Voice Catalog (P2.3); these aliases
+# keep the historical module names importable for callers and tests.
 # ---------------------------------------------------------------------------
 
-# Languages supported by Kokoro-82M (higher quality)
-KOKORO_SUPPORTED_LANGUAGES = {
-    "en", "english",
-    "es", "spanish",
-    "fr", "french",
-    "de", "german",
-    "it", "italian",
-    "pt", "portuguese",
-    "ru", "russian",
-    "ja", "japanese",
-    "zh", "chinese",
+DEFAULT_VOICES = voice_catalog.KOKORO_LANGUAGE_VOICES
+KOKORO_SUPPORTED_LANGUAGES = set(voice_catalog.KOKORO_LANGUAGE_VOICES) | {
+    "english", "spanish", "french", "german",
 }
-
-# Default voice mappings by language
-DEFAULT_VOICES = {
-    "en": "af_heart",  # Kokoro American English female
-    "es": "bf_emma",   # Kokoro British English female (closest available)
-    "fr": "bf_emma",   # Kokoro British English female (closest available)
-    "de": "bm_george", # Kokoro British English male (closest available)
-    "it": "bf_emma",   # Kokoro British English female (closest available)
-    "pt": "bf_emma",   # Kokoro British English female (closest available)
-    "ru": "bm_george", # Kokoro British English male (closest available)
-    "ja": "bf_emma",   # Kokoro British English female (closest available)
-    "zh": "bf_emma",   # Kokoro British English female (closest available)
-}
-
-DEFAULT_PIPER_VOICE = "en_US-lessac-medium"
-DEFAULT_SAMPLE_RATE = 22050  # Hz (Piper default)
-FFMPEG_PATH = "ffmpeg"  # Should be in PATH
-
+DEFAULT_PIPER_VOICE = voice_catalog.PIPER_LANGUAGE_VOICES["en"]
+DEFAULT_SAMPLE_RATE = assembly.DEFAULT_SAMPLE_RATE
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -160,52 +138,8 @@ def _select_backend(text: str, backend: Optional[TtsBackend] = None) -> tuple[Tt
 
 
 def _wav_to_mp3(wav_bytes: bytes) -> bytes:
-    """
-    Convert WAV audio bytes to MP3 using ffmpeg.
-
-    Args:
-        wav_bytes: WAV audio data.
-
-    Returns:
-        MP3 audio bytes.
-
-    Raises:
-        RuntimeError: If ffmpeg conversion fails.
-    """
-    import io
-
-    # Write WAV to temp buffer
-    wav_buffer = io.BytesIO(wav_bytes)
-
-    # Create MP3 buffer
-    mp3_buffer = io.BytesIO()
-
-    try:
-        # Use ffmpeg to convert WAV to MP3
-        result = subprocess.run(
-            [
-                FFMPEG_PATH,
-                "-i", "pipe:0",  # Read from stdin
-                "-ab", "192k",   # 192kbps bitrate
-                "-ar", "22050",  # Sample rate
-                "-ac", "1",      # Mono
-                "-f", "mp3",
-                "pipe:1"         # Write to stdout
-            ],
-            stdin=wav_buffer,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-        )
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            f"ffmpeg conversion failed: {e.stderr.decode() if e.stderr else 'Unknown error'}"
-        ) from e
-    except FileNotFoundError:
-        raise RuntimeError(
-            "ffmpeg not found in PATH. Install ffmpeg or use WAV-only output."
-        )
+    """Delegate to the assembly seam owner (kept for direct unit tests)."""
+    return assembly.wav_to_mp3(wav_bytes)
 
 
 # ---------------------------------------------------------------------------
@@ -257,40 +191,17 @@ def narrate(
     if voice:
         selected_voice = voice
 
-    # Synthesize audio
-    wav_bytes = synthesize(
-        text,
-        voice=selected_voice,
-        backend=selected_backend,
-        speed=speed,
+    audio = assembly.render_segments(
+        [(text, selected_voice, speed, selected_backend)],
+        include_mp3=include_mp3,
+        output_path=output_path,
+        basename="narration",
     )
 
-    # Generate MP3 if requested
-    mp3_bytes = b""
-    if include_mp3:
-        try:
-            mp3_bytes = _wav_to_mp3(wav_bytes)
-        except RuntimeError as e:
-            # Log warning but continue with WAV-only
-            print(f"Warning: MP3 conversion failed: {e}")
-            mp3_bytes = b""
-
-    # Write to files if output_path provided
-    if output_path:
-        out_dir = Path(output_path)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        wav_path = out_dir / "narration.wav"
-        wav_path.write_bytes(wav_bytes)
-
-        if mp3_bytes:
-            mp3_path = out_dir / "narration.mp3"
-            mp3_path.write_bytes(mp3_bytes)
-
     return NarrationResult(
-        wav_bytes=wav_bytes,
-        mp3_bytes=mp3_bytes,
-        sample_rate=DEFAULT_SAMPLE_RATE,
+        wav_bytes=audio.wav_bytes,
+        mp3_bytes=audio.mp3_bytes,
+        sample_rate=audio.sample_rate,
         backend_used=selected_backend,
         voice_used=selected_voice,
     )

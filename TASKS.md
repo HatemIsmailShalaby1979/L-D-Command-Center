@@ -26,7 +26,7 @@ DONE:opencode: P1.5 migrate podcast_script + bilingual generation onto Pipeline;
 DONE:opencode: P1.6 YouTube summarization on Pipeline; templates registered; validate_video_summary + feedback retry replace best-effort parsing (malformed/empty now raise SchemaValidationError after retries)
 DONE:opencode: P2.1 KOKORO_IMPLEMENTED gate in tts.py; narration auto-select defaults to Piper until Kokoro exists (defect #2 closed); explicit overrides honored; flag-flip test keeps future behavior covered
 DONE:opencode: P2.2 WAV check fixed to [8:12]; real-shaped-WAV regression test added (defect #3 closed)
-CLAIMED:opencode: P2.3 create Voice Catalog module consolidating narration/podcast/bilingual voice tables into one (language, role) → voice map
+DONE:opencode: P2.3 Voice Catalog module (engines/audio-engine/voice_catalog.py): narrator/pair/speaker resolution + has_language provisioning check; 16 tests consolidating narration/podcast/bilingual voice tables into one (language, role) → voice map
 CLAIMED:opencode: P2.4 audio-engine public assembly seam render_segments([(text, voice, speed)]) → AudioResult; migrate all four audio consumers; language-lab stops importing underscore-privates
 OPEN: P2.5 offline Piper voice provisioning kit (downloader/checklist + missing-voices error listing exactly what to fetch)
 OPEN: P3.1 podcast templates gain {target_language}/{level} AND {host_name} interpolation (gap found during P1.5: template never renders host); immersion forwards all three; regression tests Spanish immersion → Spanish script, custom host appears in prompt

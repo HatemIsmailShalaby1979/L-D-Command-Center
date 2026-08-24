@@ -135,14 +135,14 @@ class TestSynthesizeSegmentParsing:
         """A genuine header+PCM stream must parse, not be rejected."""
         from unittest.mock import patch as _patch
         wav = _make_wav_header(4) + b"\x00\x00\x00\x00"
-        with _patch("engines.audio_engine.podcast_audio.synthesize", return_value=wav):
+        with _patch("engines.audio_engine.assembly.tts_synthesize", return_value=wav):
             pcm, rate = _synthesize_segment("hello", voice="en_US-lessac-medium")
         assert pcm == b"\x00\x00\x00\x00"
         assert rate == DEFAULT_SAMPLE_RATE
 
     def test_rejects_non_wav_payload(self):
         from unittest.mock import patch as _patch
-        with _patch("engines.audio_engine.podcast_audio.synthesize", return_value=b"not-a-wav-file-at-all"):
+        with _patch("engines.audio_engine.assembly.tts_synthesize", return_value=b"not-a-wav-file-at-all"):
             with pytest.raises(ValueError, match="Invalid WAV"):
                 _synthesize_segment("hello", voice="en_US-lessac-medium")
 
@@ -150,24 +150,24 @@ class TestSynthesizeSegmentParsing:
 class TestRenderPodcastToAudio:
     """Tests for podcast audio rendering."""
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
+    @patch("engines.audio_engine.assembly.synthesize")
     def test_synthesizes_all_segments(self, mock_synthesize):
         """Should synthesize each segment with the correct voice."""
         # Mock synthesize to return valid PCM data
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b""):
+        with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             result = render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS)
 
         assert result.total_segments == 4
         assert mock_synthesize.call_count == 4
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
+    @patch("engines.audio_engine.assembly.synthesize")
     def test_maps_speakers_to_distinct_voices(self, mock_synthesize):
         """Should assign different voices to different speakers."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b""):
+        with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS)
 
         # Check that different speakers got different voices
@@ -176,12 +176,12 @@ class TestRenderPodcastToAudio:
         distinct_voices = set(v for v in voices_used if v)
         assert len(distinct_voices) == 2  # Alice and Bob should get different voices
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
+    @patch("engines.audio_engine.assembly.synthesize")
     def test_single_speaker_uses_single_voice(self, mock_synthesize):
         """Single-speaker script should use only one voice."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b""):
+        with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             result = render_podcast_to_audio(SAMPLE_SCRIPT_SINGLE_SPEAKER)
 
         assert result.total_segments == 3
@@ -193,8 +193,8 @@ class TestRenderPodcastToAudio:
                 voices_used.add(voice)
         assert len(voices_used) == 1
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
-    @patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b"mock-mp3")
+    @patch("engines.audio_engine.assembly.synthesize")
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3")
     def test_includes_mp3_by_default(self, mock_mp3, mock_synthesize):
         """Should include MP3 conversion by default."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
@@ -204,8 +204,8 @@ class TestRenderPodcastToAudio:
         assert result.mp3_bytes == b"mock-mp3"
         mock_mp3.assert_called_once()
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
-    @patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b"mock-mp3")
+    @patch("engines.audio_engine.assembly.synthesize")
+    @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3")
     def test_can_skip_mp3(self, mock_mp3, mock_synthesize):
         """Should skip MP3 when include_mp3=False."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
@@ -215,37 +215,37 @@ class TestRenderPodcastToAudio:
         assert result.mp3_bytes == b""
         mock_mp3.assert_not_called()
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
+    @patch("engines.audio_engine.assembly.synthesize")
     def test_returns_audio_result(self, mock_synthesize):
         """Should return a PodcastAudioResult."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b"mock-mp3"):
+        with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3"):
             result = render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS)
 
         assert isinstance(result, PodcastAudioResult)
         assert result.wav_bytes
         assert result.backend_used.name == "PIPER"
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
+    @patch("engines.audio_engine.assembly.synthesize")
     def test_duration_calculated_correctly(self, mock_synthesize):
         """Should calculate duration based on audio data."""
         # Return 1 second of audio (22050 samples * 2 bytes = 44100 bytes)
         mock_synthesize.return_value = (b"\x00" * 44100, 22050)
 
-        with patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b""):
+        with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             result = render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS)
 
         # 4 segments of 1 second each + 3 pauses of 0.3 seconds
         expected_duration = 4 * 1.0 + 3 * 0.3
         assert abs(result.duration_seconds - expected_duration) < 0.1
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment")
+    @patch("engines.audio_engine.assembly.synthesize")
     def test_passes_speed_parameter(self, mock_synthesize):
         """Should pass speed parameter to synthesis."""
         mock_synthesize.return_value = (b"\x00" * 100, 22050)
 
-        with patch("engines.audio_engine.podcast_audio._wav_to_mp3", return_value=b""):
+        with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS, speed=1.5)
 
         for call in mock_synthesize.call_args_list:
@@ -277,16 +277,16 @@ class TestRenderPodcastToAudioErrors:
         with pytest.raises(TypeError, match="Expected PodcastScript"):
             render_podcast_to_audio("not a script")  # type: ignore
 
-    @patch("engines.audio_engine.podcast_audio._synthesize_segment", side_effect=RuntimeError("TTS failed"))
+    @patch("engines.audio_engine.assembly.synthesize", side_effect=RuntimeError("TTS failed"))
     def test_tts_failure_propagates(self, mock_synthesize):
         """Should propagate TTS errors."""
         with pytest.raises(RuntimeError, match="TTS failed"):
             render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS)
 
-    @patch("engines.audio_engine.podcast_audio._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
+    @patch("engines.audio_engine.assembly.wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
     def test_mp3_failure_graceful(self, mock_mp3):
         """Should continue with WAV-only if MP3 conversion fails."""
-        with patch("engines.audio_engine.podcast_audio._synthesize_segment", return_value=(b"\x00" * 100, 22050)):
+        with patch("engines.audio_engine.assembly.synthesize", return_value=(b"\x00" * 100, 22050)):
             result = render_podcast_to_audio(SAMPLE_SCRIPT_TWO_SPEAKERS)
             assert result.mp3_bytes == b""
 

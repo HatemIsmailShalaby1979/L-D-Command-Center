@@ -30,14 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from engines.audio_engine.podcast_audio import (
-    DEFAULT_SAMPLE_RATE,
-    PodcastAudioResult,
-    _concatenate_wavs,
-    _generate_silence,
-    _synthesize_segment,
-    _wav_to_mp3,
-)
+from engines.audio_engine import assembly, voice_catalog
+from engines.audio_engine.podcast_audio import PodcastAudioResult
 from model_layer.client import LmStudioClient
 from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
 from model_layer.prompts import PromptRegistry
@@ -247,22 +241,20 @@ def render_bilingual_audio(
     speed: float = DEFAULT_SPEED,
 ) -> PodcastAudioResult:
     """
-    Render a BilingualPair to audio using audio-engine's TTS client.
+    Render a BilingualPair to audio via the assembly seam.
 
-    For each segment:
-    1. Synthesize target_text in target language voice
-    2. Insert brief pause
-    3. Synthesize translation_text in known language voice
-    4. Insert brief pause
+    Per sentence pair: target-language voice speaks target_text, brief
+    pause, known-language voice speaks translation_text, longer pause.
+    Voices resolve through the Voice Catalog (target/known per language).
 
     Args:
         pair: BilingualPair object to render.
         include_mp3: Whether to convert to MP3 (default True).
-        output_path: Optional directory to save audio files.
+        output_path: Optional directory to save bilingual.wav/.mp3.
         speed: Speech speed multiplier.
 
     Returns:
-        PodcastAudioResult with wav_bytes, mp3_bytes, duration, etc.
+        PodcastAudioResult with wav/mp3 bytes and segment count.
 
     Raises:
         ValueError: If pair has no segments.
@@ -270,78 +262,33 @@ def render_bilingual_audio(
     """
     if not isinstance(pair, BilingualPair):
         raise TypeError(f"Expected BilingualPair, got {type(pair).__name__}")
-
     if not pair.segments:
         raise ValueError("BilingualPair has no segments")
 
-    # Get voices for this language pair
-    target_voice = TARGET_VOICES.get(pair.target_language, "en_US-lessac-medium")
-    known_voice = KNOWN_VOICES.get(pair.known_language, "en_US-lessac-medium")
+    target_voice, known_voice = voice_catalog.pair_voices(
+        pair.target_language, pair.known_language,
+    )
 
-    # Synthesize each segment
-    all_pcm = []
-    sample_rates = []
-
+    segments: list[tuple] = []
     for segment in pair.segments:
-        # Target language text
-        target_pcm, target_sr = _synthesize_segment(
-            segment.target_text,
-            voice=target_voice,
-            speed=speed,
-        )
-        all_pcm.append(target_pcm)
-        sample_rates.append(target_sr)
+        segments.append((segment.target_text, target_voice, speed))
+        segments.append(("silence", 0.2))  # between target and translation
+        segments.append((segment.translation_text, known_voice, speed))
+        segments.append(("silence", 0.3))  # between sentence pairs
 
-        # Brief pause between target and translation
-        silence = _generate_silence(0.2, sample_rate=target_sr)
-        all_pcm.append(silence)
-        sample_rates.append(target_sr)
-
-        # Known language translation
-        trans_pcm, trans_sr = _synthesize_segment(
-            segment.translation_text,
-            voice=known_voice,
-            speed=speed,
-        )
-        all_pcm.append(trans_pcm)
-        sample_rates.append(trans_sr)
-
-        # Brief pause between segments
-        pause = _generate_silence(0.3, sample_rate=trans_sr)
-        all_pcm.append(pause)
-        sample_rates.append(trans_sr)
-
-    # Concatenate all segments
-    wav_bytes, actual_sample_rate = _concatenate_wavs(all_pcm, sample_rates)
-
-    # Calculate duration
-    total_samples = len(wav_bytes) // 2
-    duration_seconds = total_samples / actual_sample_rate
-
-    # Generate MP3 if requested
-    mp3_bytes = b""
-    if include_mp3:
-        try:
-            mp3_bytes = _wav_to_mp3(wav_bytes)
-        except RuntimeError:
-            mp3_bytes = b""
-
-    # Write to files if output_path provided
-    if output_path:
-        out_dir = Path(output_path)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        wav_path = out_dir / "bilingual.wav"
-        wav_path.write_bytes(wav_bytes)
-        if mp3_bytes:
-            mp3_path = out_dir / "bilingual.mp3"
-            mp3_path.write_bytes(mp3_bytes)
+    audio = assembly.render_segments(
+        segments,
+        include_mp3=include_mp3,
+        output_path=output_path,
+        basename="bilingual",
+    )
 
     return PodcastAudioResult(
-        wav_bytes=wav_bytes,
-        mp3_bytes=mp3_bytes,
-        duration_seconds=duration_seconds,
+        wav_bytes=audio.wav_bytes,
+        mp3_bytes=audio.mp3_bytes,
+        duration_seconds=audio.duration_seconds,
         total_segments=len(pair.segments) * 2,  # target + translation
-        backend_used="PIPER",
+        backend_used=audio.backend_used,
     )
 
 
