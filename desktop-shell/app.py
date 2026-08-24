@@ -23,11 +23,17 @@ ERROR_TITLES = {
 
 
 def run() -> None:  # pragma: no cover — needs a display
+    import logging
+
     import tkinter as tk
     from tkinter import messagebox, ttk
 
     from desktop_shell.controller import FlowResult, ShellController
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     ctrl = ShellController()
     root = tk.Tk()
     root.title("L&D Command Center")

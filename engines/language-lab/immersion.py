@@ -28,7 +28,11 @@ from typing import Any, Optional
 from engines.audio_engine import voice_catalog
 from engines.audio_engine.podcast_audio import PodcastAudioResult, render_podcast_to_audio
 from engines.audio_engine.podcast_script import PodcastScript, generate_podcast_script
+import logging
+
 from model_layer.client import LmStudioClient
+
+logger = logging.getLogger(__name__)
 from model_layer.pipeline import DEFAULT_MODEL
 
 
@@ -176,11 +180,9 @@ def generate_and_save_immersion(
         **kwargs,
     )
 
-    # Log success
-    print(f"Immersion podcast saved to: {output_path}")
-    print(f"  Duration: {result.duration_seconds:.1f}s")
-    print(f"  Segments: {result.total_segments}")
-    print(f"  Speakers: {result.script.speakers}")
+    logger.info("Immersion podcast saved to %s (%.1fs, %d segments, speakers=%s)",
+                output_path, result.duration_seconds, result.total_segments,
+                result.script.speakers)
 
     return result
 

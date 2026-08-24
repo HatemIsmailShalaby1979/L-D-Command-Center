@@ -199,3 +199,22 @@ Repo-local git identity was set during init (`thommyshelby` / `thommyshelby@loca
 | 4 | `resume/schema.py:140` contact required-check dead (reads data dict) | P1.4 (validator reconciled with RESUME_SCHEMA during migration) |
 | 5 | `immersion.py` drops `target_language`/`level` | P3.1 |
 | 6 | `enhance()` loses Enhancement changes list on retry path | P1.4 |
+
+
+---
+
+## 8. Ship-gate status (audit 2026-08-24, post P0–P5 + P6.1/P6.2/P6.4)
+
+| Criterion | Status | Notes |
+|-----------|--------|-------|
+| E1 offline suite | ✅ | `python -m pytest` → 443 passed / 1 skipped; live deselected by default; run_checks.sh gate green |
+| E2 live smoke vs LM Studio | ⬜ | live-marker tests exist; needs a running LM Studio session |
+| E3 zero known defects | ✅ | all six audit defects closed (P1.3–P1.5, P2.1–P2.2, P3.1) |
+| E4 deterministic exports | ✅ | byte-stability suite across pdf/pptx/xlsx/docx/txt |
+| E5 installable offline desktop build | ⬜ | ldcc.spec ready; Windows/Linux builds pending verification (D4) |
+| E6 graceful resource failures | ✅ | typed FlowResult kinds w/ actionable details; voice/model errors carry provisioning hints |
+| E7 governance current | ✅ | manifest/ledger/queue audited this pass |
+| E8 pinned deps installable | ✅ | requirements.txt verified on CPython 3.14/Linux; fresh-machine README |
+
+Blocking v1 tag: E2 (one live-smoke session) and E5 (two packaging runs).
+P6.3 low-spec rehearsal requires target hardware — instructions remain in §Phase 6.
