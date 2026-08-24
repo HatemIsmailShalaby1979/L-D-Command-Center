@@ -165,6 +165,9 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/playground-bridge/test_media_workspace.py` | 18 tests: verbatim argv contracts per planner, spec purity/determinism, concat side-file materialization, failure stderr-tail mapping, parent-dir creation, canned ffprobe JSON parsing, collision-safe ingest |
 | `/engines/playground-bridge/import_inbox.py` | P7.8 Import Inbox watch-folder — one-shot scan_inbox() moves dropped files into storage media/<subkind> with collision-safe names, case-insensitive extension filter (rejected files stay), delete-after-import semantics, per-failure isolation; storage/persistence.py gains namespaced media/<subkind> kinds |
 | `/engines/playground-bridge/test_import_inbox.py` | 19 tests: media subkind roundtrip + invalid-subkind rejection, unique-name suffixing, import+delete, filter leave-in-place, case-insensitivity, collision rename, delete_after=false, dir/absent-inbox handling, custom subkind |
+| `/engines/playground-bridge/connectors_hub.py` | P7.9 Connector Hub seam — Connector ABC (capabilities/send/poll; failures are data, never exceptions past poll), Capability/Capabilities/Job/Result dataclasses with quota notes, ConnectorHub registry |
+| `/engines/playground-bridge/connectors_gradio.py` | P7.9 keyless HF Spaces adapter — pinned Space ids (FLUX.1-schnell image, ACE-Step music), lazy gradio_client via injectable factory, synchronous send→terminal Job→poll Result, output-shape normalization (str/Path/dict/tuple), every failure mode becomes a readable failed Job |
+| `/engines/playground-bridge/test_connectors.py` | 15 tests: registry rules (dup/nameless/unknown), sorted capabilities with quota notes, bytes roundtrip, param+api_name forwarding, unexpected output shapes → failed jobs, missing-library soft failure, empty-prompt fast-fail, double-poll reporting, hidden capability for unpinned spaces |
 
 ## Notes
 

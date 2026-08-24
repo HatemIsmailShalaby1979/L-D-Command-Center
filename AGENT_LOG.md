@@ -465,3 +465,9 @@ Task: P7.8 storage media/* kinds + Import Inbox (continuing authorized run).
 Touched: storage/persistence.py (namespaced media/<subkind> kinds, regex-validated), engines/playground-bridge/import_inbox.py (new), test_import_inbox.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
 Why: Plan B2: one watch-folder makes every no-API free service a citizen. Scan is a pure one-shot (shell timer drives it in P7.12 — no threads/watchers to leak). Data-loss surface handled with discipline: delete-after only on verified save; extension rejects and per-file failures stay in the inbox and are REPORTED per record, never raised past the caller; collisions rename via suffix scan against live kind-dir contents.
 Suite state: **632 passed / 1 skipped / 0 failed**, coverage 94.71%, gates green.
+
+## [2026-08-25 05:00] — opencode/ox-alpha (x-preview-f-free)
+Task: P7.9 Connector Hub seam + keyless HF Spaces adapter (continuing authorized run).
+Touched: engines/playground-bridge/connectors_hub.py (new), connectors_gradio.py (new), test_connectors.py (new), FILE_MANIFEST (+3 rows), TASKS, AGENT_LOG
+Why: Plan B0 principle 3 encoded as an ABC: adapters expose capabilities (with the free-tier honesty notes the UI must render), send→Job, poll→exactly-one-Result; failures are DATA (failed jobs carrying readable messages) so shell panels can never crash on vendor churn. gradio_client is optional via injectable factory; Space ids pinned per plan §Risks with an empty-space capability-hiding rule proven. Output normalization handles str/Path/dict/tuple shapes.
+Suite state: **647 passed / 1 skipped / 0 failed**, coverage 94.75%, gates green.
