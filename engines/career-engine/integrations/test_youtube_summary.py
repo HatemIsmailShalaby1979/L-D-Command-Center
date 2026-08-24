@@ -415,7 +415,7 @@ def test_manual_verification():
     Contract: Manual verification step for YouTube integration.
 
     To verify manually:
-    1. Add your YouTube API key to E:/secrets/youtube.secrets:
+    1. Add your YouTube API key to <workspace>/secrets/youtube.secrets:
        YOUTUBE_API_KEY=AIzaSyYourRealKeyHere
 
     2. Test video search and summarization:

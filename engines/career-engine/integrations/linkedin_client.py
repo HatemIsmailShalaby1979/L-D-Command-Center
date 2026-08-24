@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+from storage.secrets import load_secret as _read_secret
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,51 +67,16 @@ class LinkedInProfile:
 
 def _load_token(secrets_path: Optional[Path] = None) -> Optional[str]:
     """
-    Contract: load LinkedIn OAuth token from secrets file.
+    Contract: resolve LINKEDIN_TOKEN via the storage secrets adapter.
 
-    Token is never logged or returned in error messages.
-    Returns None if not found or file is empty.
-
-    Args:
-        secrets_path: path to secrets file. Defaults to ../secrets/linkedin.secrets.
-
-    Returns:
-        The LinkedIn OAuth token string, or None if not found.
+    Local policy: reject ghp_-prefixed (GitHub) tokens and short values.
     """
-    if secrets_path is None:
-        secrets_path = Path(__file__).parent.parent.parent.parent / "secrets" / "linkedin.secrets"
-
-    try:
-        if not secrets_path.exists():
-            logger.debug("Secrets file not found at: %s", secrets_path)
-            return None
-
-        content = secrets_path.read_text(encoding="utf-8").strip()
-        if not content:
-            return None
-
-        for line in content.split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, _, value = line.partition("=")
-                if key.strip() == "LINKEDIN_TOKEN":
-                    token = value.strip()
-                    # Reject placeholder tokens
-                    if token and not token.startswith("ghp_") and len(token) > 10:
-                        logger.info("LinkedIn token loaded from secrets file")
-                        return token
-
-    except Exception as e:
-        logger.warning("Failed to load LinkedIn token: %s", type(e).__name__)
-
+    token = _read_secret("LINKEDIN_TOKEN", secrets_path=secrets_path)
+    if token and not token.startswith("ghp_") and len(token) > 10:
+        logger.info("LinkedIn token loaded from secrets file")
+        return token
     return None
 
-
-# ---------------------------------------------------------------------------
-# Rate limiter
-# ---------------------------------------------------------------------------
 
 class RateLimiter:
     """
@@ -396,50 +363,5 @@ class LinkedInClient:
 # ---------------------------------------------------------------------------
 
 def _load_secrets_value(key: str, secrets_path: Optional[Path] = None) -> Optional[str]:
-    """
-    Contract: load a single value from the LinkedIn secrets file.
-
-    Args:
-        key: The key to look up (e.g., "LINKEDIN_CLIENT_ID").
-        secrets_path: Optional path override.
-
-    Returns:
-        The value string, or None if not found.
-    """
-    if secrets_path is None:
-        secrets_path = Path(__file__).parent.parent.parent.parent / "secrets" / "linkedin.secrets"
-
-    try:
-        if not secrets_path.exists():
-            return None
-
-        content = secrets_path.read_text(encoding="utf-8")
-        for line in content.split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, _, v = line.partition("=")
-                if k.strip() == key:
-                    return v.strip()
-    except Exception:
-        pass
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Re-export
-# ---------------------------------------------------------------------------
-
-__all__ = [
-    "LinkedInClient",
-    "LinkedInProfile",
-    "RateLimiter",
-    "DAILY_POST_LIMIT",
-    "DAILY_READ_LIMIT",
-    "READ_SCOPES",
-    "WRITE_SCOPES",
-    "ALL_SCOPES",
-    "_load_token",
-]
+    """Contract: any other LinkedIn credential (client id/secret, etc.)."""
+    return _read_secret(key, secrets_path=secrets_path)

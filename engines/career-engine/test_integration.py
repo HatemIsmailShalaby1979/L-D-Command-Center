@@ -342,7 +342,7 @@ def test_drift_status():
     import os
 
     # Check required files exist
-    base_path = Path(__file__).parent.parent.parent  # Go up to E:/
+    base_path = Path(__file__).parent.parent.parent
     required_files = [
         "engines/career-engine/resume/schema.py",
         "engines/career-engine/resume/generator.py",

@@ -306,7 +306,7 @@ def test_manual_verification():
     Contract: Manual verification step for LinkedIn integration.
 
     To verify manually:
-    1. Add your LinkedIn credentials to E:/secrets/linkedin.secrets:
+    1. Add your LinkedIn credentials to <workspace>/secrets/linkedin.secrets:
        LINKEDIN_TOKEN=your_oauth_token
        LINKEDIN_CLIENT_ID=your_client_id
        LINKEDIN_CLIENT_SECRET=your_client_secret

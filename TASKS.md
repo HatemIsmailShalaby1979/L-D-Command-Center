@@ -35,7 +35,7 @@ DONE:opencode: P4.1 export god-module split into detect/text/pdf/docx/pptx/xlsx 
 DONE:opencode: P4.2 generation removed from export: podcast/bilingual/immersion kinds raise ValueError pointing at explicit engine composition; narration stays (deterministic text->audio via assembly seam)
 DONE:opencode: P4.3 PPTX + XLSX Journey exporters added (python-pptx 1.0.2, openpyxl 3.1.5 pinned)
 DONE:opencode: P4.4 byte-stability suite green: pdf/pptx/xlsx/docx pinned metadata => identical bytes on repeat exports (E4 satisfied)
-WISHLIST: P5.1 storage/ engine v1 — file persistence for artifacts + preferences; consolidate three secrets parsers into storage/secrets.py::load_secret(name)
+DONE:opencode: P5.1 storage engine v1: persistence.py (artifact kinds + preferences, LDCC_DATA_DIR) and secrets.py (single KEY=VALUE adapter); github/linkedin/youtube loaders now delegate parsing to it, keeping only local validity policies; stale E:/ paths cleaned
 OPEN: P5.2 desktop app shell — toolkit RESOLVED D3=stdlib Tkinter; minimal UI over existing engines
 WISHLIST: P5.3 wire typed errors to UI surfaces (LM Studio down → actionable message; missing TTS voices → provisioning hint)
 OPEN: P5.4 desktop-shell packaging (PyInstaller → Windows + Linux installers per D4; offline verification both OSes; low-spec perf budget)

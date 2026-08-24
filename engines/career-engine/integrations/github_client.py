@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+from storage.secrets import load_secret as _read_secret
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,50 +64,18 @@ class GitHubREADME:
 
 def _load_token(secrets_path: Optional[Path] = None) -> Optional[str]:
     """
-    Contract: load GitHub token from secrets file.
+    Contract: resolve GITHUB_TOKEN via the storage secrets adapter.
 
-    Token is never logged or returned in error messages.
-    Returns None if not found or file is empty.
-
-    Args:
-        secrets_path: path to secrets file. Defaults to ../secrets/github.secrets.
-
-    Returns:
-        The GitHub personal access token string, or None if not found.
+    Parsing lives in storage/secrets.py (P5.1); this wrapper keeps only
+    GitHub's own validity policy (reject the docs placeholder).
     """
-    if secrets_path is None:
-        secrets_path = Path(__file__).parent.parent.parent.parent / "secrets" / "github.secrets"
-
-    try:
-        if not secrets_path.exists():
-            logger.debug("Secrets file not found at: %s", secrets_path)
-            return None
-
-        content = secrets_path.read_text(encoding="utf-8").strip()
-        if not content:
-            return None
-
-        for line in content.split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, _, value = line.partition("=")
-                if key.strip() == "GITHUB_TOKEN":
-                    token = value.strip()
-                    if token and token != "ghp_your_personal_access_token_here":
-                        logger.info("GitHub token loaded from secrets file")
-                        return token
-
-    except Exception as e:
-        logger.warning("Failed to load GitHub token: %s", type(e).__name__)
-
+    token = _read_secret("GITHUB_TOKEN", secrets_path=secrets_path)
+    placeholders = {"ghp_your_personal_access_token_here"}
+    if token and token not in placeholders:
+        logger.info("GitHub token loaded from secrets file")
+        return token
     return None
 
-
-# ---------------------------------------------------------------------------
-# Client
-# ---------------------------------------------------------------------------
 
 class GitHubClient:
     """

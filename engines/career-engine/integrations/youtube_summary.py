@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from model_layer.client import ApiError, LmStudioClient
 from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
+from storage.secrets import load_secret as _read_secret
 from model_layer.prompts import PromptRegistry
 
 logger = logging.getLogger(__name__)
@@ -71,52 +72,17 @@ class VideoSummary:
 
 def _load_api_key(secrets_path: Optional[Path] = None) -> Optional[str]:
     """
-    Contract: load YouTube Data API key from secrets file.
+    Contract: resolve YOUTUBE_API_KEY via the storage secrets adapter.
 
-    API key is never logged or returned in error messages.
-    Returns None if not found or file is empty.
-
-    Args:
-        secrets_path: path to secrets file. Defaults to ../secrets/youtube.secrets.
-
-    Returns:
-        The YouTube API key string, or None if not found.
+    Local policy: accept non-empty keys longer than 10 characters
+    (standard AIzaSy keys are 39).
     """
-    if secrets_path is None:
-        secrets_path = Path(__file__).parent.parent.parent.parent / "secrets" / "youtube.secrets"
-
-    try:
-        if not secrets_path.exists():
-            logger.debug("YouTube secrets file not found at: %s", secrets_path)
-            return None
-
-        content = secrets_path.read_text(encoding="utf-8").strip()
-        if not content:
-            return None
-
-        for line in content.split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, _, value = line.partition("=")
-                if key.strip() == "YOUTUBE_API_KEY":
-                    api_key = value.strip()
-                    # Accept keys starting with AIzaSy (standard YouTube API key format)
-                    # or any non-empty key longer than 10 characters
-                    if api_key and len(api_key) > 10:
-                        logger.info("YouTube API key loaded from secrets file")
-                        return api_key
-
-    except Exception as e:
-        logger.warning("Failed to load YouTube API key: %s", type(e).__name__)
-
+    api_key = _read_secret("YOUTUBE_API_KEY", secrets_path=secrets_path)
+    if api_key and len(api_key) > 10:
+        logger.info("YouTube API key loaded from secrets file")
+        return api_key
     return None
 
-
-# ---------------------------------------------------------------------------
-# YouTube search client
-# ---------------------------------------------------------------------------
 
 class YouTubeSearchClient:
     """
@@ -345,7 +311,8 @@ def summarize_youtube_videos(
     if not search_client.is_authenticated:
         raise RuntimeError(
             "YouTube API key not found. "
-            "Add YOUTUBE_API_KEY to E:/secrets/youtube.secrets"
+            "Add YOUTUBE_API_KEY to the secrets directory (youtube.secrets); "
+            "see storage/secrets.py for lookup rules"
         )
 
     logger.info("Searching YouTube for: %s", topic)

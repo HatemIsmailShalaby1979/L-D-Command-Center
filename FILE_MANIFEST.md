@@ -37,6 +37,10 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 |------|---------------|
 | `/model-layer/README.md` | LM Studio client, prompt templates, schema validation, retry logic — the guardrail layer ensuring correctness independent of model size. |
 | `/storage/README.md` | Local persistence for journeys, exports, preferences, cached outputs; Notion SOP sync. |
+| `/storage/persistence.py` | Storage engine v1 — file-backed artifact store (journeys/resumes/scripts/audio/exports) + preferences; LDCC_DATA_DIR override (P5.1) |
+| `/storage/secrets.py` | The one secrets-file adapter — parse_secrets_file/load_secret with deterministic scan order; integrations keep only their validity policies (P5.1) |
+| `/storage/test_persistence.py` | 14 tests: roundtrips, kind isolation, name validation, preference defaults/cross-instance persistence |
+| `/storage/test_secrets.py` | 9 tests: comment/first-'=' parsing, explicit-path precedence, sorted scan fallback, empty-value policy |
 | `/desktop-shell/README.md` | Packaging and installer pipeline for the desktop-native, offline-first executable. |
 | `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
 | `/docs/PRODUCTION_PLAN.md` | Phased v1 production-readiness plan: task IDs (P0–P6) used by TASKS.md, exit criteria, decision log, defect register |
