@@ -15,6 +15,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from types import SimpleNamespace
 
 # Add paths
 _ENGINE_PATH = Path(__file__).resolve().parent
@@ -31,6 +32,19 @@ from engines.career_engine.integrations.youtube_summary import (
 from engines.career_engine.resume.generator import enhance, generate
 from engines.career_engine.resume.schema import validate_resume
 from engines.export_engine.export import export
+
+
+def _model_client_returning(payload):
+    """Fake LmStudioClient whose generate() returns `payload` as content."""
+    client = MagicMock()
+    client.generate.return_value = SimpleNamespace(
+        content=payload,
+        model="test-model",
+        finish_reason="stop",
+        tool_calls=None,
+        raw={},
+    )
+    return client
 
 
 # ---------------------------------------------------------------------------
@@ -79,21 +93,19 @@ class TestCareerPipeline:
         Contract: Can generate a resume and enhance it against a job description.
         """
         # Generate a base resume
-        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
-            mock_response = json.dumps({
-                "contact": {"name": "John Doe", "email": "john@example.com"},
-                "summary": "Experienced engineer",
-                "experience": [{"title": "Engineer", "company": "Tech Corp", "dates": "2020-2023", "description": "Built ML systems"}],
-                "education": [{"degree": "B.S. CS", "school": "University", "dates": "2016-2020"}],
-                "skills": ["Python", "ML"],
-                "projects": [{"name": "Project A", "description": "A project", "tech": ["Python"]}]
-            })
-            mock_call.return_value = mock_response
-
-            resume = generate("Software Engineer", model="test-model")
-            assert resume is not None
-            assert "contact" in resume
-            assert "experience" in resume
+        mock_payload = json.dumps({
+            "contact": {"name": "John Doe", "email": "john@example.com"},
+            "summary": "Experienced engineer",
+            "experience": [{"title": "Engineer", "company": "Tech Corp", "dates": "2020-2023", "description": "Built ML systems"}],
+            "education": [{"degree": "B.S. CS", "school": "University", "dates": "2016-2020"}],
+            "skills": ["Python", "ML"],
+            "projects": [{"name": "Project A", "description": "A project", "tech": ["Python"]}]
+        })
+        resume = generate("Software Engineer", model="test-model",
+                          client=_model_client_returning(mock_payload))
+        assert resume is not None
+        assert "contact" in resume
+        assert "experience" in resume
 
         # Validate the generated resume
         is_valid, errors = validate_resume(resume)
@@ -112,28 +124,26 @@ class TestCareerPipeline:
             "projects": [{"name": "Project A", "description": "A project", "tech": ["Python"]}]
         }
 
-        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
-            mock_response = json.dumps({
-                "enhanced_resume": {
-                    "contact": {"name": "John Doe", "email": "john@example.com"},
-                    "summary": "Senior ML Engineer with 5+ years experience",
-                    "experience": [{"title": "Senior Engineer", "company": "Tech Corp", "dates": "2020-2023", "description": "Led ML pipeline development"}],
-                    "education": [{"degree": "B.S. CS", "school": "University", "dates": "2016-2020"}],
-                    "skills": ["Python", "TensorFlow", "ML", "Leadership"],
-                    "projects": [{"name": "Project A", "description": "ML pipeline project", "tech": ["Python", "TensorFlow"]}]
-                },
-                "changes": [
-                    {"field": "summary", "change": "Added 'Senior' and '5+ years' to match job description", "reason": "Better alignment with target role"},
-                    {"field": "skills", "change": "Added 'TensorFlow' and 'Leadership'", "reason": "Required by job posting"},
-                ]
-            })
-            mock_call.return_value = mock_response
-
-            enhanced = enhance(base_resume, "Senior ML Engineer", model="test-model")
-            assert enhanced is not None
-            assert "enhanced_resume" in enhanced
-            assert "changes" in enhanced
-            assert len(enhanced["changes"]) > 0
+        mock_payload = json.dumps({
+            "enhanced_resume": {
+                "contact": {"name": "John Doe", "email": "john@example.com"},
+                "summary": "Senior ML Engineer with 5+ years experience",
+                "experience": [{"title": "Senior Engineer", "company": "Tech Corp", "dates": "2020-2023", "description": "Led ML pipeline development"}],
+                "education": [{"degree": "B.S. CS", "school": "University", "dates": "2016-2020"}],
+                "skills": ["Python", "TensorFlow", "ML", "Leadership"],
+                "projects": [{"name": "Project A", "description": "ML pipeline project", "tech": ["Python", "TensorFlow"]}]
+            },
+            "changes": [
+                {"field": "summary", "change": "Added 'Senior' and '5+ years' to match job description", "reason": "Better alignment with target role"},
+                {"field": "skills", "change": "Added 'TensorFlow' and 'Leadership'", "reason": "Required by job posting"},
+            ]
+        })
+        enhanced = enhance(base_resume, "Senior ML Engineer", model="test-model",
+                           client=_model_client_returning(mock_payload))
+        assert enhanced is not None
+        assert "enhanced_resume" in enhanced
+        assert "changes" in enhanced
+        assert len(enhanced["changes"]) > 0
 
     def test_export_resume_to_pdf_and_docx(self):
         """
@@ -263,24 +273,24 @@ class TestCareerPipeline:
         All external services are mocked.
         """
         # Step 1: Generate resume (mocked model)
-        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
-            mock_call.return_value = json.dumps({
-                "contact": {"name": "Test User", "email": "test@example.com"},
-                "summary": "Test summary",
-                "experience": [{"title": "Dev", "company": "Corp", "dates": "2020-2023", "description": "Worked"}],
-                "education": [{"degree": "BS", "school": "Uni", "dates": "2016-2020"}],
-                "skills": ["Python"],
-                "projects": [{"name": "Project", "description": "A project", "tech": ["Python"]}]
-            })
-            resume = generate("Software Engineer")
+        step1_payload = json.dumps({
+            "contact": {"name": "Test User", "email": "test@example.com"},
+            "summary": "Test summary",
+            "experience": [{"title": "Dev", "company": "Corp", "dates": "2020-2023", "description": "Worked"}],
+            "education": [{"degree": "BS", "school": "Uni", "dates": "2016-2020"}],
+            "skills": ["Python"],
+            "projects": [{"name": "Project", "description": "A project", "tech": ["Python"]}]
+        })
+        resume = generate("Software Engineer",
+                          client=_model_client_returning(step1_payload))
 
         # Step 2: Enhance resume (mocked model)
-        with patch("engines.career_engine.resume.generator._call_model") as mock_call:
-            mock_call.return_value = json.dumps({
-                "enhanced_resume": resume,
-                "changes": [{"field": "summary", "change": "Enhanced", "reason": "Better alignment"}]
-            })
-            enhanced = enhance(resume, "Senior Engineer")
+        step2_payload = json.dumps({
+            "enhanced_resume": resume,
+            "changes": [{"field": "summary", "change": "Enhanced", "reason": "Better alignment"}]
+        })
+        enhanced = enhance(resume, "Senior Engineer",
+                           client=_model_client_returning(step2_payload))
 
         # Step 3: Export to PDF and DOCX
         pdf_bytes = export(enhanced["enhanced_resume"], format="pdf")

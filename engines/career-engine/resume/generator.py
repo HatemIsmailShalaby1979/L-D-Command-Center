@@ -1,14 +1,17 @@
 # engines/career-engine/resume/generator.py
 #
-# WHAT: Resume generation entry point — takes a free-text profile
-#       description and produces a validated Resume dict.
-# WHY:  This is the single point of contact between the career-engine
-#       and the model-layer. It owns the generate→validate→retry loop
-#       so every caller gets a schema-valid Resume or an error.
-#       Reuses the SchemaValidator from model-layer rather than
-#       duplicating retry logic (CONSTITUTION.md §3).
-# BREAKS IF DELETED: The career-engine loses its ability to generate
-#       resumes; downstream export and platform integration break.
+# WHAT: Resume generation entry points — generate() turns a free-text
+#       profile into a validated Resume dict; enhance() rewrites a Resume
+#       toward a target role and returns it together with a
+#       human-inspectable changes list.
+# WHY:  Single point of contact between the career-engine and the
+#       Generation Pipeline (P1.4). The Guardrail Loop lives in
+#       model-layer/pipeline.py; this module contributes resume-specific
+#       templates and the envelope validator. The changes list always
+#       comes from the SAME validated response as the enhanced resume,
+#       so inspection can never drift from the artifact (CONSTITUTION §3).
+# BREAKS IF DELETED: The career-engine loses its ability to generate or
+#       enhance resumes; downstream export and integrations break.
 
 from __future__ import annotations
 
@@ -17,18 +20,56 @@ import logging
 from typing import Any
 
 from engines.career_engine.resume.schema import RESUME_SCHEMA, validate_resume
-from model_layer.client import ApiError, LmStudioClient, ModelRequest
+from model_layer.client import ApiError, LmStudioClient
+from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
 from model_layer.prompts import PromptRegistry
-from model_layer.schema import (
-    SchemaValidationError,
-    SchemaValidator,
-    extract_json_from_text,
-)
+from model_layer.schema import SchemaValidationError, SchemaValidator
 
 logger = logging.getLogger(__name__)
 
-# Public API
 __all__ = ["generate", "enhance"]
+
+# Resume prompts are tuned for shorter, more deterministic output than
+# journeys (matches the metadata registered with their templates).
+_RESUME_MAX_TOKENS = 2048
+_RESUME_TEMPERATURE = 0.3
+
+
+def generate(
+    profile: str,
+    *,
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> dict[str, Any]:
+    """
+    Contract: generate a validated Resume dict from a free-text profile
+    by running the Generation Pipeline.
+
+    Args:
+        profile: free-text description of the person's background.
+        client: optional pre-configured LmStudioClient (or test double).
+        model: model identifier passed through to LM Studio.
+
+    Returns:
+        A dict matching RESUME_SCHEMA, ready for export or enhancement.
+
+    Raises:
+        SchemaValidationError: validation failed after all attempts.
+        ConnectionError / ApiError: per the pipeline error taxonomy.
+    """
+    result = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="resume_generate",
+        retry_template="resume_retry",
+        variables={"profile": profile},
+        validator=validate_resume,
+        model=model,
+        max_tokens=_RESUME_MAX_TOKENS,
+        temperature=_RESUME_TEMPERATURE,
+    )
+    logger.info("Resume generated for profile: %s", profile[:50])
+    return result
 
 
 def enhance(
@@ -36,192 +77,58 @@ def enhance(
     target_role: str,
     *,
     client: LmStudioClient | None = None,
-    model: str = "qwen2.5-7b-instruct-uncensored",
+    model: str = DEFAULT_MODEL,
 ) -> dict[str, Any]:
     """
-    Contract: enhance an existing resume for a target role.
+    Contract: rewrite `resume` toward `target_role`, returning:
 
-    Takes a validated Resume dict and a target job description/role,
-    calls the model to produce an enhanced resume plus a list of changes.
+        {
+            "enhanced_resume": <dict matching RESUME_SCHEMA>,
+            "changes": [{"field", "change", "reason"}, ...],
+        }
 
-    Args:
-        resume: a validated Resume dict (output from generate() or manual).
-        target_role: description of the target role or job posting.
-        client: optional pre-configured LmStudioClient.
-        model: model identifier for LM Studio.
-
-    Returns:
-        A dict with:
-          - "enhanced_resume": dict matching RESUME_SCHEMA
-          - "changes": list of dicts with "field", "change", "reason"
+    The model must answer in an explicit envelope
+    (`{"enhanced_resume": ..., "changes": [...]}`); the envelope is what
+    the pipeline validates, so a retried response carries its own changes
+    list instead of silently inheriting a stale one. If the validated
+    response omits `changes`, a single explanatory default entry is
+    synthesized so callers always receive an inspectable list.
 
     Raises:
-        SchemaValidationError: if enhanced resume fails validation after retries.
-        ConnectionError: if LM Studio is unreachable.
-        ApiError: for other client-layer failures.
+        SchemaValidationError: envelope invalid after all attempts.
+        ConnectionError / ApiError: per the pipeline error taxonomy.
     """
-    registry = PromptRegistry()
-    validator = SchemaValidator(max_attempts=3)
-
-    # Serialize resume to JSON for the prompt
-    resume_json = json.dumps(resume, ensure_ascii=False, indent=2)
-
-    # Build the retry callback
-    def _retry_callback(errors: list[str]) -> str:
-        errors_text = "\n".join(f"  - {e}" for e in errors)
-        system, user, _ = registry.render(
-            "resume_enhance_retry",
-            {
-                "target_role": target_role,
-                "resume": resume_json,
-                "errors": errors_text,
-            },
-        )
-        raw_retry = _call_model(system, user, model, client=client)
-        # Extract just the enhanced_resume from the retry response
-        try:
-            retry_result = json.loads(raw_retry)
-            return json.dumps(retry_result.get("enhanced_resume", retry_result))
-        except json.JSONDecodeError:
-            return extract_json_from_text(raw_retry) or raw_retry
-
-    # First attempt: enhance the resume
-    system, user, _ = registry.render(
-        "resume_enhance",
-        {
-            "target_role": target_role,
-            "resume": resume_json,
-        },
-    )
-    raw_output = _call_model(system, user, model, client=client)
-
-    # Parse the JSON response
-    try:
-        result = json.loads(raw_output)
-    except json.JSONDecodeError:
-        # Try to extract JSON from the response
-        result = extract_json_from_text(raw_output)
-        if result is None:
-            raise SchemaValidationError(["Invalid JSON in model response"], 1)
-
-    # Extract enhanced resume and changes
-    enhanced_resume = result.get("enhanced_resume", result)
-    changes = result.get("changes", [])
-
-    # Validate the enhanced resume
-    is_valid, errors = validate_resume(enhanced_resume)
-    if not is_valid and len(errors) > 0:
-        # Try with retry
-        enhanced_resume = validator.validate(
-            json.dumps(enhanced_resume),
-            schema_fn=validate_resume,
-            retry_callback=_retry_callback,
-        )
-        is_valid, errors = validate_resume(enhanced_resume)
+    def envelope_validator(parsed: Any) -> tuple[bool, list[str]]:
+        if not isinstance(parsed, dict) or "enhanced_resume" not in parsed:
+            return False, ["missing 'enhanced_resume' envelope in model output"]
+        is_valid, errors = validate_resume(parsed["enhanced_resume"])
         if not is_valid:
-            raise SchemaValidationError(errors, 3)
+            errors = [f"enhanced_resume: {e}" for e in errors]
+        return is_valid, errors
 
-    # If no changes were provided, generate a default one
-    if not changes:
-        changes = [{
-            "field": "summary",
-            "change": "Updated to reflect target role",
-            "reason": f"Tailored for {target_role}",
-        }]
+    validated = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="resume_enhance",
+        retry_template="resume_enhance_retry",
+        variables={
+            "target_role": target_role,
+            "resume": json.dumps(resume, ensure_ascii=False, indent=2),
+        },
+        validator=envelope_validator,
+        model=model,
+        max_tokens=4096,
+        temperature=_RESUME_TEMPERATURE,
+    )
+
+    changes = validated.get("changes") or [{
+        "field": "summary",
+        "change": "Updated to reflect target role",
+        "reason": f"Tailored for {target_role}",
+    }]
 
     logger.info("Resume enhanced for role: %s", target_role[:50])
     return {
-        "enhanced_resume": enhanced_resume,
+        "enhanced_resume": validated["enhanced_resume"],
         "changes": changes,
     }
-
-
-def generate(
-    profile: str,
-    *,
-    client: LmStudioClient | None = None,
-    model: str = "qwen2.5-7b-instruct-uncensored",
-) -> dict[str, Any]:
-    """
-    Contract: generate a validated Resume dict from a free-text profile.
-
-    Uses the model-layer's SchemaValidator for retry-on-failure.
-
-    Args:
-        profile: free-text description of the person's background.
-        client: optional pre-configured LmStudioClient.
-        model: model identifier for LM Studio.
-
-    Returns:
-        A dict matching RESUME_SCHEMA, validated and ready for export.
-
-    Raises:
-        SchemaValidationError: if validation fails after all retries.
-        ConnectionError: if LM Studio is unreachable.
-        ApiError: for other client-layer failures.
-    """
-    registry = PromptRegistry()
-    validator = SchemaValidator(max_attempts=3)
-
-    # Build the retry callback
-    def _retry_callback(errors: list[str]) -> str:
-        system, user, _ = registry.render(
-            "resume_retry",
-            {
-                "profile": profile,
-                "errors": "\n".join(f"  - {e}" for e in errors),
-            },
-        )
-        return _call_model(system, user, model, client=client)
-
-    # First attempt: generate the resume
-    system, user, _ = registry.render(
-        "resume_generate",
-        {"profile": profile},
-    )
-    raw_output = _call_model(system, user, model, client=client)
-
-    # Validate with retry on failure
-    result = validator.validate(
-        raw_output,
-        schema_fn=validate_resume,
-        retry_callback=_retry_callback,
-    )
-
-    logger.info("Resume generated for profile: %s", profile[:50])
-    return result
-
-
-def _call_model(
-    system: str,
-    user: str,
-    model: str,
-    *,
-    client: LmStudioClient | None = None,
-) -> str:
-    """
-    Contract: send a single chat completion request and return the
-    raw content string. Used internally by generate and by the retry
-    callback.
-    """
-    if client is None:
-        client = LmStudioClient()
-
-    request = ModelRequest(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        max_tokens=2048,
-        temperature=0.3,
-    )
-    response = client.generate(request)
-
-    if response.content is None:
-        tool_names = [tc.name for tc in (response.tool_calls or [])]
-        raise ApiError(
-            f"Model returned tool calls ({tool_names}) instead of content."
-        )
-
-    return response.content

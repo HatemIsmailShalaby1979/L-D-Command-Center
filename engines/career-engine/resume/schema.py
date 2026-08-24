@@ -1,16 +1,20 @@
 # engines/career-engine/resume/schema.py
 #
-# WHAT: Resume JSON schema definition and validation for the career-engine.
-# WHY:  The resume generator needs a schema to validate model outputs
-#       against, following CONSTITUTION.md §3's guardrail principle:
-#       schema-validated model outputs with retry-on-failure. Reusing
-#       the model-layer's SchemaValidator avoids duplicating retry logic.
-# BREAKS IF DELETED: The career-engine loses its data contract for
-#       resume generation; model outputs would flow unchecked.
+# WHAT: Resume data contract — RESUME_SCHEMA plus validate_resume().
+# WHY:  CONSTITUTION.md §3 requires schema-validated model outputs. Since
+#       P1.4 the validator is DRIVEN BY the schema via the model-layer
+#       JSON-schema engine, so the declared contract and the enforced one
+#       cannot drift (the previous hand-rolled copy had a dead contact
+#       required-check and never consulted RESUME_SCHEMA at all).
+# BREAKS IF DELETED: The career-engine loses its data contract; model
+#       outputs would flow unchecked into export and integrations.
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+from model_layer.schema import _validate_object
 
 # ---------------------------------------------------------------------------
 # Resume schema definition
@@ -99,20 +103,16 @@ RESUME_SCHEMA: dict[str, Any] = {
 
 def validate_resume(raw: Any) -> tuple[bool, list[str]]:
     """
-    Contract: validate a raw resume dict against RESUME_SCHEMA.
-
-    Uses the model-layer's validate_schema function. If the function
-    doesn't exist yet, falls back to basic type checking.
+    Contract: validate a raw resume dict (or JSON string) against
+    RESUME_SCHEMA, using the model-layer's JSON-schema engine so the
+    declared schema is the single source of truth.
 
     Args:
-        raw: the raw output from the model (dict or JSON string).
+        raw: the parsed output from the model, or a JSON string.
 
     Returns:
         A tuple of (is_valid: bool, errors: list[str]).
     """
-    import json
-
-    # If raw is a string, try to parse it
     if isinstance(raw, str):
         try:
             raw = json.loads(raw)
@@ -122,61 +122,8 @@ def validate_resume(raw: Any) -> tuple[bool, list[str]]:
     if not isinstance(raw, dict):
         return False, ["Expected a JSON object"]
 
-    errors = []
-
-    # Validate top-level required fields
-    for field in RESUME_SCHEMA["required"]:
-        if field not in raw:
-            errors.append(f"missing required field: {field}")
-
-    if errors:
-        return False, errors
-
-    # Validate contact
-    contact = raw.get("contact", {})
-    if not isinstance(contact, dict):
-        errors.append("contact must be an object")
-    else:
-        for field in contact.get("required", ["name", "email"]):
-            if field not in contact:
-                errors.append(f"contact missing required field: {field}")
-
-    # Validate experience
-    experience = raw.get("experience", [])
-    if not isinstance(experience, list) or len(experience) < 1:
-        errors.append("experience must be a non-empty array")
-    else:
-        for i, exp in enumerate(experience):
-            for field in ["title", "company", "dates", "description"]:
-                if field not in exp:
-                    errors.append(f"experience[{i}] missing required field: {field}")
-
-    # Validate education
-    education = raw.get("education", [])
-    if not isinstance(education, list) or len(education) < 1:
-        errors.append("education must be a non-empty array")
-    else:
-        for i, edu in enumerate(education):
-            for field in ["degree", "school", "dates"]:
-                if field not in edu:
-                    errors.append(f"education[{i}] missing required field: {field}")
-
-    # Validate skills
-    skills = raw.get("skills", [])
-    if not isinstance(skills, list) or len(skills) < 1:
-        errors.append("skills must be a non-empty array")
-
-    # Validate projects
-    projects = raw.get("projects", [])
-    if not isinstance(projects, list) or len(projects) < 1:
-        errors.append("projects must be a non-empty array")
-    else:
-        for i, proj in enumerate(projects):
-            for field in ["name", "description"]:
-                if field not in proj:
-                    errors.append(f"projects[{i}] missing required field: {field}")
-
-    return len(errors) == 0, errors
+    errors = _validate_object(raw, RESUME_SCHEMA, "$")
+    return not errors, errors
 
 
 # ---------------------------------------------------------------------------
