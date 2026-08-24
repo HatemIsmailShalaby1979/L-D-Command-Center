@@ -26,9 +26,11 @@ so a journey can grow into a full knowledge base of SOPs specific to
 that user's work.
 
 ### 2. Language Lab ("Speak Like an Alien" mode)
-A distinct journey type for language learning. Instead of HTML cards,
-the output is podcast audio, generated two ways for the same
-lesson/level:
+The flagship pillar. A distinct journey type for language learning:
+podcast audio generated two ways for the same lesson/level, PLUS the
+interactive layer that makes it the most powerful tool in the app —
+grammar cards with drills, vocabulary flashcards and quizzes, listening
+comprehension tied to exact podcast segments, and final evaluations:
 - **Bilingual podcast**: two voices — a host speaking the target
   language, a second host translating word-by-word or sentence-by-
   sentence into the user's known language.
@@ -44,9 +46,14 @@ asks for it in a prompt, and only citing authenticated/traceable
 sources.
 
 ### 4. Paradise Playground
-Connections to external creative AI tools (Figma, Suno, Gemma, and
-others) so outputs from those tools can be imported into a learning
-journey, or a journey's content can be exported out to them.
+The media playground — a kids' area, an opera for musicians. Users import
+ANY media (images, audio, video, documents) from local files or from any
+FREE tool or AI service they hold an account with — including limited
+free quotas (Suno, Figma, Gemini, Hugging Face Spaces, keyless services) —
+generate with those tools, merge and edit everything locally, and export
+anywhere, including back into journeys and lessons. The app's job is the
+playground itself plus a connector hub that finds a free path per file
+type; cloud or local origin does not matter.
 
 ## Core Engine Philosophy
 

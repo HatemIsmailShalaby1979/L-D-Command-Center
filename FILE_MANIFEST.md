@@ -48,6 +48,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/desktop-shell/ldcc.spec` | PyInstaller spec for the single-file `ldcc` executable (P5.4); secrets/voices deliberately not bundled |
 | `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
 | `/docs/PRODUCTION_PLAN.md` | Phased v1 production-readiness plan: task IDs (P0–P6) used by TASKS.md, exit criteria, decision log, defect register |
+| `/docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md` | Phase-7 plan: capability profiles (small-model driving), Media Workspace + Connector Hub roster, LessonPack/interactive renderer/spaced-repetition for Language Lab |
 | `/requirements.txt` | Pinned dependency versions for reproducible offline installs (exit criterion E8) |
 | `/conftest.py` | Root pytest bootstrap — registers underscore alias packages for hyphenated engine dirs so dotted imports resolve; the single import convention |
 | `/pytest.ini` | Runner config — testpaths, importlib mode, `live` marker registration |
@@ -150,3 +151,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/immersion.py` | Immersion podcast generation — topic+target language → PodcastScript in target language via audio-engine, rendered with two distinct target-language voices; no new TTS logic, just configuration wiring |
 | `/engines/language-lab/test_immersion.py` | 17 tests: ImmersionResult properties, script generation delegation, audio rendering delegation, parameter passing, error handling |
 | `/engines/language-lab/test_bilingual_verification.py` | 10 tests for the P3.2 translation-fidelity pass — verdict schema, review rendering, generate-verify-regenerate audit trail |
+
+## Notes
+
+- 2026-08-24: owner amended vision (Phase 7). TASKS.md carries P7.1–P7.12; plan in docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md.

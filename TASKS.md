@@ -40,3 +40,19 @@ DONE:opencode: P5.2 desktop shell v0 (vertical slice): tested ShellController + 
 DONE:opencode: P5.3 typed errors surfaced: FlowResult envelope maps ConnectionError/ApiError/SchemaValidationError/ValueError/unexpected to dialog kinds with actionable details; 6 dedicated tests
 OPEN:P5.4 ldcc.spec + build docs added; actual PyInstaller builds NOT yet verified on Windows/Linux — pending a machine with display/toolchain
 DONE:opencode: P6.1/P6.2/P6.4 error-sweep+gates+docs: run_checks.sh gate (syntax+suite+cov floor 90%), live deselected by default, immersion prints->logger, shell logging config, root README fresh-machine guide, ship-gate snapshot in plan §8
+
+
+--- Phase 7 queue: Paradise Playground + Language Lab power-up (see /docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md; owner amended vision 2026-08-24) ---
+
+OPEN: P7.1 model-layer/capabilities.py — task profiles (min model size per task) + one-shot probe that grades the loaded model and stores verdict via Storage; surface in shell health bar
+OPEN: P7.2 LessonPack schema + Pipeline templates (dialogue, grammar cards, vocab cards, evaluation) + generate_lesson_pack() with feedback retry
+OPEN: P7.3 deterministic graders (exact/regex/fill-in-blank/transformation) + model-judge fallback producing inspectable verdict artifacts (reuse P3.2 pattern)
+OPEN: P7.4 LanguageLabRenderer — interactive HTML pack: vocab flashcards, grammar drills, listening items wired to segment audio, final evaluation
+OPEN: P7.5 per-segment audio via assembly.render_segments; lesson pack references segment audio by artifact name
+OPEN: P7.6 spaced-repetition-lite (SM-2) persisted through Storage preferences/artifacts
+OPEN: P7.7 Media Workspace core — ffmpeg ingest/normalize/trim/concat/overlay/mix/export for audio/video/image; pure functions + tests (no UI)
+OPEN: P7.8 storage kinds extension (media/*) + Import Inbox watch-folder (drop files from any no-API service: Suno/Udio/Runway web exports…)
+OPEN: P7.9 Connector Hub seam — single adapter interface (capabilities/send/poll) + gradio_client adapter to keyless Hugging Face Spaces (images/audio/video/upscalers)
+OPEN: P7.10 Figma REST adapter (free account) — import designs/frames as PNG/SVG assets
+OPEN: P7.11 Pollinations keyless image-generation adapter (no account needed)
+OPEN: P7.12 Playground tab in desktop shell — canvas list, import inbox drop target, connector panel with quota notes
