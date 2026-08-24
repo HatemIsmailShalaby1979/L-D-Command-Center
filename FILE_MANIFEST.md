@@ -42,6 +42,10 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/storage/test_persistence.py` | 14 tests: roundtrips, kind isolation, name validation, preference defaults/cross-instance persistence |
 | `/storage/test_secrets.py` | 9 tests: comment/first-'=' parsing, explicit-path precedence, sorted scan fallback, empty-value policy |
 | `/desktop-shell/README.md` | Packaging and installer pipeline for the desktop-native, offline-first executable. |
+| `/desktop-shell/controller.py` | Shell controller — the entire engine surface behind typed FlowResults; all UI behavior, headless-tested (P5.2/P5.3) |
+| `/desktop-shell/app.py` | Thin Tkinter window over the controller; tkinter imported only at runtime (P5.2) |
+| `/desktop-shell/test_controller.py` | 14 controller tests: health, journey flow, typed-error mapping (no_model/bad_output/input/unexpected), render+persist, export routing, library roundtrip |
+| `/desktop-shell/ldcc.spec` | PyInstaller spec for the single-file `ldcc` executable (P5.4); secrets/voices deliberately not bundled |
 | `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
 | `/docs/PRODUCTION_PLAN.md` | Phased v1 production-readiness plan: task IDs (P0–P6) used by TASKS.md, exit criteria, decision log, defect register |
 | `/requirements.txt` | Pinned dependency versions for reproducible offline installs (exit criterion E8) |

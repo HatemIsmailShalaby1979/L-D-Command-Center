@@ -55,20 +55,28 @@ class Storage:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    @staticmethod
-    def _encode(data: Any) -> bytes:
-        if isinstance(data, bytes):
-            return data
-        if isinstance(data, str):
-            return data.encode("utf-8")
-        return json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    # On-disk containers are tagged so str / bytes / JSON survive
+    # roundtrips exactly: T=text, B=binary, J=json document.
+    _TAG_TEXT, _TAG_BIN, _TAG_JSON = b"T", b"B", b"J"
 
-    @staticmethod
-    def _decode(raw: bytes) -> Any:
-        try:
-            return json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            return raw  # binary payload (audio/pdf/...), return as-is
+    @classmethod
+    def _encode(cls, data: Any) -> bytes:
+        if isinstance(data, bytes):
+            return cls._TAG_BIN + data
+        if isinstance(data, str):
+            return cls._TAG_TEXT + data.encode("utf-8")
+        return cls._TAG_JSON + json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+
+    @classmethod
+    def _decode(cls, raw: bytes) -> Any:
+        tag, body = raw[:1], raw[1:]
+        if tag == cls._TAG_TEXT:
+            return body.decode("utf-8")
+        if tag == cls._TAG_JSON:
+            return json.loads(body.decode("utf-8"))
+        if tag == cls._TAG_BIN:
+            return body
+        return raw  # untagged legacy file: return as-is
 
     # -- artifacts ------------------------------------------------------
 

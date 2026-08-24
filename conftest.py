@@ -40,6 +40,7 @@ def _alias(dotted_name: str, real_dir: Path) -> None:
 
 _alias("engines", ROOT / "engines")
 _alias("model_layer", ROOT / "model-layer")
+_alias("desktop_shell", ROOT / "desktop-shell")
 for _dir_name, _alias_name in [
     ("audio-engine", "audio_engine"),
     ("career-engine", "career_engine"),

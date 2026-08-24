@@ -25,10 +25,17 @@ class TestArtifacts:
         assert store.load_artifact("journeys", "python.json") == {"topic": "Python"}
 
     def test_bytes_roundtrip_is_raw(self, store):
-        payload = b"%PDF-fake"
+        payload = b"%PDF-fake\x89\x50"
         store.save_artifact("exports", "out.pdf", payload)
         loaded = store.load_artifact("exports", "out.pdf")
         assert isinstance(loaded, bytes) and loaded == payload
+
+    def test_untagged_legacy_file_loads_as_bytes(self, store):
+        # Files written before the tagged container must still load.
+        f = store._kind_dir("exports") / "legacy.pdf"
+        f.write_bytes(b"%PDF-raw-legacy")
+        loaded = store.load_artifact("exports", "legacy.pdf")
+        assert loaded == b"%PDF-raw-legacy"
 
     def test_str_roundtrip(self, store):
         store.save_artifact("narrations", "note.txt", "hello")

@@ -36,7 +36,7 @@ DONE:opencode: P4.2 generation removed from export: podcast/bilingual/immersion 
 DONE:opencode: P4.3 PPTX + XLSX Journey exporters added (python-pptx 1.0.2, openpyxl 3.1.5 pinned)
 DONE:opencode: P4.4 byte-stability suite green: pdf/pptx/xlsx/docx pinned metadata => identical bytes on repeat exports (E4 satisfied)
 DONE:opencode: P5.1 storage engine v1: persistence.py (artifact kinds + preferences, LDCC_DATA_DIR) and secrets.py (single KEY=VALUE adapter); github/linkedin/youtube loaders now delegate parsing to it, keeping only local validity policies; stale E:/ paths cleaned
-OPEN: P5.2 desktop app shell — toolkit RESOLVED D3=stdlib Tkinter; minimal UI over existing engines
-WISHLIST: P5.3 wire typed errors to UI surfaces (LM Studio down → actionable message; missing TTS voices → provisioning hint)
-OPEN: P5.4 desktop-shell packaging (PyInstaller → Windows + Linux installers per D4; offline verification both OSes; low-spec perf budget)
+DONE:opencode: P5.2 desktop shell v0 (vertical slice): tested ShellController + thin Tkinter window (journey generate→render→save→export txt/pdf/pptx/xlsx + health indicator). FOLLOW-UP: resume/language-lab tabs + library browser
+DONE:opencode: P5.3 typed errors surfaced: FlowResult envelope maps ConnectionError/ApiError/SchemaValidationError/ValueError/unexpected to dialog kinds with actionable details; 6 dedicated tests
+PARTIAL:P5.4 ldcc.spec + build docs added; actual PyInstaller builds NOT yet verified on Windows/Linux — pending a machine with display/toolchain
 WISHLIST: P6.x hardening & release gates — error-taxonomy sweep, coverage floor, low-spec rehearsal, docs pass, final governance audit (see PRODUCTION_PLAN.md Phase 6)
