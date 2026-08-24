@@ -8,13 +8,12 @@
 # BREAKS IF DELETED: Audio generation capability is lost; export-engine and
 #       language-lab can't produce audio output.
 #
-# Backend selection strategy:
-#   - Kokoro-82M is preferred when the language is known and supported
-#     (English, Spanish, French, German, etc.) — it produces higher-quality
-#     narration with better prosody.
-#   - Piper is used as fallback for unsupported languages or when Kokoro
-#     models aren't available.
-#   - The user can override this by explicitly passing a backend.
+# Backend selection strategy (P2.1):
+#   - Auto-select picks ONLY among implemented backends: Piper is the
+#     true default until Kokoro is implemented (KOKORO_IMPLEMENTED in
+#     model-layer/tts.py gates this), fixing the old default path that
+#     always crashed on Kokoro's NotImplementedError.
+#   - An explicit backend override is honored as-is — the caller owns it.
 #
 # Audio output:
 #   - WAV is written first (lossless, preserves all TTS output)
@@ -28,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from model_layer.tts import TtsBackend, synthesize
+from model_layer.tts import KOKORO_IMPLEMENTED, TtsBackend, synthesize
 
 
 # ---------------------------------------------------------------------------
@@ -151,15 +150,13 @@ def _select_backend(text: str, backend: Optional[TtsBackend] = None) -> tuple[Tt
         else:
             return backend, DEFAULT_PIPER_VOICE
 
-    # Auto-select: prefer Kokoro for supported languages
-    lang = _detect_language(text)
-
-    if lang in KOKORO_SUPPORTED_LANGUAGES:
-        voice = DEFAULT_VOICES.get(lang, "af_heart")
-        return TtsBackend.KOKORO, voice
-    else:
-        # Fallback to Piper
-        return TtsBackend.PIPER, DEFAULT_PIPER_VOICE
+    # Auto-select: prefer Kokoro for supported languages ONLY when the
+    # backend is actually implemented; otherwise Piper carries everything.
+    if KOKORO_IMPLEMENTED:
+        lang = _detect_language(text)
+        if lang in KOKORO_SUPPORTED_LANGUAGES:
+            return TtsBackend.KOKORO, DEFAULT_VOICES.get(lang, "af_heart")
+    return TtsBackend.PIPER, DEFAULT_PIPER_VOICE
 
 
 def _wav_to_mp3(wav_bytes: bytes) -> bytes:

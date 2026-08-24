@@ -37,6 +37,11 @@ DEFAULT_BACKEND = TtsBackend.PIPER
 DEFAULT_VOICE = "en_US-lessac-medium"  # Piper's default English voice
 DEFAULT_LANGUAGE = "en"
 
+# Single source of truth for Kokoro readiness. Flip to True only when
+# _synthesize_kokoro gains a real tokenizer/phoneme encoder; until then
+# every consumer (narration auto-select) must treat Kokoro as unavailable.
+KOKORO_IMPLEMENTED = False
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -115,6 +120,11 @@ def _synthesize_kokoro(
 
     Returns: WAV audio bytes (24000 Hz mono for Kokoro).
     """
+    if not KOKORO_IMPLEMENTED:
+        raise NotImplementedError(
+            "Kokoro-82M backend requires additional setup (tokenizer, phoneme encoder).\n"
+            "Use the Piper backend for now, or implement full Kokoro integration."
+        )
     try:
         import torch
         import onnxruntime as ort

@@ -100,14 +100,23 @@ class TestDetectLanguage:
 class TestSelectBackend:
     """Tests for backend selection logic."""
 
-    def test_auto_selects_kokoro_for_english(self):
+    def test_auto_selects_piper_while_kokoro_unimplemented(self):
+        # P2.1 contract: Piper is the true default until Kokoro exists.
+        backend, voice = _select_backend(SAMPLE_TEXT_EN)
+        assert backend == TtsBackend.PIPER
+        assert voice == DEFAULT_PIPER_VOICE
+
+    def test_auto_selects_piper_for_other_languages_too(self):
+        from engines.audio_engine.narration import _select_backend as sel
+        backend, _voice = sel(SAMPLE_TEXT_ES)
+        assert backend == TtsBackend.PIPER
+
+    @patch("engines.audio_engine.narration.KOKORO_IMPLEMENTED", True)
+    def test_auto_prefers_kokoro_once_implemented(self):
+        # When the flag flips, supported languages go back to Kokoro.
         backend, voice = _select_backend(SAMPLE_TEXT_EN)
         assert backend == TtsBackend.KOKORO
-        assert voice in KOKORO_SUPPORTED_LANGUAGES or voice == "af_heart"
-
-    def test_auto_selects_kokoro_for_supported_language(self):
-        backend, voice = _select_backend(SAMPLE_TEXT_ES)
-        assert backend == TtsBackend.KOKORO
+        assert isinstance(voice, str) and voice
 
     def test_fallback_to_piper_for_unsupported_language(self):
         # Test explicit Piper backend selection (the fallback path)
@@ -165,8 +174,7 @@ class TestNarrate:
     def test_uses_auto_selected_backend(self, mock_mp3, mock_synthesize):
         narrate(SAMPLE_TEXT_EN)
         call_kwargs = mock_synthesize.call_args
-        assert call_kwargs[1].get('backend') == TtsBackend.KOKORO or \
-               (len(call_kwargs[0]) > 2 and call_kwargs[0][2] == TtsBackend.KOKORO)
+        assert call_kwargs[1].get('backend') == TtsBackend.PIPER
 
     @patch("engines.audio_engine.narration.synthesize", return_value=b"mock-wav-bytes")
     @patch("engines.audio_engine.narration._wav_to_mp3", side_effect=RuntimeError("ffmpeg failed"))
