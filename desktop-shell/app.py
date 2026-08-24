@@ -18,6 +18,7 @@ ERROR_TITLES = {
     "no_model": "LM Studio not reachable",
     "bad_output": "Model output rejected",
     "input": "Check your input",
+    "connector": "Generation service failed",
     "unexpected": "Unexpected error",
 }
 
@@ -79,6 +80,103 @@ def run() -> None:  # pragma: no cover — needs a display
     tab = ttk.Notebook(root); tab.pack(fill="both", expand=True, padx=8, pady=6)
     journey_tab = ttk.Frame(tab); tab.add(journey_tab, text="Learning Journey")
 
+    def do_import_files():
+        from tkinter import filedialog
+        paths = filedialog.askopenfilenames(
+            parent=root, title="Import media into the Playground")
+        if not paths:
+            return
+        res = ctrl.import_files(list(paths))
+        if not res:
+            return show_error(res)
+        failed = [r for r in res.payload if not r["ok"]]
+        refresh_canvas()
+        note = f"Imported {len(res.payload) - len(failed)} file(s)."
+        if failed:
+            note += f" {len(failed)} failed."
+        messagebox.showinfo("Playground import", note)
+
+    def do_scan_inbox():
+        res = ctrl.scan_import_inbox()
+        if not res:
+            return show_error(res)
+        imported = sum(1 for r in res.payload if r["ok"])
+        refresh_canvas()
+        messagebox.showinfo("Import inbox",
+                            f"{imported} new file(s) from the inbox.")
+
+    def refresh_canvas():
+        canvas_list.delete(*canvas_list.get_children())
+        for subkind in ("library", "generated", "inbox"):
+            res = ctrl.list_media(subkind)
+            if not res.ok:
+                continue
+            for name in res.payload:
+                canvas_list.insert("", "end", values=(subkind, name))
+
+    def on_connector_selected(_event=None):
+        name = connector_var.get()
+        caps_res = ctrl.connector_capabilities()
+        info.delete("1.0", "end")
+        if not caps_res.ok:
+            return
+        entry = next((c for c in caps_res.payload
+                      if c["connector"] == name), None)
+        if not entry:
+            return
+        info.insert("end", f"auth: {entry['auth']}\n")
+        for item in entry["items"]:
+            info.insert("end", f"[{item['kind']}] {item['description']}\n"
+                               f"quota: {item['quota_note']}\n")
+
+    def do_generate():
+        prompt = prompt_var.get().strip()
+        if not prompt:
+            return messagebox.showinfo("Playground", "Enter a prompt first.")
+        res = ctrl.run_connector_job(connector_var.get(), {"prompt": prompt})
+        if not res:
+            return show_error(res)
+        refresh_canvas()
+        output_note.set(f"Saved -> media/generated/{res.payload['artifact_name']}")
+
+    playground_tab = ttk.Frame(tab); tab.add(playground_tab, text="Playground")
+
+    canvas_bar = ttk.Frame(playground_tab); canvas_bar.pack(fill="x", pady=4)
+    ttk.Button(canvas_bar, text="Import files…",
+               command=do_import_files).pack(side="left")
+    ttk.Button(canvas_bar, text="Scan inbox",
+               command=do_scan_inbox).pack(side="left", padx=6)
+    inbox_note = ttk.Label(canvas_bar, foreground="gray")
+    inbox_note.pack(side="left")
+
+    columns = ("kind", "name")
+    canvas_list = ttk.Treeview(playground_tab, columns=columns,
+                               show="headings", height=8)
+    canvas_list.heading("kind", text="Kind")
+    canvas_list.heading("name", text="Artifact")
+    canvas_list.pack(fill="both", expand=True)
+
+    conn_frame = ttk.LabelFrame(playground_tab, text="Connectors (free tiers)")
+    conn_frame.pack(fill="x", pady=4)
+    connector_var = tk.StringVar()
+    names_res = ctrl.connector_names()
+    ttk.Combobox(conn_frame, textvariable=connector_var, state="readonly",
+                 values=names_res.payload if names_res.ok else []).pack(
+        side="left", padx=4, pady=4)
+    connector_var.trace_add("write", lambda *_: on_connector_selected())
+    ttk.Label(conn_frame, text="prompt").pack(side="left")
+    prompt_var = tk.StringVar()
+    ttk.Entry(conn_frame, textvariable=prompt_var, width=36).pack(
+        side="left", padx=4)
+    ttk.Button(conn_frame, text="Generate",
+               command=do_generate).pack(side="left")
+    output_note = tk.StringVar()
+    ttk.Label(conn_frame, textvariable=output_note,
+              foreground="green").pack(side="left", padx=6)
+    info = tk.Text(conn_frame, height=4, width=70)
+    info.pack(fill="x", padx=4, pady=4)
+
+
     form = ttk.Frame(journey_tab); form.pack(fill="x", pady=4)
     topic_var = tk.StringVar()
     level_var = tk.StringVar(value="beginner")
@@ -129,6 +227,10 @@ def run() -> None:  # pragma: no cover — needs a display
                    command=lambda f=fmt: do_export(f)).pack(side="left", padx=4)
 
     refresh_health()
+    inbox_note.config(text=f"inbox: {ctrl.default_inbox_path()}")
+    refresh_canvas()
+    if names_res.ok and names_res.payload:
+        connector_var.set(names_res.payload[0])  # fires capability render
     root.mainloop()
 
 

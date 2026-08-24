@@ -13,14 +13,19 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Optional
 
+from engines.playground_bridge.import_inbox import unique_artifact_name
 from model_layer.client import ApiError, ConnectionError, LmStudioClient
 from model_layer.pipeline import DEFAULT_MODEL
 from model_layer.schema import SchemaValidationError
 from storage.persistence import Storage, default_storage
 
 logger = logging.getLogger(__name__)
+
+_EXT_FOR_KIND = {"image": ".png", "audio": ".wav", "video": ".mp4",
+                 "design": ".png"}
 
 
 @dataclass
@@ -71,10 +76,15 @@ class ShellController:
         client: Optional[LmStudioClient] = None,
         storage: Optional[Storage] = None,
         model: str = DEFAULT_MODEL,
+        connectors: Optional[list] = None,
+        inbox_path: Optional[str] = None,
     ) -> None:
         self.client = client if client is not None else LmStudioClient()
         self.storage = storage if storage is not None else default_storage()
         self.model = model
+        self._extra_connectors = list(connectors or [])
+        self._hub = None
+        self.inbox_path = inbox_path  # None -> <storage root>/inbox
 
     # -- health -----------------------------------------------------------
 
@@ -147,3 +157,121 @@ class ShellController:
     @_flow
     def load_saved(self, kind: str, name: str) -> FlowResult:
         return FlowResult(True, payload=self.storage.load_artifact(kind, name))
+
+    # -- playground (P7.12) -------------------------------------------------
+
+    def default_inbox_path(self) -> str:
+        if self.inbox_path:
+            return self.inbox_path
+        return str(Path(self.storage.root) / "inbox")
+
+    def _ensure_hub(self):
+        if self._hub is None:
+            from engines.playground_bridge.connectors_gradio import (
+                default_image_connector,
+                default_music_connector,
+            )
+            from engines.playground_bridge.connectors_hub import ConnectorHub
+            from engines.playground_bridge.connectors_figma import (
+                FigmaConnector,
+            )
+            from engines.playground_bridge.connectors_pollinations import (
+                PollinationsConnector,
+            )
+            hub = ConnectorHub()
+            for connector in [
+                PollinationsConnector(),
+                default_image_connector(),
+                default_music_connector(),
+                FigmaConnector(),
+                *self._extra_connectors,
+            ]:
+                hub.register(connector)
+            self._hub = hub
+        return self._hub
+
+    @_flow
+    def connector_names(self) -> FlowResult:
+        return FlowResult(True, payload=self._ensure_hub().names())
+
+    @_flow
+    def connector_capabilities(self) -> FlowResult:
+        """[{connector, auth, items:[{kind,description,quota_note}]}] —
+        quota notes are UI-mandated reading (plan B0.4)."""
+        payload = [
+            {"connector": caps.connector, "auth": caps.auth,
+             "items": [item.__dict__ for item in caps.items]}
+            for caps in self._ensure_hub().all_capabilities()
+        ]
+        return FlowResult(True, payload=payload)
+
+    @_flow
+    def run_connector_job(self, name: str, op: dict) -> FlowResult:
+        """send+poll in one flow; successful media lands under
+        media/generated with a collision-safe name."""
+        from engines.playground_bridge.connectors_hub import Job
+
+        hub = self._ensure_hub()
+        try:
+            connector = hub.get(name)
+        except KeyError as exc:
+            raise ValueError(str(exc)) from exc
+        job = connector.send(op)
+        result = connector.poll(Job(job.id, job.connector, job.status))
+        if not result.ok:
+            logger.warning("Connector %s failed: %s", name, result.error)
+            return FlowResult(False, error_kind="connector",
+                              detail=result.error or "generation failed")
+        ext = _EXT_FOR_KIND.get(str(getattr(
+            connector.capabilities().items[0], "kind", "")) , ".bin") \
+            if connector.capabilities().items else ".bin"
+        prompt = str(op.get("prompt", name))
+        slug = "".join(c if c.isalnum() else "-" for c in prompt.lower())
+        slug = slug.strip("-")[:40] or name
+        existing = set(self.storage.list_artifacts("media/generated"))
+        artifact_name = unique_artifact_name(existing, f"{slug}{ext}")
+        self.storage.save_artifact("media/generated", artifact_name,
+                                   result.media_bytes)
+        return FlowResult(True, payload={"artifact_name": artifact_name,
+                                         "size_bytes":
+                                             len(result.media_bytes)})
+
+    @_flow
+    def scan_import_inbox(self) -> FlowResult:
+        from engines.playground_bridge.import_inbox import scan_inbox
+        records = scan_inbox(self.default_inbox_path(), self.storage)
+        return FlowResult(True, payload=[
+            {"source": r.source_name, "artifact": r.artifact_name,
+             "ok": r.ok, "error": r.error}
+            for r in records
+        ])
+
+    @_flow
+    def import_files(self, paths: list[str]) -> FlowResult:
+        """Copy picked files into media/library with collision-safe
+        names; per-file errors are reported, never fatal to the batch."""
+        results = []
+        existing = set(self.storage.list_artifacts("media/library"))
+        for raw_path in paths:
+            path = Path(raw_path)
+            try:
+                data = path.read_bytes()
+                name = unique_artifact_name(existing, path.name)
+                self.storage.save_artifact("media/library", name, data)
+                existing.add(name)
+                results.append({"source": path.name, "artifact": name,
+                                "ok": True, "error": None})
+            except OSError as exc:
+                results.append({"source": path.name, "artifact": None,
+                                "ok": False, "error": str(exc)})
+        return FlowResult(True, payload=results)
+
+    @_flow
+    def list_media(self, subkind: str) -> FlowResult:
+        return FlowResult(True,
+                          payload=self.storage.list_artifacts(f"media/{subkind}"))
+
+    @_flow
+    def load_media(self, subkind: str, name: str) -> FlowResult:
+        return FlowResult(True, payload=self.storage.load_artifact(
+            f"media/{subkind}", name))

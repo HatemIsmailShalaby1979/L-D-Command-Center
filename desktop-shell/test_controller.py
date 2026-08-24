@@ -17,6 +17,7 @@ from types import SimpleNamespace
 import pytest
 
 from desktop_shell.controller import FlowResult, ShellController
+from engines.playground_bridge.connectors_hub import Job, Result
 from model_layer.client import ConnectionError as LmConnectionError
 from model_layer.schema import SchemaValidationError
 from storage.persistence import Storage
@@ -130,6 +131,102 @@ class TestCapabilities:
         result = make_controller(OkClient(), storage).capability_summary()
         assert result.ok
         assert result.payload == summarize_verdict(doc)
+
+
+class TestPlayground:
+    class FakeConnector:
+        name = "fake-gen"
+
+        def __init__(self, *, fail=False):
+            self.fail = fail
+            self.ops = []
+
+        def capabilities(self):
+            from engines.playground_bridge.connectors_hub import Capabilities, Capability
+            return Capabilities("fake-gen", "none", (
+                Capability("image", "test image gen", "free forever"),))
+
+        def send(self, op):
+            self.ops.append(op)
+            job_id = f"job-{len(self.ops)}"
+            if self.fail:
+                self._result = (job_id, False, None, "quota blown")
+                return Job(job_id, self.name, "failed")
+            media = op.get("bytes", b"FAKEPNG")
+            self._result = (job_id, True, media, None)
+            return Job(job_id, self.name, "done")
+
+        def poll(self, job):
+            from engines.playground_bridge.connectors_hub import Result
+            jid, ok, media, error = self._result
+            return Result(jid, ok, media_bytes=media, error=error)
+
+    def make_playground_controller(self, storage, connector=None,
+                                   inbox_path=None):
+        return ShellController(client=OkClient(), storage=storage,
+                               connectors=[connector] if connector else [],
+                               inbox_path=inbox_path)
+
+    def test_import_files_copies_and_collides_safely(self, storage, tmp_path):
+        src1 = tmp_path / "art.png"
+        src1.write_bytes(b"one")
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        src2 = sub / "art.png"
+        src2.write_bytes(b"two")
+        ctrl = self.make_playground_controller(storage)
+        result = ctrl.import_files([str(src1), str(src2)])
+        assert result.ok and all(r["ok"] for r in result.payload)
+        listed = ctrl.list_media("library").payload
+        assert sorted(listed) == ["art-1.png", "art.png"]
+        assert ctrl.load_media("library", "art-1.png").payload == b"two"
+
+    def test_scan_import_inbox_reports_and_moves(self, storage, tmp_path):
+        inbox = tmp_path / "drop"
+        inbox.mkdir()
+        (inbox / "beat.wav").write_bytes(b"WAV")
+        ctrl = self.make_playground_controller(storage, inbox_path=str(inbox))
+        result = ctrl.scan_import_inbox()
+        assert result.ok and result.payload[0]["ok"] is True
+        assert not (inbox / "beat.wav").exists()
+        assert "beat.wav" in ctrl.list_media("inbox").payload
+
+    def test_connector_capabilities_surface_quota_notes(self, storage):
+        connector = self.FakeConnector()
+        ctrl = self.make_playground_controller(storage, connector)
+        caps = ctrl.connector_capabilities().payload
+        entry = next(c for c in caps if c["connector"] == "fake-gen")
+        assert entry["auth"] == "none"
+        assert entry["items"][0]["quota_note"] == "free forever"
+
+    def test_run_connector_job_success_stores_media_generated(self, storage):
+        connector = self.FakeConnector()
+        ctrl = self.make_playground_controller(storage, connector)
+        result = ctrl.run_connector_job("fake-gen",
+                                        {"prompt": "Blue Bird Sky"})
+        assert result.ok
+        assert result.payload["artifact_name"] == "blue-bird-sky.png"
+        assert "blue-bird-sky.png" in ctrl.list_media("generated").payload
+        assert connector.ops[0]["prompt"] == "Blue Bird Sky"
+
+    def test_run_connector_job_failure_maps_to_connector_kind(self, storage):
+        connector = self.FakeConnector(fail=True)
+        ctrl = self.make_playground_controller(storage, connector)
+        result = ctrl.run_connector_job("fake-gen", {"prompt": "p"})
+        assert not result.ok and result.error_kind == "connector"
+        assert "quota blown" in result.detail
+
+    def test_unknown_connector_maps_to_input_kind(self, storage):
+        ctrl = self.make_playground_controller(storage)
+        result = ctrl.run_connector_job("nope", {"prompt": "p"})
+        assert not result.ok and result.error_kind == "input"
+
+    def test_default_roster_registers_keyless_first(self, storage):
+        ctrl = self.make_playground_controller(storage)
+        names = ctrl.connector_names().payload
+        assert "pollinations" in names          # zero-account first
+        for expected in ("hf-flux-schnell", "hf-ace-step-music", "figma"):
+            assert expected in names
 
 
 class TestExportAndLibrary:
