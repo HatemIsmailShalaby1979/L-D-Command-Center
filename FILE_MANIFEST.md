@@ -155,6 +155,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_lesson_pack.py` | 28 tests: pipeline generation with feedback retry, typed failure, input guards, schema+semantic rejection branches, template registration |
 | `/engines/language-lab/graders.py` | P7.3 grading — deterministic first (normalize/accent-fold/slash alternatives; MC index checks), model-judge fallback for free-form translations (inspectable GradeResult, single pipeline attempt), pack fidelity audit of vocab translations + grammar explanations returning claim-level verdict artifact |
 | `/engines/language-lab/test_graders.py` | 44 tests: normalization table, all grader rules and rejection branches, judge verdict validation/prompt content, dispatch guarantees (deterministic hits never call the model), audit consistency |
+| `/engines/language-lab/renderer.py` | P7.4 LanguageLabRenderer — validated LessonPack dict → deterministic self-contained interactive HTML: flip/self-grade flashcards, grammar drills checked by JS mirroring graders.py normalization (edge-punct incl ¿¡, accent fold, slash alternatives), MC + fill-in-blank + translation evaluation with honest self-grade fallback for free-form answers, listening items wired to per-segment audio artifact names, score breakdown screen; all model content escaped |
+| `/engines/language-lab/test_renderer.py` | 16 tests: section/content presence, determinism, rejection of incomplete packs, injection escaping incl. quote-safe answer attributes, JS/Python grading-rule parity markers, audio wiring contract (dialogue-N / listening-N keys with fallback) |
 
 ## Notes
 
