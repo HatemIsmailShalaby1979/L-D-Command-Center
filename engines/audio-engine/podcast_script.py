@@ -174,6 +174,8 @@ def generate_podcast_script(
     num_segments: int = DEFAULT_NUM_SEGMENTS,
     duration_minutes: int = DEFAULT_DURATION_MINUTES,
     host_name: str = DEFAULT_HOST_NAME,
+    language: str = "English",
+    level: str = "beginner",
     client: LmStudioClient | None = None,
     model: str = DEFAULT_MODEL,
 ) -> PodcastScript:
@@ -186,7 +188,9 @@ def generate_podcast_script(
         journey: Optional Journey dict whose topic seeds the prompt.
         num_segments: Number of segments to generate.
         duration_minutes: Target duration in minutes.
-        host_name: Name of the podcast host.
+        host_name: Name of the podcast host (interpolated into the prompt).
+        language: Language every segment must be written in.
+        level: Audience complexity level for the content.
         client: optional pre-configured LmStudioClient (or test double).
         model: model identifier for LM Studio.
 
@@ -213,6 +217,8 @@ def generate_podcast_script(
             "num_segments": num_segments,
             "duration_minutes": duration_minutes,
             "host_name": host_name,
+            "language": language,
+            "level": level,
         },
         validator=validate_podcast_script,
         model=model,

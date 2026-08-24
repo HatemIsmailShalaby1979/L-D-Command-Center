@@ -273,11 +273,14 @@ class PromptRegistry:
 
     _PODCAST_USER_BASE = (
         "Generate a podcast episode script for the topic \"{topic}\".\n\n"
+        "Spoken language: EVERY segment's content must be written entirely "
+        "in {language}.\n"
+        "Audience level: {level} learners.\n\n"
         "Return a JSON object with this exact structure:\n"
         "{{\n"
         '  "topic": "<the topic string>",\n'
         '  "title": "<episode title>",\n'
-        '  "host_name": "<host name>",\n'
+        '  "host_name": "{host_name}",\n'
         '  "duration_minutes": <number>,\n'
         '  "segments": [\n'
         '    {{\n'
@@ -291,10 +294,13 @@ class PromptRegistry:
         "}}\n\n"
         "Requirements:\n"
         "- Produce exactly {num_segments} segments.\n"
+        "- The host is named {host_name}; use that name in the intro and "
+        "conclusion segments.\n"
         "- First segment must be type 'intro'.\n"
         "- Last segment must be type 'conclusion'.\n"
         "- Include a mix of monologue and dialogue segments.\n"
         "- Total duration should be approximately {duration_minutes} minutes.\n"
+        "- Vocabulary and sentence complexity must suit {level} learners of {language}.\n"
         "- Content must be engaging, informative, and appropriate for a podcast audience.\n"
         "- Return valid JSON only."
     )

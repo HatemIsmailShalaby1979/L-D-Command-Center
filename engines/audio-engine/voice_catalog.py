@@ -49,6 +49,19 @@ PIPER_SPEAKER_POOL: list[str] = [
 
 FALLBACK_LANGUAGE = "en"
 
+# ISO 639-1 code -> English display name, for prompt rendering
+# ("written entirely in Spanish" reads better than "in es").
+LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English", "es": "Spanish", "fr": "French", "de": "German",
+    "it": "Italian", "pt": "Portuguese", "ru": "Russian",
+    "ja": "Japanese", "zh": "Chinese", "ko": "Korean",
+}
+
+
+def language_name(code: str) -> str:
+    """'es' -> 'Spanish'; unknown codes pass through unchanged."""
+    return LANGUAGE_NAMES.get((code or "").lower()[:2], code)
+
 # ---------------------------------------------------------------------------
 # Kokoro catalog (future backend — resolved only when implemented)
 # ---------------------------------------------------------------------------

@@ -25,9 +25,11 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from engines.audio_engine import voice_catalog
 from engines.audio_engine.podcast_audio import PodcastAudioResult, render_podcast_to_audio
 from engines.audio_engine.podcast_script import PodcastScript, generate_podcast_script
 from model_layer.client import LmStudioClient
+from model_layer.pipeline import DEFAULT_MODEL
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +90,7 @@ def generate_immersion_podcast(
     output_path: Optional[str] = None,
     speed: float = DEFAULT_SPEED,
     client: LmStudioClient | None = None,
-    model: str = "default",
+    model: str = DEFAULT_MODEL,
 ) -> ImmersionResult:
     """
     Contract: generate an immersion podcast entirely in the target language.
@@ -122,12 +124,15 @@ def generate_immersion_podcast(
     if not target_language or not target_language.strip():
         raise ValueError("Target language must be specified")
 
-    # Generate podcast script in target language
+    # Generate podcast script in the TARGET language at the requested
+    # level — P3.1 closes defect #5 by actually forwarding both.
     script = generate_podcast_script(
         topic=topic,
         num_segments=num_segments,
         duration_minutes=duration_minutes,
         host_name=host_name,
+        language=voice_catalog.language_name(target_language),
+        level=level,
         client=client,
         model=model,
     )

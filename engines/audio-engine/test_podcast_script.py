@@ -318,6 +318,19 @@ class TestGeneratePodcastScript:
         assert isinstance(script, PodcastScript)
         assert len(client.requests) == 1
 
+    def test_prompt_carries_language_level_and_host(self):
+        """P3.1: template must interpolate language, level, and host_name."""
+        from engines.audio_engine.podcast_script import DEFAULT_HOST_NAME
+        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        generate_podcast_script(
+            topic=SAMPLE_TOPIC, num_segments=5, host_name="Klara",
+            language="German", level="advanced", client=client,
+        )
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert "entirely" in user_prompt and "German" in user_prompt
+        assert "advanced" in user_prompt
+        assert "Klara" in user_prompt
+
     def test_retries_on_validation_failure(self):
         """Should retry when initial validation fails."""
         client = _ScriptedClient(

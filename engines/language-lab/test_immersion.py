@@ -108,13 +108,17 @@ class TestGenerateImmersionPodcast:
 
         result = generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
 
+        # P3.1: immersion MUST forward target language + level
+        # (closes audit defect #5) and use the project-wide model default.
         mock_generate.assert_called_once_with(
             topic=SAMPLE_TOPIC,
             num_segments=DEFAULT_NUM_SEGMENTS,
             duration_minutes=DEFAULT_DURATION_MINUTES,
             host_name="Host",
+            language="Spanish",
+            level="beginner",
             client=None,
-            model="default",
+            model="local-model",
         )
 
     @patch("engines.language_lab.immersion.generate_podcast_script")
