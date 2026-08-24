@@ -157,6 +157,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_graders.py` | 44 tests: normalization table, all grader rules and rejection branches, judge verdict validation/prompt content, dispatch guarantees (deterministic hits never call the model), audit consistency |
 | `/engines/language-lab/renderer.py` | P7.4 LanguageLabRenderer — validated LessonPack dict → deterministic self-contained interactive HTML: flip/self-grade flashcards, grammar drills checked by JS mirroring graders.py normalization (edge-punct incl ¿¡, accent fold, slash alternatives), MC + fill-in-blank + translation evaluation with honest self-grade fallback for free-form answers, listening items wired to per-segment audio artifact names, score breakdown screen; all model content escaped |
 | `/engines/language-lab/test_renderer.py` | 16 tests: section/content presence, determinism, rejection of incomplete packs, injection escaping incl. quote-safe answer attributes, JS/Python grading-rule parity markers, audio wiring contract (dialogue-N / listening-N keys with fallback) |
+| `/engines/language-lab/pack_audio.py` | P7.5 per-segment lesson-pack audio — each dialogue turn rendered through assembly.render_segments into its own WAV artifact named exactly per the renderer contract (<stem>-dialogue-<i>.wav); speaker→voice assignment via Voice Catalog language-scoped pool (distinct speakers = distinct voices); optional output_path persistence; MP3 off by default |
+| `/engines/language-lab/test_pack_audio.py` | 12 tests: renderer-contract naming, slug safety, distinct/stable voice mapping (language-scoped), speed forwarding, empty-dialogue rejection, output_path byte-identical writes |
 
 ## Notes
 
