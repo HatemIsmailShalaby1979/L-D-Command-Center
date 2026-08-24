@@ -1,0 +1,3 @@
+# Journey Core Engine
+
+The journey-core engine owns the primary content-generation loop: given a topic and a depth/level, it produces an interactive HTML learning experience — cards, quizzes, and evaluations — that the user can revisit, modify, and extend over time. It is the foundational output format that every other engine (export, audio, language-lab) builds upon. If this engine is deleted, the entire concept of a "Learning Journey" ceases to exist; nothing about it depends on external APIs or subscriptions, and it runs entirely through the local LM Studio-hosted model per the Core Engine Philosophy.

@@ -1,0 +1,49 @@
+# Local working directories
+/tmp/
+tmp/
+
+# Secrets — CONSTITUTION.md §3: no credentials, tokens, or API keys in code or commits
+secrets/
+*.secrets
+*.env
+.env
+.env.local
+.env.*.local
+
+# OS cruft
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+pagefile.sys
+desktop.ini
+
+# Editor / IDE cruft
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Runtime output
+dist/
+build/
+out/

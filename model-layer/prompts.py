@@ -1,0 +1,499 @@
+# model-layer/prompts.py
+#
+# WHAT: Prompt-template module — defines structured prompt templates
+#       for every generation use case across all engines, rather than
+#       constructing free-form prompts at call sites.
+# WHY:  CONSTITUTION.md §3 requires deterministic templates for
+#       anything structural. Free-form prompts produce inconsistent
+#       outputs that are harder to validate, harder to debug, and
+#       more likely to drift from the expected schema. This module
+#       centralizes all prompt shapes so they can be reviewed, tested,
+#       and swapped without touching engine code.
+# BREAKS IF DELETED: Every engine falls back to ad-hoc prompt
+#       construction, losing structural consistency and making schema
+#       validation fragile. The entire generation pipeline becomes
+#       harder to audit and reason about.
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Template data structures
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PromptTemplate:
+    """
+    Contract: the canonical shape of a prompt template.
+
+    Fields:
+      - name: unique identifier for this template (e.g. "journey_generate").
+      - system: the system prompt string (may contain {placeholders}).
+      - user: the user-message prompt string (may contain {placeholders}).
+      - schema_key: optional key referencing a schema definition in
+                    schema.py for downstream validation.
+      - metadata: arbitrary extra data (e.g. default max_tokens,
+                  temperature hints) consumed by the caller or client.
+    """
+    name: str
+    system: str
+    user: str
+    schema_key: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Template registry
+# ---------------------------------------------------------------------------
+
+class PromptRegistry:
+    """
+    Contract: a centralized registry of all prompt templates used by
+    every engine. Each template is defined once here and referenced by
+    name from engine code — never constructed inline.
+
+    Responsibilities:
+      - Store all templates as PromptTemplate instances
+      - Render a template by name with a variable dict, substituting
+        all {placeholders} in system and user strings
+      - Return the schema_key (if any) so the caller can wire up
+        validation
+
+    Non-responsibilities:
+      - HTTP communication (handled by client.py)
+      - Schema validation (handled by schema.py)
+      - Engine-specific prompt composition beyond template definitions
+    """
+
+    def __init__(self) -> None:
+        self._templates: dict[str, PromptTemplate] = {}
+        self._register_builtins()
+
+    # ------------------------------------------------------------------
+    # Journey templates
+    # ------------------------------------------------------------------
+
+    _JOURNEY_SYSTEM = (
+        "You are a Learning & Development content generator. "
+        "Your task is to produce structured learning journeys that "
+        "conform exactly to the requested JSON schema. "
+        "Always return valid JSON only — no prose, no markdown fences, "
+        "no explanation outside the JSON object."
+    )
+
+    _JOURNEY_USER_BASE = (
+        "Generate a learning journey for the topic \"{topic}\" "
+        "at the {level} level.\n\n"
+        "Return a JSON object with this exact structure:\n"
+        "{{\n"
+        '  "topic": "<the topic string>",\n'
+        '  "level": "<beginner|intermediate|advanced>",\n'
+        '  "cards": [\n'
+        '    {{\n'
+        '      "id": "<unique string id>",\n'
+        '      "title": "<card title>",\n'
+        '      "content": "<learning content for this card>",\n'
+        '      "question": "<quiz question>",\n'
+        '      "options": ["<option A>", "<option B>", '
+        '"<option C>", "<option D>"],\n'
+        '      "correct_option": "<the correct option text>",\n'
+        '      "explanation": "<why the answer is correct>"\n'
+        '    }},\n'
+        "  ]\n"
+        "}}\n\n"
+        "Requirements:\n"
+        "- Produce exactly {num_cards} cards.\n"
+        "- Each card must have a unique id.\n"
+        "- Options must be between 2 and 4.\n"
+        "- correct_option must match one of the options exactly.\n"
+        "- Content must be accurate, pedagogically sound, and "
+        "appropriate for the {level} level."
+    )
+
+    _JOURNEY_RETRY_SYSTEM = (
+        "You previously generated a learning journey that failed "
+        "schema validation. Fix the errors below and return a "
+        "corrected JSON object with the same structure. "
+        "Return valid JSON only — no prose, no markdown fences."
+    )
+
+    _JOURNEY_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "The topic is \"{topic}\" at {level} level.\n"
+        "Generate a corrected journey with {num_cards} cards "
+        "following the same schema as before.\n"
+        "Return valid JSON only."
+    )
+
+    # ------------------------------------------------------------------
+    # Resume templates
+    # ------------------------------------------------------------------
+
+    _RESUME_SYSTEM = (
+        "You are a professional resume writer. Your task is to generate "
+        "a well-structured resume JSON from the provided profile description. "
+        "Return ONLY valid JSON — no prose, no markdown fences, no explanation."
+    )
+
+    _RESUME_USER_BASE = (
+        "Generate a resume for the following profile:\n\n"
+        "{profile}\n\n"
+        "Return a JSON object with this exact structure:\n"
+        "{{\n"
+        '  "contact": {{\n'
+        '    "name": "<full name>",\n'
+        '    "email": "<email>",\n'
+        '    "phone": "<phone>",\n'
+        '    "location": "<location>",\n'
+        '    "linkedin": "<linkedin URL>",\n'
+        '    "github": "<github URL>"\n'
+        "  }},\n"
+        '  "summary": "<professional summary>",\n'
+        '  "experience": [\n'
+        '    {{\n'
+        '      "title": "<job title>",\n'
+        '      "company": "<company>",\n'
+        '      "dates": "<start - end>",\n'
+        '      "description": "<description>"\n'
+        "    }},\n"
+        "  ],\n"
+        '  "education": [\n'
+        '    {{\n'
+        '      "degree": "<degree>",\n'
+        '      "school": "<school>",\n'
+        '      "dates": "<start - end>"\n'
+        "    }},\n"
+        "  ],\n"
+        '  "skills": ["<skill1>", "<skill2>", ...],\n'
+        '  "projects": [\n'
+        '    {{\n'
+        '      "name": "<project name>",\n'
+        '      "description": "<description>",\n'
+        '      "tech": ["<tech1>", "<tech2>"]\n'
+        "    }},\n"
+        "  ]\n"
+        "}}\n\n"
+        "Requirements:\n"
+        "- Make the resume professional and tailored to the profile.\n"
+        "- Include at least 2 experience entries.\n"
+        "- Include at least 1 education entry.\n"
+        "- Include at least 5 skills.\n"
+        "- Include at least 1 project.\n"
+        "- Return valid JSON only."
+    )
+
+    _RESUME_RETRY_SYSTEM = (
+        "You previously generated a resume that failed schema validation. "
+        "Fix the errors below and return a corrected JSON object. "
+        "Return valid JSON only — no prose, no markdown fences."
+    )
+
+    _RESUME_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "The profile was: {profile}\n"
+        "Generate a corrected resume following the same schema.\n"
+        "Return valid JSON only."
+    )
+
+    _RESUME_ENHANCE_SYSTEM = (
+        "You are a professional resume writer and career coach. "
+        "Your task is to enhance an existing resume for a specific target role. "
+        "Return TWO things as a JSON object:\n"
+        "1. \"enhanced_resume\" - the improved resume JSON following the same schema\n"
+        "2. \"changes\" - a list of objects describing what changed and why\n\n"
+        "Return ONLY valid JSON — no prose, no markdown fences, no explanation."
+    )
+
+    _RESUME_ENHANCE_USER_BASE = (
+        "Enhance the following resume for the target role:\n\n"
+        "{target_role}\n\n"
+        "Current resume:\n"
+        "{resume}\n\n"
+        "Return a JSON object with this structure:\n"
+        "{{\n"
+        '  "enhanced_resume": {{\n'
+        '    "contact": {{...}},\n'
+        '    "summary": "...",\n'
+        '    "experience": [...],\n'
+        '    "education": [...],\n'
+        '    "skills": [...],\n'
+        '    "projects": [...]  \n'
+        '  }},\n'
+        '  "changes": [\n'
+        '    {{\n'
+        '      "field": "<field name>",\n'
+        '      "change": "<what changed>",\n'
+        '      "reason": "<why this helps for the target role>"\n'
+        '    }}\n'
+        '  ]\n'
+        "}}\n\n"
+        "Requirements:\n"
+        "- Tailor the resume to match the target role\n"
+        "- Highlight relevant experience and skills\n"
+        "- Improve the summary to reflect the career goal\n"
+        "- Keep the same structure and format\n"
+        "- Return valid JSON only."
+    )
+
+    _RESUME_ENHANCE_RETRY_SYSTEM = (
+        "You previously attempted to enhance a resume for a target role but the output failed validation. "
+        "Fix the errors below and return a corrected enhanced resume. "
+        "Return valid JSON only — no prose, no markdown fences."
+    )
+
+    _RESUME_ENHANCE_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "Target role: {target_role}\n"
+        "Current resume:\n"
+        "{resume}\n"
+        "Generate a corrected enhanced resume following the same schema.\n"
+        "Return valid JSON only."
+    )
+
+    # ------------------------------------------------------------------
+    # Podcast script templates
+    # ------------------------------------------------------------------
+
+    _PODCAST_SYSTEM = (
+        "You are a podcast scriptwriter. Your task is to generate "
+        "a structured podcast episode script that conforms exactly to "
+        "the requested JSON schema. "
+        "Always return valid JSON only — no prose, no markdown fences, "
+        "no explanation outside the JSON object."
+    )
+
+    _PODCAST_USER_BASE = (
+        "Generate a podcast episode script for the topic \"{topic}\".\n\n"
+        "Return a JSON object with this exact structure:\n"
+        "{{\n"
+        '  "topic": "<the topic string>",\n'
+        '  "title": "<episode title>",\n'
+        '  "host_name": "<host name>",\n'
+        '  "duration_minutes": <number>,\n'
+        '  "segments": [\n'
+        '    {{\n'
+        '      "type": "<intro|monologue|dialogue|conclusion>",\n'
+        '      "speaker": "<speaker name>",\n'
+        '      "content": "<what is said>",\n'
+        '      "duration_seconds": <number>\n'
+        '    }}\n'
+        "  ],\n"
+        '  "speakers": ["<speaker1>", "<speaker2>"]\n'
+        "}}\n\n"
+        "Requirements:\n"
+        "- Produce exactly {num_segments} segments.\n"
+        "- First segment must be type 'intro'.\n"
+        "- Last segment must be type 'conclusion'.\n"
+        "- Include a mix of monologue and dialogue segments.\n"
+        "- Total duration should be approximately {duration_minutes} minutes.\n"
+        "- Content must be engaging, informative, and appropriate for a podcast audience.\n"
+        "- Return valid JSON only."
+    )
+
+    _PODCAST_RETRY_SYSTEM = (
+        "You previously generated a podcast script that failed "
+        "schema validation. Fix the errors below and return a "
+        "corrected JSON object with the same structure. "
+        "Return valid JSON only — no prose, no markdown fences."
+    )
+
+    _PODCAST_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "The topic is \"{topic}\".\n"
+        "Generate a corrected podcast script with {num_segments} segments.\n"
+        "Return valid JSON only."
+    )
+
+    # ------------------------------------------------------------------
+    # Bilingual pair templates
+    # ------------------------------------------------------------------
+
+    _BILINGUAL_SYSTEM = (
+        "You are a professional translator and language teacher. "
+        "Your task is to produce accurate, sentence-by-sentence bilingual "
+        "content for language learning. Translation accuracy is critical — "
+        "each target-language sentence must have a faithful, natural "
+        "translation in the user's known language. Return valid JSON only "
+        "— no prose, no markdown fences, no explanation outside the JSON."
+    )
+
+    _BILINGUAL_USER_BASE = (
+        "Create a bilingual learning pair on the topic \"{topic}\".\n"
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n\n"
+        "Return a JSON object with this exact structure:\n"
+        "{{\n"
+        '  "topic": "<the topic string>",\n'
+        '  "target_language": "<language code, e.g. es>",\n'
+        '  "known_language": "<language code, e.g. en>",\n'
+        '  "segments": [\n'
+        '    {{\n'
+        '      "target_text": "<sentence in target language>",\n'
+        '      "translation_text": "<accurate translation in known language>"\n'
+        '    }}\n'
+        "  ]\n"
+        "}}\n\n"
+        "Requirements:\n"
+        "- Produce exactly {num_segments} segments.\n"
+        "- Each segment must have BOTH target_text and translation_text.\n"
+        "- target_text must be natural, grammatically correct {target_language}.\n"
+        "- translation_text must be an ACCURATE, faithful translation — not creative.\n"
+        "- Content should be appropriate for language learners (clear, practical phrases).\n"
+        "- Return valid JSON only."
+    )
+
+    _BILINGUAL_RETRY_SYSTEM = (
+        "You previously generated a bilingual pair that failed schema "
+        "validation. Fix the errors below and return a corrected JSON "
+        "object with the same structure. Return valid JSON only — no prose, "
+        "no markdown fences."
+    )
+
+    _BILINGUAL_RETRY_USER_TEMPLATE = (
+        "Your previous output had these validation errors:\n"
+        "{errors}\n\n"
+        "Topic: \"{topic}\"\n"
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n"
+        "Generate a corrected bilingual pair with {num_segments} segments.\n"
+        "Return valid JSON only."
+    )
+
+    def _register_builtins(self) -> None:
+        """
+        Contract: populate the registry with the templates required
+        by the current v1 scope. New templates are added here as
+        engines grow.
+
+        Templates defined:
+          - journey_generate: primary template for topic+level →
+            journey JSON (cards with quizzes)
+          - journey_retry: feedback template used on validation
+            failure to ask the model to self-correct
+          - resume_generate: primary template for profile → resume JSON
+          - resume_retry: feedback template for resume validation failure
+          - resume_enhance: primary template for enhancing a resume
+          - resume_enhance_retry: feedback template for resume enhance failure
+          - podcast_script_generate: primary template for podcast script
+          - podcast_script_retry: feedback template for podcast script failure
+        """
+        self._templates["journey_generate"] = PromptTemplate(
+            name="journey_generate",
+            system=self._JOURNEY_SYSTEM,
+            user=self._JOURNEY_USER_BASE,
+            schema_key="journey",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.7},
+        )
+        self._templates["journey_retry"] = PromptTemplate(
+            name="journey_retry",
+            system=self._JOURNEY_RETRY_SYSTEM,
+            user=self._JOURNEY_RETRY_USER_TEMPLATE,
+            schema_key="journey",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["resume_generate"] = PromptTemplate(
+            name="resume_generate",
+            system=self._RESUME_SYSTEM,
+            user=self._RESUME_USER_BASE,
+            schema_key="resume",
+            metadata={"default_max_tokens": 2048, "default_temperature": 0.3},
+        )
+        self._templates["resume_retry"] = PromptTemplate(
+            name="resume_retry",
+            system=self._RESUME_RETRY_SYSTEM,
+            user=self._RESUME_RETRY_USER_TEMPLATE,
+            schema_key="resume",
+            metadata={"default_max_tokens": 2048, "default_temperature": 0.3},
+        )
+        self._templates["resume_enhance"] = PromptTemplate(
+            name="resume_enhance",
+            system=self._RESUME_ENHANCE_SYSTEM,
+            user=self._RESUME_ENHANCE_USER_BASE,
+            schema_key="resume",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["resume_enhance_retry"] = PromptTemplate(
+            name="resume_enhance_retry",
+            system=self._RESUME_ENHANCE_RETRY_SYSTEM,
+            user=self._RESUME_ENHANCE_RETRY_USER_TEMPLATE,
+            schema_key="resume",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["podcast_script_generate"] = PromptTemplate(
+            name="podcast_script_generate",
+            system=self._PODCAST_SYSTEM,
+            user=self._PODCAST_USER_BASE,
+            schema_key="podcast_script",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.7},
+        )
+        self._templates["podcast_script_retry"] = PromptTemplate(
+            name="podcast_script_retry",
+            system=self._PODCAST_RETRY_SYSTEM,
+            user=self._PODCAST_RETRY_USER_TEMPLATE,
+            schema_key="podcast_script",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["bilingual_generate"] = PromptTemplate(
+            name="bilingual_generate",
+            system=self._BILINGUAL_SYSTEM,
+            user=self._BILINGUAL_USER_BASE,
+            schema_key="bilingual",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+        self._templates["bilingual_retry"] = PromptTemplate(
+            name="bilingual_retry",
+            system=self._BILINGUAL_RETRY_SYSTEM,
+            user=self._BILINGUAL_RETRY_USER_TEMPLATE,
+            schema_key="bilingual",
+            metadata={"default_max_tokens": 4096, "default_temperature": 0.3},
+        )
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def get(self, name: str) -> PromptTemplate:
+        """
+        Contract: return the PromptTemplate for the given name.
+
+        Raises:
+            KeyError: if no template with the given name exists.
+        """
+        if name not in self._templates:
+            raise KeyError(
+                f"Unknown prompt template '{name}'. "
+                f"Available: {list(self._templates.keys())}"
+            )
+        return self._templates[name]
+
+    def render(self, name: str, variables: dict[str, Any]) -> tuple[str, str, Optional[str]]:
+        """
+        Contract: render a named template with the given variables and
+        return (system_prompt, user_prompt, schema_key).
+
+        Placeholder format: {variable_name} — substituted directly
+        from the variables dict. Missing variables raise KeyError.
+
+        Args:
+            name: the template name registered in this registry.
+            variables: a flat dict of substitution values. Keys must
+                       match all {placeholders} in the template.
+
+        Returns:
+            A 3-tuple of (system_prompt, user_prompt, schema_key)
+            ready to be passed to LmStudioClient.generate().
+        """
+        template = self.get(name)
+        system = template.system.format(**variables)
+        user = template.user.format(**variables)
+        return system, user, template.schema_key
