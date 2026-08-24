@@ -174,6 +174,118 @@ def validate_bilingual_pair(data: dict[str, Any]) -> tuple[bool, list[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Translation verification (P3.2)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class VerificationVerdict:
+    """Human-inspectable result of checking a BilingualPair's fidelity."""
+    passed: bool
+    issues: list[dict[str, Any]]
+
+    def __bool__(self) -> bool:
+        return self.passed
+
+
+@dataclass
+class VerifiedBilingualPair:
+    """A lesson plus every fidelity verdict collected while producing it."""
+    pair: "BilingualPair"
+    verdicts: list[VerificationVerdict]
+
+    @property
+    def passed(self) -> bool:
+        return bool(self.verdicts) and self.verdicts[-1].passed
+
+
+def _format_segments_for_review(pair: "BilingualPair") -> str:
+    return "\n".join(
+        f"{i}. [{seg.target_text}] -> [{seg.translation_text}]"
+        for i, seg in enumerate(pair.segments)
+    )
+
+
+def validate_verdict(data: Any) -> tuple[bool, list[str]]:
+    """Contract: shape-check the reviewer's {passed, issues} payload."""
+    if not isinstance(data, dict):
+        return False, [f"expected a JSON object, got {type(data).__name__}"]
+    errors = []
+    if not isinstance(data.get("passed"), bool):
+        errors.append("'passed' must be a boolean")
+    issues = data.get("issues", [])
+    if not isinstance(issues, list):
+        errors.append("'issues' must be a list")
+    else:
+        for i, issue in enumerate(issues):
+            if not isinstance(issue, dict) or "segment_index" not in issue or "problem" not in issue:
+                errors.append(f"issue {i} needs 'segment_index' and 'problem'")
+    return not errors, errors
+
+
+def verify_bilingual_pair(
+    pair: BilingualPair,
+    *,
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> VerificationVerdict:
+    """
+    Contract: ask the model to review a BilingualPair sentence-by-sentence
+    and return an inspectable fidelity verdict (CONSTITUTION.md §3).
+
+    Single pipeline attempt — a malformed review raises rather than being
+    mistaken for a passing one.
+    """
+    parsed = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="bilingual_verify",
+        variables={
+            "topic": pair.topic,
+            "target_language": voice_catalog.language_name(pair.target_language),
+            "known_language": voice_catalog.language_name(pair.known_language),
+            "segments": _format_segments_for_review(pair),
+        },
+        validator=validate_verdict,
+        model=model,
+        max_tokens=1024,
+        temperature=0.0,
+    )
+    return VerificationVerdict(passed=parsed["passed"], issues=parsed.get("issues", []))
+
+
+def generate_bilingual_pair_verified(
+    topic: str,
+    target_language: str,
+    known_language: str,
+    *,
+    num_segments: int = DEFAULT_NUM_SEGMENTS,
+    max_regenerations: int = 1,
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> VerifiedBilingualPair:
+    """
+    Contract: generate a bilingual lesson, verify its translations, and
+    regenerate at most `max_regenerations` times until the review passes.
+    Every verdict is kept so humans can audit what the checker said.
+
+    Raises:
+        SchemaValidationError: generation or review malformed after retries.
+    """
+    verdicts: list[VerificationVerdict] = []
+    for attempt in range(max_regenerations + 1):
+        pair = generate_bilingual_pair(
+            topic, target_language, known_language,
+            num_segments=num_segments, client=client, model=model,
+        )
+        verdicts.append(verify_bilingual_pair(pair, client=client, model=model))
+        if verdicts[-1].passed:
+            break
+        logger.warning("Bilingual verification failed (attempt %d): %s",
+                       attempt + 1, verdicts[-1].issues)
+    return VerifiedBilingualPair(pair=pair, verdicts=verdicts)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 

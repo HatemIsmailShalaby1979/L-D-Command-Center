@@ -375,6 +375,29 @@ class PromptRegistry:
         "Return valid JSON only."
     )
 
+    _BILINGUAL_VERIFY_SYSTEM = (
+        "You are a meticulous translation reviewer for language-learning "
+        "material. Judge whether each known-language sentence is a faithful "
+        "translation of its target-language sentence. Translation accuracy "
+        "is a correctness problem, not a stylistic one. Return valid JSON only."
+    )
+
+    _BILINGUAL_VERIFY_USER_BASE = (
+        "Topic: \"{topic}\"\n"
+        "Target language: {target_language}\n"
+        "Known language: {known_language}\n\n"
+        "Sentence pairs:\n{segments}\n\n"
+        'Return a JSON object: {{\"passed\": true|false, \"issues\": '
+        '[{{\"segment_index\": <0-based index>, \"problem\": '
+        '\"<what makes the translation unfaithful or unnatural>\"}}]}}\n\n'
+        "Rules:\n"
+        "- passed=false ONLY when at least one translation is unfaithful, "
+        "omits meaning, or would confuse a learner.\n"
+        "- List every problematic segment in issues with its 0-based index.\n"
+        "- Do not invent issues for purely stylistic preferences.\n"
+        "- Return valid JSON only."
+    )
+
     # ------------------------------------------------------------------
     # YouTube summary templates
     # ------------------------------------------------------------------
@@ -447,6 +470,7 @@ class PromptRegistry:
           - bilingual_generate / bilingual_retry: Bilingual Pair lesson
           - youtube_summary_generate / youtube_summary_retry: traceable
             video summaries (P1.6)
+          - bilingual_verify: translation-fidelity verdict (P3.2)
         """
         self._templates["journey_generate"] = PromptTemplate(
             name="journey_generate",
@@ -524,6 +548,13 @@ class PromptRegistry:
             user=self._YOUTUBE_SUMMARY_USER_BASE,
             schema_key="youtube_summary",
             metadata={"default_max_tokens": 1024, "default_temperature": 0.3},
+        )
+        self._templates["bilingual_verify"] = PromptTemplate(
+            name="bilingual_verify",
+            system=self._BILINGUAL_VERIFY_SYSTEM,
+            user=self._BILINGUAL_VERIFY_USER_BASE,
+            schema_key="bilingual",
+            metadata={"default_max_tokens": 1024, "default_temperature": 0.0},
         )
         self._templates["youtube_summary_retry"] = PromptTemplate(
             name="youtube_summary_retry",

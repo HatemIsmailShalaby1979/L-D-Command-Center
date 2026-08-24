@@ -134,3 +134,4 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_bilingual.py` | 37 tests: dataclass validation, schema validation, generation with retry, audio rendering with voice mapping, error handling, convenience function |
 | `/engines/language-lab/immersion.py` | Immersion podcast generation — topic+target language → PodcastScript in target language via audio-engine, rendered with two distinct target-language voices; no new TTS logic, just configuration wiring |
 | `/engines/language-lab/test_immersion.py` | 17 tests: ImmersionResult properties, script generation delegation, audio rendering delegation, parameter passing, error handling |
+| `/engines/language-lab/test_bilingual_verification.py` | 10 tests for the P3.2 translation-fidelity pass — verdict schema, review rendering, generate-verify-regenerate audit trail |
