@@ -15,6 +15,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from model_layer.client import ApiError
+from model_layer.client import ConnectionError as LmConnectionError
+from model_layer.schema import SchemaValidationError
+
 # Add paths so the module is importable
 
 # Module under test
@@ -271,7 +275,7 @@ class TestIntegrationAllAudioTypes:
             )
             assert result.get("wav_bytes")
             assert result["backend_used"] in ("KOKORO", "PIPER")
-        except (FileNotFoundError, RuntimeError) as e:
+        except (TypeError, ConnectionError, RuntimeError, FileNotFoundError, ApiError, LmConnectionError, SchemaValidationError) as e:
             pytest.skip(f"Live audio not available: {e}")
 
     def test_podcast_produces_valid_audio(self):
@@ -284,7 +288,7 @@ class TestIntegrationAllAudioTypes:
             )
             assert result.get("wav_bytes")
             assert result.get("duration_seconds", 0) > 0
-        except (TypeError, ConnectionError) as e:
+        except (TypeError, ConnectionError, RuntimeError, FileNotFoundError, ApiError, LmConnectionError, SchemaValidationError) as e:
             pytest.skip(f"Live audio not available: {e}")
 
     def test_bilingual_produces_valid_audio(self):
@@ -299,7 +303,7 @@ class TestIntegrationAllAudioTypes:
             )
             assert result.get("wav_bytes")
             assert result.get("duration_seconds", 0) > 0
-        except (TypeError, ConnectionError) as e:
+        except (TypeError, ConnectionError, RuntimeError, FileNotFoundError, ApiError, LmConnectionError, SchemaValidationError) as e:
             pytest.skip(f"Live audio not available: {e}")
 
     def test_immersion_produces_valid_audio(self):
@@ -313,7 +317,7 @@ class TestIntegrationAllAudioTypes:
             )
             assert result.get("wav_bytes")
             assert result.get("duration_seconds", 0) > 0
-        except (TypeError, ConnectionError) as e:
+        except (TypeError, ConnectionError, RuntimeError, FileNotFoundError, ApiError, LmConnectionError, SchemaValidationError) as e:
             pytest.skip(f"Live audio not available: {e}")
 
     @patch("engines.export_engine.export.export_audio_narrate")

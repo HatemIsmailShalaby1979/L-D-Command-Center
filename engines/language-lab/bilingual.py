@@ -11,8 +11,8 @@
 #       bilingual lesson generation, no language learning audio.
 #
 # Architecture:
-#   - generate_bilingual_pair() — model-layer generation with schema
-#     validation and retry
+#   - generate_bilingual_pair() — Generation Pipeline call with schema
+#     validation and feedback retry (P1.5)
 #   - render_bilingual_audio() — reuses podcast_audio._synthesize_segment
 #     and _generate_silence from audio-engine
 #   - Two-pass synthesis: target language voice first, then known
@@ -39,12 +39,8 @@ from engines.audio_engine.podcast_audio import (
     _wav_to_mp3,
 )
 from model_layer.client import LmStudioClient
+from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
 from model_layer.prompts import PromptRegistry
-from model_layer.schema import (
-    SchemaValidationError,
-    SchemaValidator,
-    extract_json_from_text,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -194,20 +190,20 @@ def generate_bilingual_pair(
     *,
     num_segments: int = DEFAULT_NUM_SEGMENTS,
     client: LmStudioClient | None = None,
-    model: str = "default",
+    model: str = DEFAULT_MODEL,
 ) -> BilingualPair:
     """
-    Contract: generate a bilingual lesson via the model layer.
+    Contract: generate a bilingual lesson via the Generation Pipeline.
 
-    Uses schema validation with retry-on-failure to ensure
-    translation accuracy.
+    Translation accuracy is a correctness problem (CONSTITUTION.md §3):
+    every sentence pair is schema-validated, with feedback-driven retry.
 
     Args:
         topic: The lesson topic (e.g., "Ordering food at a restaurant").
         target_language: ISO 639-1 language code (e.g., "es", "fr").
         known_language: ISO 639-1 language code (e.g., "en", "zh").
-        num_segments: Number of sentence pairs to generate (1-20).
-        client: optional pre-configured LmStudioClient.
+        num_segments: Number of sentence pairs to generate.
+        client: optional pre-configured LmStudioClient (or test double).
         model: model identifier for LM Studio.
 
     Returns:
@@ -215,7 +211,7 @@ def generate_bilingual_pair(
 
     Raises:
         ValueError: If topic or languages are empty.
-        SchemaValidationError: if generation fails after retries.
+        SchemaValidationError: if generation fails after all attempts.
         ConnectionError: if LM Studio is unreachable.
     """
     if not topic or not topic.strip():
@@ -225,68 +221,22 @@ def generate_bilingual_pair(
     if not known_language or not known_language.strip():
         raise ValueError("Known language must be specified")
 
-    registry = PromptRegistry()
-    validator = SchemaValidator(max_attempts=3)
-
-    def _retry_callback(errors: list[str]) -> str:
-        errors_text = "\n".join(f"  - {e}" for e in errors)
-        system, user, _ = registry.render(
-            RETRY_KEY,
-            {
-                "topic": topic,
-                "target_language": target_language,
-                "known_language": known_language,
-                "num_segments": num_segments,
-                "errors": errors_text,
-            },
-        )
-        return _call_model(system, user, model, client=client)
-
-    # Generate the bilingual pair
-    system, user, _ = registry.render(
-        PROMPT_KEY,
-        {
+    parsed = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="bilingual_generate",
+        retry_template="bilingual_retry",
+        variables={
             "topic": topic,
             "target_language": target_language,
             "known_language": known_language,
             "num_segments": num_segments,
         },
+        validator=validate_bilingual_pair,
+        model=model,
     )
-    raw_output = _call_model(system, user, model, client=client)
-
-    # Parse JSON
-    parsed = extract_json_from_text(raw_output)
-    if parsed is None:
-        raise SchemaValidationError(["Could not extract JSON from model response"], 1)
-
-    # Validate and retry if needed
-    is_valid, errors = validate_bilingual_pair(parsed)
-    if not is_valid:
-        parsed = validator.validate(
-            raw_output,
-            schema_fn=validate_bilingual_pair,
-            retry_callback=_retry_callback,
-        )
-        is_valid, errors = validate_bilingual_pair(parsed)
-        if not is_valid:
-            raise SchemaValidationError(errors, 3)
-
     logger.info("Bilingual pair generated: %s (%s → %s)", topic[:50], target_language, known_language)
     return BilingualPair.from_dict(parsed)
-
-
-def _call_model(
-    system: str,
-    user: str,
-    model: str,
-    client: LmStudioClient | None = None,
-) -> str:
-    """
-    Contract: call the LM Studio client with the given prompts.
-    """
-    if client is None:
-        client = LmStudioClient(model=model)
-    return client.generate(system, user)
 
 
 def render_bilingual_audio(

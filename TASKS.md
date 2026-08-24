@@ -22,14 +22,14 @@ DONE:opencode: P1.1 build Generation Pipeline deep module in model-layer (render
 DONE:opencode: P1.2 one fake-client suite proving pipeline contract + live-marker smoke tests (skipped when LM Studio absent)
 OPEN: P1.3 migrate journey-core generate_journey onto Pipeline (public interface unchanged)
 OPEN: P1.4 migrate career-engine generate()/enhance(); Enhancement changes list survives retries; reconcile resume validator with RESUME_SCHEMA (dead contact required-check)
-OPEN: P1.5 migrate podcast_script + bilingual generation onto Pipeline (deletes both broken _call_model copies)
+DONE:opencode: P1.5 migrate podcast_script + bilingual generation onto Pipeline; both broken _call_model copies DELETED (defect #1 closed); their suites inject scripted clients through the public seam; live-guard tests in export-integration now use the real error taxonomy
 OPEN: P1.6 migrate YouTube summarization onto Pipeline + schema-validate summary output
 OPEN: P2.1 narration backend selection only among available backends; Piper truly default until Kokoro implemented
 OPEN: P2.2 fix podcast_audio.py:160 WAV check ([8:] → [8:12]) + regression test with real-shaped WAV bytes
 OPEN: P2.3 create Voice Catalog module consolidating narration/podcast/bilingual voice tables into one (language, role) → voice map
 OPEN: P2.4 audio-engine public assembly seam render_segments([(text, voice, speed)]) → AudioResult; migrate all four audio consumers; language-lab stops importing underscore-privates
 OPEN: P2.5 offline Piper voice provisioning kit (downloader/checklist + missing-voices error listing exactly what to fetch)
-OPEN: P3.1 podcast templates gain {target_language}/{level}; immersion forwards both; regression test Spanish immersion → Spanish script
+OPEN: P3.1 podcast templates gain {target_language}/{level} AND {host_name} interpolation (gap found during P1.5: template never renders host); immersion forwards all three; regression tests Spanish immersion → Spanish script, custom host appears in prompt
 OPEN: P3.2 bilingual translation verification pass (second Pipeline call checking target/translation fidelity; mismatches retried; human-inspectable verdict kept)
 OPEN: P4.1 split export-engine/export.py (1004 lines) into format adapters behind unified export() dispatch
 OPEN: P4.2 remove generation from export (delete export_audio_* regeneration); Journey→audio becomes explicit engine-level composition callers invoke deliberately

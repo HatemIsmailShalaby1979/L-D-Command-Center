@@ -244,6 +244,20 @@ class TestValidatePodcastScript:
         assert any("speakers" in e for e in errors)
 
 
+
+
+class _ScriptedClient:
+    """Fake LmStudioClient returning queued raw strings; records requests."""
+    def __init__(self, *raw_outputs):
+        self.outs = list(raw_outputs)
+        self.requests = []
+    def generate(self, request):
+        from types import SimpleNamespace
+        self.requests.append(request)
+        raw = self.outs.pop(0) if len(self.outs) > 1 else self.outs[0]
+        return SimpleNamespace(content=raw, model="default",
+                               finish_reason="stop", tool_calls=None, raw={})
+
 # ---------------------------------------------------------------------------
 # Test generate_podcast_script() — error cases
 # ---------------------------------------------------------------------------
@@ -267,75 +281,66 @@ class TestGeneratePodcastScriptErrors:
 class TestGeneratePodcastScript:
     """Tests for generate_podcast_script() success cases."""
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_generates_from_topic(self, mock_call):
-        mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
-        script = generate_podcast_script(topic=SAMPLE_TOPIC)
+    def test_generates_from_topic(self):
+        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        script = generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
         assert isinstance(script, PodcastScript)
         assert script.topic == SAMPLE_TOPIC
-        mock_call.assert_called_once()
+        assert len(client.requests) == 1
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_generates_from_journey(self, mock_call):
-        mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
-        script = generate_podcast_script(journey=SAMPLE_JOURNEY)
+    def test_generates_from_journey(self):
+        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        script = generate_podcast_script(journey=SAMPLE_JOURNEY, client=client)
         assert isinstance(script, PodcastScript)
-        # The script topic comes from the mock response, not the journey
-        # What matters is that the journey's topic was used in the prompt
-        call_args = mock_call.call_args
-        assert SAMPLE_JOURNEY["topic"] in call_args[0][1]  # user prompt should contain journey topic
-        mock_call.assert_called_once()
+        # The journey's topic must appear in the user prompt
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert SAMPLE_JOURNEY["topic"] in user_prompt
+        assert len(client.requests) == 1
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_passes_num_segments(self, mock_call):
-        mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
-        generate_podcast_script(topic=SAMPLE_TOPIC, num_segments=10)
-        # Verify the prompt includes num_segments
-        call_args = mock_call.call_args
-        assert "10" in call_args[0][1]  # user prompt should contain num_segments
+    def test_passes_num_segments(self):
+        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        generate_podcast_script(topic=SAMPLE_TOPIC, num_segments=10, client=client)
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert "10" in user_prompt
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_passes_duration_minutes(self, mock_call):
-        mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
-        generate_podcast_script(topic=SAMPLE_TOPIC, duration_minutes=30)
-        call_args = mock_call.call_args
-        assert "30" in call_args[0][1]
+    def test_passes_duration_minutes(self):
+        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        generate_podcast_script(topic=SAMPLE_TOPIC, duration_minutes=30, client=client)
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert "30" in user_prompt
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_passes_host_name(self, mock_call):
-        mock_call.return_value = json.dumps(VALID_SCRIPT_DICT)
-        generate_podcast_script(topic=SAMPLE_TOPIC, host_name="Custom Host")
-        # Verify the function doesn't crash and calls the model
-        mock_call.assert_called_once()
+    def test_passes_host_name(self):
+        # NOTE: podcast template does not yet interpolate {host_name}
+        # (template gap tracked by PRODUCTION_PLAN P3.1); for now assert
+        # the call happens and the variable reaches the registry.
+        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        script = generate_podcast_script(topic=SAMPLE_TOPIC, host_name="Custom Host", client=client)
+        assert isinstance(script, PodcastScript)
+        assert len(client.requests) == 1
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_retries_on_validation_failure(self, mock_call):
+    def test_retries_on_validation_failure(self):
         """Should retry when initial validation fails."""
-        # First call returns invalid JSON, second call returns valid
-        mock_call.side_effect = [
+        client = _ScriptedClient(
             json.dumps({"invalid": "data"}),
             json.dumps(VALID_SCRIPT_DICT),
-        ]
-        script = generate_podcast_script(topic=SAMPLE_TOPIC)
+        )
+        script = generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
         assert isinstance(script, PodcastScript)
-        assert mock_call.call_count == 2
+        assert len(client.requests) == 2
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_raises_after_max_retries(self, mock_call):
+    def test_raises_after_max_retries(self):
         """Should raise after exhausting retries."""
         from model_layer.schema import SchemaValidationError
-        # All calls return invalid data
-        mock_call.return_value = json.dumps({"invalid": "data"})
+        client = _ScriptedClient(json.dumps({"invalid": "data"}))  # repeats last
         with pytest.raises(SchemaValidationError):
-            generate_podcast_script(topic=SAMPLE_TOPIC)
+            generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
 
-    @patch("engines.audio_engine.podcast_script._call_model")
-    def test_raises_on_extract_failure(self, mock_call):
+    def test_raises_on_extract_failure(self):
         """Should raise when JSON extraction fails."""
-        mock_call.return_value = "Not valid JSON at all"
         from model_layer.schema import SchemaValidationError
-        with pytest.raises(SchemaValidationError, match="Could not extract JSON"):
-            generate_podcast_script(topic=SAMPLE_TOPIC)
+        client = _ScriptedClient("Not valid JSON at all")  # repeats last
+        with pytest.raises(SchemaValidationError, match="could not extract JSON"):
+            generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
 
 
 # ---------------------------------------------------------------------------

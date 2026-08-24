@@ -2,9 +2,9 @@
 #
 # WHAT: Podcast script generation using the model layer.
 # WHY:  Provides a structured script format for podcast episodes with
-#       speaker turns, introductions, and conclusions. Scripts are
-#       schema-validated with retry logic, following the same pattern
-#       as journey-core and career-engine.
+#       speaker turns, introductions, and conclusions. Generation runs
+#       through the Generation Pipeline (P1.5), which owns validation,
+#       extraction, and retry policy.
 # BREAKS IF DELETED: Podcast script generation is lost; audio-engine
 #       can't produce structured episode content.
 #
@@ -24,18 +24,13 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from model_layer.client import LmStudioClient
+from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
 from model_layer.prompts import PromptRegistry
-from model_layer.schema import (
-    SchemaValidationError,
-    SchemaValidator,
-    extract_json_from_text,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -180,20 +175,19 @@ def generate_podcast_script(
     duration_minutes: int = DEFAULT_DURATION_MINUTES,
     host_name: str = DEFAULT_HOST_NAME,
     client: LmStudioClient | None = None,
-    model: str = "default",
+    model: str = DEFAULT_MODEL,
 ) -> PodcastScript:
     """
-    Contract: generate a podcast script for a topic or Journey.
-
-    Uses the model-layer's SchemaValidator for retry-on-failure.
+    Contract: generate a validated PodcastScript for a topic or Journey
+    by running the Generation Pipeline.
 
     Args:
         topic: Optional topic string (e.g., "Python for beginners").
-        journey: Optional pre-generated Journey dict to convert to podcast.
-        num_segments: Number of segments to generate (1-20).
+        journey: Optional Journey dict whose topic seeds the prompt.
+        num_segments: Number of segments to generate.
         duration_minutes: Target duration in minutes.
         host_name: Name of the podcast host.
-        client: optional pre-configured LmStudioClient.
+        client: optional pre-configured LmStudioClient (or test double).
         model: model identifier for LM Studio.
 
     Returns:
@@ -201,90 +195,30 @@ def generate_podcast_script(
 
     Raises:
         ValueError: If neither topic nor journey is provided.
-        SchemaValidationError: if script generation fails after retries.
+        SchemaValidationError: if generation fails after all attempts.
         ConnectionError: if LM Studio is unreachable.
     """
     if not topic and not journey:
         raise ValueError("Either 'topic' or 'journey' must be provided")
-
-    # Prepare topic from journey if provided
     if journey:
         topic = journey.get("topic", "General Topic")
 
-    # Build the prompt
-    registry = PromptRegistry()
-    validator = SchemaValidator(max_attempts=3)
-
-    # Serialize journey if provided
-    journey_json = json.dumps(journey, ensure_ascii=False, indent=2) if journey else ""
-
-    # Build the retry callback
-    def _retry_callback(errors: list[str]) -> str:
-        errors_text = "\n".join(f"  - {e}" for e in errors)
-        system, user, _ = registry.render(
-            "podcast_script_retry",
-            {
-                "topic": topic,
-                "num_segments": num_segments,
-                "errors": errors_text,
-            },
-        )
-        return _call_model(system, user, model, client=client)
-
-    # First attempt: generate the podcast script
-    system, user, _ = registry.render(
-        PROMPT_KEY,
-        {
+    parsed = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="podcast_script_generate",
+        retry_template="podcast_script_retry",
+        variables={
             "topic": topic,
             "num_segments": num_segments,
             "duration_minutes": duration_minutes,
             "host_name": host_name,
         },
+        validator=validate_podcast_script,
+        model=model,
     )
-    raw_output = _call_model(system, user, model, client=client)
-
-    # Parse the JSON response
-    parsed = extract_json_from_text(raw_output)
-    if parsed is None:
-        raise SchemaValidationError(["Could not extract JSON from model response"], 1)
-
-    # Validate and retry if needed
-    is_valid, errors = validate_podcast_script(parsed)
-    if not is_valid:
-        parsed = validator.validate(
-            raw_output,
-            schema_fn=validate_podcast_script,
-            retry_callback=_retry_callback,
-        )
-        is_valid, errors = validate_podcast_script(parsed)
-        if not is_valid:
-            raise SchemaValidationError(errors, 3)
-
     logger.info("Podcast script generated for topic: %s", topic[:50])
     return PodcastScript.from_dict(parsed)
-
-
-def _call_model(
-    system: str,
-    user: str,
-    model: str,
-    client: LmStudioClient | None = None,
-) -> str:
-    """
-    Contract: call the LM Studio client with the given prompts.
-
-    Args:
-        system: system prompt.
-        user: user prompt.
-        model: model identifier.
-        client: optional pre-configured client.
-
-    Returns:
-        Raw model response string.
-    """
-    if client is None:
-        client = LmStudioClient(model=model)
-    return client.generate(system, user)
 
 
 # ---------------------------------------------------------------------------

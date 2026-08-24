@@ -198,65 +198,70 @@ class TestValidateBilingualPair:
 # Test generate_bilingual_pair() — happy path
 # ---------------------------------------------------------------------------
 
+class _ScriptedClient:
+    """Fake LmStudioClient returning queued raw strings; records requests."""
+    def __init__(self, *raw_outputs):
+        self.outs = list(raw_outputs)
+        self.requests = []
+    def generate(self, request):
+        from types import SimpleNamespace
+        self.requests.append(request)
+        raw = self.outs.pop(0) if len(self.outs) > 1 else self.outs[0]
+        return SimpleNamespace(content=raw, model="default",
+                               finish_reason="stop", tool_calls=None, raw={})
+
+
+GOOD_BI = '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
+
 class TestGenerateBilingualPair:
     """Tests for generation with mocked model."""
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_generates_from_topic(self, mock_call):
-        mock_call.return_value = '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
-        pair = generate_bilingual_pair("Test", "es", "en")
+    def test_generates_from_topic(self):
+        client = _ScriptedClient('{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}')
+        pair = generate_bilingual_pair("Test", "es", "en", client=client)
         assert isinstance(pair, BilingualPair)
         assert pair.topic == "Test"
-        mock_call.assert_called_once()
+        assert len(client.requests) == 1
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_passes_num_segments(self, mock_call):
-        mock_call.return_value = '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
-        generate_bilingual_pair("Test", "es", "en", num_segments=15)
-        # Verify the prompt includes num_segments
-        call_args = mock_call.call_args[0]
-        assert "15" in call_args[1]
+    def test_passes_num_segments(self):
+        client = _ScriptedClient('{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}')
+        generate_bilingual_pair("Test", "es", "en", num_segments=15, client=client)
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert "15" in user_prompt
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_passes_target_language(self, mock_call):
-        mock_call.return_value = '{"topic": "Test", "target_language": "fr", "known_language": "en", "segments": [{"target_text": "Bonjour", "translation_text": "Hello"}]}'
-        generate_bilingual_pair("Test", "fr", "en")
-        call_args = mock_call.call_args[0]
-        assert "fr" in call_args[1]
+    def test_passes_target_language(self):
+        payload = GOOD_BI.replace('"es"', '"fr"').replace("Hola", "Bonjour")
+        client = _ScriptedClient(payload)
+        generate_bilingual_pair("Test", "fr", "en", client=client)
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert "fr" in user_prompt
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_passes_known_language(self, mock_call):
-        mock_call.return_value = '{"topic": "Test", "target_language": "es", "known_language": "zh", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'
-        generate_bilingual_pair("Test", "es", "zh")
-        call_args = mock_call.call_args[0]
-        assert "zh" in call_args[1]
+    def test_passes_known_language(self):
+        client = _ScriptedClient('{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}'.replace('"en"', '"zh"'))
+        generate_bilingual_pair("Test", "es", "zh", client=client)
+        user_prompt = client.requests[0].messages[1]["content"]
+        assert "zh" in user_prompt
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_retries_on_validation_failure (self, mock_call):
+    def test_retries_on_validation_failure(self):
         """Should retry when initial validation fails."""
-        mock_call.side_effect = [
-            '{"invalid": "data"}',
-            '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}',
-        ]
-        pair = generate_bilingual_pair("Test", "es", "en")
+        client = _ScriptedClient('{"invalid": "data"}', '{"topic": "Test", "target_language": "es", "known_language": "en", "segments": [{"target_text": "Hola", "translation_text": "Hello"}]}')
+        pair = generate_bilingual_pair("Test", "es", "en", client=client)
         assert isinstance(pair, BilingualPair)
-        assert mock_call.call_count == 2
+        assert len(client.requests) == 2
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_raises_after_max_retries(self, mock_call):
+    def test_raises_after_max_retries(self):
         """Should raise after exhausting retries."""
         from model_layer.schema import SchemaValidationError
-        mock_call.return_value = '{"invalid": "data"}'
+        client = _ScriptedClient('{"invalid": "data"}')  # repeats last
         with pytest.raises(SchemaValidationError):
-            generate_bilingual_pair("Test", "es", "en")
+            generate_bilingual_pair("Test", "es", "en", client=client)
 
-    @patch("engines.language_lab.bilingual._call_model")
-    def test_raises_on_extract_failure(self, mock_call):
+    def test_raises_on_extract_failure(self):
         """Should raise when JSON extraction fails."""
         from model_layer.schema import SchemaValidationError
-        mock_call.return_value = "Not valid JSON at all"
-        with pytest.raises(SchemaValidationError, match="Could not extract JSON"):
-            generate_bilingual_pair("Test", "es", "en")
+        client = _ScriptedClient("Not valid JSON at all")  # repeats last
+        with pytest.raises(SchemaValidationError, match="could not extract JSON"):
+            generate_bilingual_pair("Test", "es", "en", client=client)
 
 
 # ---------------------------------------------------------------------------
