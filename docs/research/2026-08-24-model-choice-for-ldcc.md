@@ -125,3 +125,46 @@ Mapping to the verdict above: the one confirmed model (8B reasoning
 distill) matches our **judge/checker** role, not the daily-driver role;
 per §Verdict the pulls worth making are Gemma 4 12B QAT (driver) and
 Qwen 3 14B (generation days).
+
+## Addendum 2 (2026-08-24, later): COMPLETE enumeration — C: mounted via udisks
+
+`sda4` mounted read-only first try through the desktop session
+(`udisksctl mount -b /dev/sda4 -o ro` — polkit authorized it; no sudo,
+no hibernation refusal this time because Windows was fully shut down).
+
+Ground truth of `C:\Users\Thomas\.lmstudio\models` (every GGUF >50 MB):
+
+| Model | File size | Notes |
+|---|---|---|
+| **gemma-4-12B-it-QAT Q4_0** (+ BF16 mmproj 0.16 GB) | 6.50 GB | **the recommended daily driver, already installed, vision-capable** |
+| qwen-2.5-14b-instruct-1m Q4_K_M | 8.37 GB | fills the long-form generator slot (Qwen **2.5**, not 3; 1M-context variant) |
+| Qwen2.5-7B-Instruct-Uncensored Q6_K | 5.82 GB | mid-size spare; fine for summaries/classification |
+| granite-4.0-h-tiny Q4_K_M | 3.94 GB | ~7B-total/A1B-active MoE; lightweight summarizer |
+
+Corrections to Addendum 1:
+- **DeepSeek-R1-0528-Qwen3-8B has been DELETED** from the store since its
+  Modelfile was written (`FROM` points at a path that no longer exists).
+  No `.ollama` store exists under the user profile either (Ollama app is
+  installed; `jcode/ollama.env` sets only a local-API flag). The "judge
+  role" candidate from Addendum 1 is gone.
+- Server logs (Aug 20) show the last load attempts were the MiniMax-
+  Music-3 GGUFs into LM Studio — both failed (music DiT/mmproj are not
+  chat models; they live correctly in the ComfyUI stack on sda6).
+
+Caveat: the `AppData` sweep timed out mid-tree, so "nothing outside
+`.lmstudio/models`" is unproven for C: — but no Ollama store, and the
+store above matches settings.json's downloadsFolder.
+
+Mapping to §Verdict (revised):
+- **Daily driver: INSTALLED** (gemma-4-12B-it-QAT Q4_0). At 12B it clears
+  every profile threshold in P7.1 except the >14B no-verify bar, so
+  bilingual keeps its mandatory verification pass — by design.
+- **Long-form generator: PARTIAL** — Qwen 2.5 14B 1M stands in for Qwen 3
+  14B (`think:false` gotcha does not apply to 2.5; 1M ctx is useful for
+  long transcripts). Pull Qwen 3 14B only if 2.5 disappoints on
+  structured long-form.
+- **Judge/verifier: MISSING** (DeepSeek-R1 distill deleted). Pull
+  Qwen 3.5 9B when P7.3's model-judge lands; until then verification
+  runs on the daily driver.
+- Optional TranslateGemma 12B remains unpulled; Gemma 4 12B QAT's COMET
+  band makes it low priority.
