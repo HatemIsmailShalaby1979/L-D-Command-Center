@@ -47,5 +47,6 @@ for _dir_name, _alias_name in [
     ("export-engine", "export_engine"),
     ("journey-core", "journey_core"),
     ("language-lab", "language_lab"),
+    ("playground-bridge", "playground_bridge"),
 ]:
     _alias(f"engines.{_alias_name}", ROOT / "engines" / _dir_name)

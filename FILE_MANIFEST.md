@@ -161,6 +161,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/language-lab/test_pack_audio.py` | 12 tests: renderer-contract naming, slug safety, distinct/stable voice mapping (language-scoped), speed forwarding, empty-dialogue rejection, output_path byte-identical writes |
 | `/engines/language-lab/srs.py` | P7.6 spaced-repetition-lite — pure SM-2 core (interval ladder 1→6→ease-multiplied, quality ease-adjustment floored at 1.3, lapse reset + lapse counter) over a frozen CardState; SrsStore persists all card schedules as one Storage preference blob; today injectable everywhere |
 | `/engines/language-lab/test_srs.py` | 22 tests: SM-2 table (first/second/nth recalls, ease deltas q=5/4/3, floor after repeated hard cycles, lapse reset+restart), invalid-quality rejections, state roundtrip with unknown-key tolerance, persistence across instances, due-card filtering/sorting, forget |
+| `/engines/playground-bridge/media_workspace.py` | P7.7 Media Workspace core — pure ffmpeg plan functions (convert/trim/scale/pad/volume/mix amix/concat demuxer w/ side-file listing/overlay) returning frozen MediaSpec argv data + one thin executor with injectable runner; ffprobe→typed ProbeResult; ingest copies collision-safe then probes; missing binary → install-hint MediaToolError |
+| `/engines/playground-bridge/test_media_workspace.py` | 18 tests: verbatim argv contracts per planner, spec purity/determinism, concat side-file materialization, failure stderr-tail mapping, parent-dir creation, canned ffprobe JSON parsing, collision-safe ingest |
 
 ## Notes
 

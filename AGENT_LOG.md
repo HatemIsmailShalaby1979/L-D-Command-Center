@@ -453,3 +453,9 @@ Task: P7.6 SM-2 spaced repetition (continuing authorized P7.5–P7.12 run).
 Touched: engines/language-lab/srs.py (new), engines/language-lab/test_srs.py (new), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
 Why: Classic SM-2 kept pure and frozen-dataclass-backed: recall ladder 1→6→round(prev*ease), quality-driven ease delta floored at 1.3, lapses reset reps/interval and count; today injectable so every rule is clock-independent. SrsStore persists the whole deck as ONE Storage preference blob (srs_progress) — restart-proof, offline, exportable, zero new storage concepts. quality_from_correct maps binary grades onto SM-2 (wrong=2 so near-misses still count as lapses).
 Suite state: **595 passed / 1 skipped / 0 failed**, coverage 94.48%, gates green.
+
+## [2026-08-25 03:30] — opencode/ox-alpha (x-preview-f-free)
+Task: P7.7 Media Workspace core (continuing authorized run).
+Touched: engines/playground-bridge/media_workspace.py (new), test_media_workspace.py (new), conftest.py (+playground_bridge alias — dir existed README-only when P0.1 enumerated aliases), FILE_MANIFEST (+2 rows), TASKS, AGENT_LOG
+Why: Plan B1 honored exactly: editing is local, planners are pure data (frozen MediaSpec with exact argv, side_files for concat demuxer listings, injectable runner) so the entire command surface is provable without ffmpeg installed; execution is one call that materializes side files, creates parents, and maps failures to MediaToolError carrying a stderr tail or an install hint. ffprobe parses into a typed ProbeResult; ingest copies originals collision-safe and never transcodes (normalization stays an explicit plan_convert).
+Suite state: **613 passed / 1 skipped / 0 failed**, coverage 94.64%, gates green.
