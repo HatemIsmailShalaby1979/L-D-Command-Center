@@ -69,7 +69,14 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | Path | Reason |
 |------|--------|
 | `/engines/export-engine/__init__.py` | Package init for export-engine |
-| `/engines/export-engine/export.py` | Plain-text, PDF, and DOCX export for both Journey and Resume dicts; unified `export()` dispatcher with `_detect_type()` |
+| `/engines/export-engine/export.py` | Thin public surface: honest `export()` dispatcher (journey/resume/narration; rejects generation-requiring kinds per P4.2) + re-exports from format adapters |
+| `/engines/export-engine/detect.py` | Content-type detection (`_detect_type`) extracted from the former god-module (P4.1) |
+| `/engines/export-engine/text_format.py` | Deterministic plain-text renderers/writers (Journey + Resume) |
+| `/engines/export-engine/pdf_format.py` | Deterministic PDF renderers/writers; creation date pinned for byte-stability |
+| `/engines/export-engine/docx_format.py` | Deterministic DOCX renderer/writer; core properties pinned |
+| `/engines/export-engine/pptx_format.py` | Journey -> PowerPoint deck (title slide + one slide per Card); properties pinned (P4.3) |
+| `/engines/export-engine/xlsx_format.py` | Journey -> spreadsheet (metadata header + card rows); properties pinned (P4.3) |
+| `/engines/export-engine/test_byte_stability.py` | E4 gate: same artifact exported twice must be byte-identical across all binary formats |
 | `/engines/export-engine/test_export.py` | 50 tests: journey text/PDF, resume text/PDF/DOCX, type detection, unified dispatcher, file writing |
 
 ## Career-Engine Implementation
@@ -107,7 +114,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | Path | Reason |
 |------|--------|
 | `/engines/test_integration.py` | Full pipeline test: generate→render→export using same Journey; mocked and live variants |
-| `/engines/export-engine/test_export_integration.py` | 12 tests for unified export() dispatcher incl. audio routing (narration/podcast/bilingual/immersion, all mocked); 4 audio cases failing at last recorded run — see TASKS.md |
+| `/engines/export-engine/test_export_integration.py` | Honest dispatcher suite: routing per kind/format, file writing incl. nested dirs, narration-via-seam WAV, and the no-generation ValueErrors (P4.2) |
 
 ## TTS Client (model-layer)
 

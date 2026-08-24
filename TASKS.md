@@ -31,10 +31,10 @@ DONE:opencode: P2.4 assembly.py render_segments seam live; narration/podcast/bil
 DONE:opencode: P2.5 provisioning.py — voice_urls/missing_voices/download_voice + README checklist; ja_JP-style ids handled; 9 tests (downloader/checklist + missing-voices error listing exactly what to fetch)
 DONE:opencode: P3.1 podcast templates interpolate {language}/{level}/{host_name}; immersion forwards target_language+level (defect #5 CLOSED); LANGUAGE_NAMES in Voice Catalog
 DONE:opencode: P3.2 bilingual verification pass — bilingual_verify template, validate_verdict, verify_bilingual_pair + generate_bilingual_pair_verified regenerate-on-fail loop with full verdict audit trail
-OPEN: P4.1 split export-engine/export.py (1004 lines) into format adapters behind unified export() dispatch
-OPEN: P4.2 remove generation from export (delete export_audio_* regeneration); Journey→audio becomes explicit engine-level composition callers invoke deliberately
-WISHLIST: P4.3 add PPTX + XLSX Journey exporters (MASTER_STORY promise; python-pptx/openpyxl pinned first)
-WISHLIST: P4.4 byte-stability tests for every export format
+DONE:opencode: P4.1 export god-module split into detect/text/pdf/docx/pptx/xlsx adapters behind thin export() dispatch
+DONE:opencode: P4.2 generation removed from export: podcast/bilingual/immersion kinds raise ValueError pointing at explicit engine composition; narration stays (deterministic text->audio via assembly seam)
+DONE:opencode: P4.3 PPTX + XLSX Journey exporters added (python-pptx 1.0.2, openpyxl 3.1.5 pinned)
+DONE:opencode: P4.4 byte-stability suite green: pdf/pptx/xlsx/docx pinned metadata => identical bytes on repeat exports (E4 satisfied)
 WISHLIST: P5.1 storage/ engine v1 — file persistence for artifacts + preferences; consolidate three secrets parsers into storage/secrets.py::load_secret(name)
 OPEN: P5.2 desktop app shell — toolkit RESOLVED D3=stdlib Tkinter; minimal UI over existing engines
 WISHLIST: P5.3 wire typed errors to UI surfaces (LM Studio down → actionable message; missing TTS voices → provisioning hint)
