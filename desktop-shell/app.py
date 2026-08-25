@@ -70,7 +70,7 @@ def run() -> None:  # pragma: no cover — needs a display
 
     # -- header -----------------------------------------------------------
     header = ttk.Frame(root); header.pack(fill="x", padx=8, pady=6)
-    health_label = ttk.Label(header, textvariable=status, foreground="gray")
+    health_label = tk.Label(header, textvariable=status, fg="gray")
     health_label.pack(side="left")
     ttk.Button(header, text="Refresh", command=refresh_health).pack(side="left", padx=6)
     ttk.Button(header, text="Probe model",
@@ -146,7 +146,7 @@ def run() -> None:  # pragma: no cover — needs a display
                command=do_import_files).pack(side="left")
     ttk.Button(canvas_bar, text="Scan inbox",
                command=do_scan_inbox).pack(side="left", padx=6)
-    inbox_note = ttk.Label(canvas_bar, foreground="gray")
+    inbox_note = tk.Label(canvas_bar, fg="gray")
     inbox_note.pack(side="left")
 
     columns = ("kind", "name")
@@ -171,8 +171,8 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Button(conn_frame, text="Generate",
                command=do_generate).pack(side="left")
     output_note = tk.StringVar()
-    ttk.Label(conn_frame, textvariable=output_note,
-              foreground="green").pack(side="left", padx=6)
+    tk.Label(conn_frame, textvariable=output_note,
+             fg="green").pack(side="left", padx=6)
     info = tk.Text(conn_frame, height=4, width=70)
     info.pack(fill="x", padx=4, pady=4)
 

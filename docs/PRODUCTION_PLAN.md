@@ -211,7 +211,7 @@ Repo-local git identity was set during init (`thommyshelby` / `thommyshelby@loca
 | E2 live smoke vs LM Studio | ✅ | 2026-08-25: engines/test_e2e_live.py — 6/6 passed in ~7 min against real gemma-4-12B-it-QAT on localhost:1234 (discovery, capability probe, journey, resume, bilingual+verify, LessonPack full pipeline) |
 | E3 zero known defects | ✅ | all six audit defects closed (P1.3–P1.5, P2.1–P2.2, P3.1) |
 | E4 deterministic exports | ✅ | byte-stability suite across pdf/pptx/xlsx/docx/txt |
-| E5 installable offline desktop build | ⬜ | ldcc.spec ready; Windows/Linux builds pending verification (D4) |
+| E5 installable offline desktop build | 🟡 | Linux ✅ 2026-08-25 (dist/ldcc onefile, smoke-run clean vs live LM Studio; frozen data-root + Tcl/Tk bundling solved); Windows ⬜ needs PyInstaller run on Windows side |
 | E6 graceful resource failures | ✅ | typed FlowResult kinds w/ actionable details; voice/model errors carry provisioning hints |
 | E7 governance current | ✅ | manifest/ledger/queue audited this pass |
 | E8 pinned deps installable | ✅ | requirements.txt verified on CPython 3.14/Linux; fresh-machine README |

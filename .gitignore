@@ -47,3 +47,8 @@ logs/
 dist/
 build/
 out/
+
+# PyInstaller artifacts (E5 builds are per-machine, never committed)
+build/
+dist/
+*.spec.bak

@@ -14,13 +14,35 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import sys
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_ROOT = Path(__file__).resolve().parent / "data"
+
+
+def default_data_root() -> Path:
+    """
+    Contract: where artifacts live by default. Source checkout keeps the
+    historical <repo>/storage/data; a FROZEN (PyInstaller) build must
+    never write into its read-only extraction dir (_MEIPASS), so it uses
+    the platform data home instead. LDCC_DATA_DIR always wins.
+    """
+    env = os.environ.get("LDCC_DATA_DIR")
+    if env:
+        return Path(env)
+    if getattr(sys, "frozen", False):
+        if os.name == "nt":
+            base = os.environ.get("APPDATA") or str(Path.home())
+            return Path(base) / "LDCC"
+        xdg = os.environ.get("XDG_DATA_HOME")
+        base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+        return base / "ldcc"
+    return DEFAULT_ROOT
 
 ALLOWED_KINDS = {
     "journeys", "resumes", "podcast_scripts", "bilingual_pairs",
@@ -46,9 +68,7 @@ class Storage:
     """
 
     def __init__(self, root: Optional[Path] = None) -> None:
-        import os
-        env = os.environ.get("LDCC_DATA_DIR")
-        self.root = Path(root or env or DEFAULT_ROOT)
+        self.root = Path(root) if root is not None else default_data_root()
 
     # -- internals ------------------------------------------------------
 

@@ -38,7 +38,7 @@ DONE:opencode: P4.4 byte-stability suite green: pdf/pptx/xlsx/docx pinned metada
 DONE:opencode: P5.1 storage engine v1: persistence.py (artifact kinds + preferences, LDCC_DATA_DIR) and secrets.py (single KEY=VALUE adapter); github/linkedin/youtube loaders now delegate parsing to it, keeping only local validity policies; stale E:/ paths cleaned
 DONE:opencode: P5.2 desktop shell v0 (vertical slice): tested ShellController + thin Tkinter window (journey generate→render→save→export txt/pdf/pptx/xlsx + health indicator). FOLLOW-UP: resume/language-lab tabs + library browser
 DONE:opencode: P5.3 typed errors surfaced: FlowResult envelope maps ConnectionError/ApiError/SchemaValidationError/ValueError/unexpected to dialog kinds with actionable details; 6 dedicated tests
-OPEN:P5.4 ldcc.spec + build docs added; actual PyInstaller builds NOT yet verified on Windows/Linux — pending a machine with display/toolchain
+DONE:opencode: P5.4 ldcc.spec v2 verified ON LINUX (2026-08-25): spec now self-stages hyphen dirs into importable packages + enumerates all lazy imports; Tcl/Tk 9 libs collected for uv standalone python; frozen Storage root honors LDCC_DATA_DIR/APPDATA/XDG instead of _MEIPASS; dist/ldcc smoke-ran 25s clean under DISPLAY=:0 against live LM Studio — caught first real GUI bug (ttk.Label fg=) since shell was never launched before. Windows build still pending (needs PyInstaller run on Windows side).
 DONE:opencode: P6.1/P6.2/P6.4 error-sweep+gates+docs: run_checks.sh gate (syntax+suite+cov floor 90%), live deselected by default, immersion prints->logger, shell logging config, root README fresh-machine guide, ship-gate snapshot in plan §8
 
 

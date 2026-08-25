@@ -11,12 +11,40 @@ from __future__ import annotations
 
 import pytest
 
-from storage.persistence import ALLOWED_KINDS, Storage
+from storage.persistence import (
+    ALLOWED_KINDS,
+    DEFAULT_ROOT,
+    Storage,
+    default_data_root,
+)
 
 
 @pytest.fixture
 def store(tmp_path):
     return Storage(root=tmp_path)
+
+
+class TestDefaultDataRoot:
+    def test_env_overrides_everything(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("LDCC_DATA_DIR", str(tmp_path / "custom"))
+        assert default_data_root() == tmp_path / "custom"
+
+    def test_frozen_build_never_writes_into_extraction_dir(
+        self, monkeypatch, tmp_path
+    ):
+        import sys as _sys
+        monkeypatch.setattr(_sys, "frozen", True, raising=False)
+        monkeypatch.delenv("LDCC_DATA_DIR", raising=False)
+        root = default_data_root()
+        assert "_MEIPASS" not in str(root)
+        if _sys.platform.startswith("linux"):
+            assert str(root).endswith("ldcc")
+
+    def test_source_checkout_keeps_legacy_location(self, monkeypatch):
+        import sys as _sys
+        monkeypatch.setattr(_sys, "frozen", False, raising=False)
+        monkeypatch.delenv("LDCC_DATA_DIR", raising=False)
+        assert default_data_root() == DEFAULT_ROOT
 
 
 class TestArtifacts:

@@ -6,7 +6,12 @@ The desktop-shell engine is responsible for packaging and installing the applica
 
 ```bash
 python desktop-shell/app.py                 # run from source
-pyinstaller desktop-shell/ldcc.spec         # build single-file executable
+# build (see ldcc.spec header for what staging does):
+python3 -m venv ~/.venvs/ldcc-build          # needs a Python WITH tkinter:
+                                             #   uv python install 3.14 && uv venv --python 3.14
+                                             #   (system ubuntu python3 lacks python3-tk)
+uv pip install --python ~/.venvs/ldcc-build/bin/python -r requirements.txt pyinstaller
+~/.venvs/ldcc-build/bin/pyinstaller desktop-shell/ldcc.spec --noconfirm
 ```
 
 The UI is deliberately thin: every behavior lives in
