@@ -371,7 +371,7 @@ def run() -> None:  # pragma: no cover — needs a display
                                   state="readonly",
                                   values=["(auto by language)"] + installed)
     ab_voice_combo.grid(row=2, column=5, sticky="w")
-    ab_voice_combo.current(0)
+    ab_voice.set("(auto by language)")
     ab_status = tk.StringVar(value="Paste any text — narrated WAV + MP3 land in exports.")
     tk.Label(ab_frame, textvariable=ab_status, fg="gray",
              wraplength=700, justify="left").grid(row=3, column=0,
@@ -424,13 +424,13 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Combobox(pod_row2, textvariable=pod_voice_a, width=20,
                  state="readonly",
                  values=["(auto)"] + installed).pack(side="left", padx=2)
-    pod_voice_a.current(0)
+    pod_voice_a.set("(auto)")
     ttk.Label(pod_row2, text="Voice B").pack(side="left")
     pod_voice_b = tk.StringVar(value="")
     ttk.Combobox(pod_row2, textvariable=pod_voice_b, width=20,
                  state="readonly",
                  values=["(auto)"] + installed).pack(side="left", padx=2)
-    pod_voice_b.current(0)
+    pod_voice_b.set("(auto)")
 
     pod_row3 = ttk.Frame(pod_frame); pod_row3.pack(fill="x", pady=2)
     ttk.Label(pod_row3, text="Segments").pack(side="left")
