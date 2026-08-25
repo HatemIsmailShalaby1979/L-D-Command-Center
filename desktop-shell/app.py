@@ -517,104 +517,68 @@ def run() -> None:  # pragma: no cover — needs a display
     # == Career ==============================================================
     career_tab = ttk.Frame(tab); tab.add(career_tab, text="Career")
 
-    career_form = ttk.Frame(career_tab); career_form.pack(fill="x", pady=4)
-    ttk.Label(career_form, text="Your profile / background").pack(anchor="w")
-    profile_text = tk.Text(career_form, height=6, width=90)
+    # -- top section: input + actions (always visible) -----------------------
+    career_top = ttk.Frame(career_tab)
+    career_top.pack(fill="x", padx=8, pady=(8, 4))
+
+    ttk.Label(career_top, text="Your profile / background",
+              font=("", 10, "bold")).pack(anchor="w")
+    profile_text = tk.Text(career_top, height=5, width=90)
     profile_text.pack(fill="x", pady=2)
 
-    career_row = ttk.Frame(career_form); career_row.pack(fill="x", pady=2)
+    career_row = ttk.Frame(career_top)
+    career_row.pack(fill="x", pady=2)
     ttk.Label(career_row, text="Target role").pack(side="left")
     role_var = tk.StringVar()
-    ttk.Entry(career_row, textvariable=role_var, width=30).pack(side="left",
-                                                                padx=4)
+    ttk.Entry(career_row, textvariable=role_var, width=30).pack(
+        side="left", padx=4)
     current_resume: list[dict] = []
 
     career_status = tk.StringVar(
-        value="Describe your background plainly. Generate a structured "
-              "resume, tailor it toward a target role (you'll see every "
-              "change and why), then export.")
-    tk.Label(career_form, textvariable=career_status, fg="gray",
+        value="Type your background above and click Generate, or upload "
+              "an existing resume. Then set a target role and Enhance.")
+    tk.Label(career_top, textvariable=career_status, fg="gray",
              wraplength=760, justify="left").pack(anchor="w", pady=2)
 
     # -- resume preview pane -------------------------------------------------
-    out = tk.Text(career_form, height=14, width=90)
-    out.pack(fill="x", pady=4)
+    out = tk.Text(career_tab, height=10, width=90)
+    out.pack(fill="x", padx=8, pady=4)
 
     # -- upload existing resume ----------------------------------------------
-    upload_row = ttk.Frame(career_tab); upload_row.pack(fill="x", pady=4)
-    ttk.Label(upload_row, text="Upload resume").pack(side="left")
+    upload_frame = ttk.LabelFrame(career_tab, text="Upload existing resume")
+    upload_frame.pack(fill="x", padx=8, pady=4)
+    upload_row = ttk.Frame(upload_frame)
+    upload_row.pack(fill="x", padx=6, pady=6)
     ttk.Button(upload_row, text="Select PDF / DOCX / TXT",
-               command=lambda: _do_upload_resume()).pack(side="left", padx=6)
-
-    def _do_upload_resume():
-        from tkinter import filedialog
-        path = filedialog.askopenfilename(
-            filetypes=[("Resume", "*.pdf *.docx *.txt"), ("All", "*")])
-        if not path:
-            return
-        res = ctrl.upload_resume(path)
-        if not res:
-            return show_error(res)
-        current_resume.clear()
-        current_resume.append(res.payload["resume"])
-        flags = "\n".join(res.payload["flags"]) or "(all fields high confidence)"
-        career_status.set(
-            f"Uploaded -> {res.payload['saved_as']}.\n"
-            f"Confidence flags:\n{flags}")
-        _render_resume_view(res.payload["resume"])
+               command=lambda: None).pack(side="left")
 
     # -- connections ---------------------------------------------------------
     conn_frame = ttk.LabelFrame(career_tab, text="Connections")
-    conn_frame.pack(fill="x", pady=4)
-    conn_row = ttk.Frame(conn_frame); conn_row.pack(fill="x", padx=6, pady=4)
+    conn_frame.pack(fill="x", padx=8, pady=4)
+    conn_row = ttk.Frame(conn_frame)
+    conn_row.pack(fill="x", padx=6, pady=6)
 
     ttk.Label(conn_row, text="GitHub username").pack(side="left")
     gh_user = tk.StringVar()
-    ttk.Entry(conn_row, textvariable=gh_user, width=20).pack(side="left", padx=4)
+    ttk.Entry(conn_row, textvariable=gh_user, width=20).pack(
+        side="left", padx=4)
     gh_status = tk.StringVar(value="")
-
-    def _do_import_github():
-        if not current_resume:
-            return messagebox.showinfo("Career",
-                                       "Generate or upload a resume first.")
-        res = ctrl.import_github_projects(gh_user.get(), current_resume[0])
-        if not res:
-            return show_error(res)
-        current_resume.clear()
-        current_resume.append(res.payload["resume"])
-        gh_status.set(f"Imported {res.payload['imported']} repos")
-        career_status.set(f"GitHub: {res.payload['imported']} projects added.")
-        _render_resume_view(res.payload["resume"])
-
     ttk.Button(conn_row, text="Import GitHub",
-               command=_do_import_github).pack(side="left", padx=4)
+               command=lambda: None).pack(side="left", padx=4)
     tk.Label(conn_row, textvariable=gh_status, fg="gray").pack(side="left")
 
     ttk.Label(conn_row, text="  |  ").pack(side="left")
     li_status = tk.StringVar(value="")
-
-    def _do_linkedin():
-        if not current_resume:
-            return messagebox.showinfo("Career",
-                                       "Generate or upload a resume first.")
-        res = ctrl.fetch_linkedin_profile(current_resume[0])
-        if not res:
-            return show_error(res)
-        current_resume.clear()
-        current_resume.append(res.payload["resume"])
-        li_status.set(f"LinkedIn: {res.payload['who']}")
-        career_status.set(f"LinkedIn profile connected: {res.payload['who']}")
-        _render_resume_view(res.payload["resume"])
-
-    ttk.Button(conn_row, text="LinkedIn",
-               command=_do_linkedin).pack(side="left", padx=4)
+    ttk.Button(conn_row, text="Connect LinkedIn",
+               command=lambda: None).pack(side="left", padx=4)
     tk.Label(conn_row, textvariable=li_status, fg="gray").pack(side="left")
 
     # -- job search ----------------------------------------------------------
     search_frame = ttk.LabelFrame(career_tab, text="Job Search")
-    search_frame.pack(fill="x", pady=4)
+    search_frame.pack(fill="x", padx=8, pady=4)
 
-    search_row = ttk.Frame(search_frame); search_row.pack(fill="x", padx=6, pady=4)
+    search_row = ttk.Frame(search_frame)
+    search_row.pack(fill="x", padx=6, pady=4)
     ttk.Label(search_row, text="Role keywords").pack(side="left")
     search_role = tk.StringVar(value="customer support")
     ttk.Entry(search_row, textvariable=search_role, width=25).pack(
@@ -625,8 +589,8 @@ def run() -> None:  # pragma: no cover — needs a display
         side="left", padx=4)
 
     search_status = tk.StringVar(value="")
-    job_results_var = []  # store JobListing dicts for prepare_application
-    job_tree = None  # created lazily below
+    job_results_var = []
+    job_tree = None
 
     def _ensure_tree():
         nonlocal job_tree
@@ -634,7 +598,7 @@ def run() -> None:  # pragma: no cover — needs a display
             return job_tree
         cols = ("company", "title", "location", "source", "score")
         tv = ttk.Treeview(search_frame, columns=cols, show="headings",
-                          height=8)
+                          height=6)
         for col, label, w in [
             ("company", "Company", 100), ("title", "Title", 180),
             ("location", "Location", 120), ("source", "Source", 80),
@@ -642,7 +606,8 @@ def run() -> None:  # pragma: no cover — needs a display
         ]:
             tv.heading(col, text=label)
             tv.column(col, width=w, anchor="w")
-        scroll = ttk.Scrollbar(search_frame, orient="vertical", command=tv.yview)
+        scroll = ttk.Scrollbar(search_frame, orient="vertical",
+                               command=tv.yview)
         tv.configure(yscrollcommand=scroll.set)
         tv.pack(fill="both", expand=True, padx=6)
         scroll.pack(side="right", fill="y")
@@ -670,25 +635,25 @@ def run() -> None:  # pragma: no cover — needs a display
         search_status.set(f"{len(res.payload)} matching listings")
         career_status.set(f"Job search: {len(res.payload)} matches.")
 
-    ttk.Button(search_row, text="Search now",
-               command=_do_search).pack(side="left", padx=6)
-
-    search_btns = ttk.Frame(search_frame); search_btns.pack(fill="x", padx=6, pady=2)
-    search_status_label = tk.Label(search_btns, textvariable=search_status,
-                                   fg="gray")
-    search_status_label.pack(side="left")
+    search_btns = ttk.Frame(search_frame)
+    search_btns.pack(fill="x", padx=6, pady=2)
+    ttk.Button(search_btns, text="Search now",
+               command=_do_search).pack(side="left", padx=4)
+    tk.Label(search_btns, textvariable=search_status,
+             fg="gray").pack(side="left", padx=4)
 
     def _do_prepare_application():
         if not current_resume:
-            return messagebox.showinfo("Career",
-                                       "Generate or upload a resume first.")
+            return messagebox.showinfo(
+                "Career", "Generate or upload a resume first.")
         if job_tree is None:
-            return messagebox.showinfo("Career",
-                                       "Run a job search first.")
+            return messagebox.showinfo(
+                "Career", "Run a job search first.")
         sel = job_tree.selection()
         if not sel:
-            return messagebox.showinfo("Career",
-                                       "Select a listing in the results first.")
+            return messagebox.showinfo(
+                "Career",
+                "Select a listing in the results first.")
         idx = job_tree.index(sel[0])
         if idx >= len(job_results_var):
             return
@@ -699,14 +664,14 @@ def run() -> None:  # pragma: no cover — needs a display
         pkg = res.payload
         search_status.set(f"Package ready -> {pkg['dir']}")
         career_status.set(
-            f"Application package ready for {listing.get('company')}.\n"
+            f"Application package ready for "
+            f"{listing.get('company')}.\n"
             f"Files: {', '.join(pkg['files'])}\n"
             f"Apply URL: {pkg['apply_url']}\n"
             f"Open folder and submit manually — bots get banned.")
 
     ttk.Button(search_btns, text="Prepare application",
                command=_do_prepare_application).pack(side="left", padx=4)
-
     ttk.Label(search_btns, text="  |  ").pack(side="left")
     ttk.Label(search_btns, text="Greenhouse").pack(side="left")
     ttk.Label(search_btns, text="  |  ").pack(side="left")
@@ -715,7 +680,8 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Label(search_btns, text="RemoteOK").pack(side="left")
 
     # -- watchlist (auto-check) ---------------------------------------------
-    watch_frame = ttk.Frame(search_frame); watch_frame.pack(fill="x", padx=6, pady=4)
+    watch_frame = ttk.Frame(search_frame)
+    watch_frame.pack(fill="x", padx=6, pady=4)
     watch_status = tk.StringVar(value="")
     auto_check_var = tk.BooleanVar(value=False)
     _auto_check_id = None
@@ -739,9 +705,10 @@ def run() -> None:  # pragma: no cover — needs a display
         total = res.payload["total"]
         if n:
             watch_status.set(f"{n} NEW listings (of {total})!")
-            messagebox.showinfo("Watchlist",
-                                f"{n} new listings found.\n"
-                                f"Review results in the search tab.")
+            messagebox.showinfo(
+                "Watchlist",
+                f"{n} new listings found.\n"
+                f"Review results in the search tab.")
         else:
             watch_status.set(f"No new listings (checked {total})")
 
@@ -751,7 +718,7 @@ def run() -> None:  # pragma: no cover — needs a display
             _auto_check_id = None
             return
         _do_check_watchlist()
-        _auto_check_id = root.after(600000, _auto_tick)  # 10 min
+        _auto_check_id = root.after(600000, _auto_tick)
 
     def _toggle_auto_check():
         nonlocal _auto_check_id
@@ -774,18 +741,24 @@ def run() -> None:  # pragma: no cover — needs a display
     tk.Label(watch_frame, textvariable=watch_status,
              fg="gray").pack(side="left", padx=4)
 
+    # -- define the helper functions ----------------------------------------
     def _render_resume_view(resume: dict, changes=None):
         out.delete("1.0", "end")
         c = resume.get("contact", {})
         out.insert("end",
-                   f"{c.get('name','')}  <{c.get('email','')}>\n"
-                   f"{'-'*60}\n{resume.get('summary','')}\n\n")
+                   f"{c.get('name', '')}  <{c.get('email', '')}>\n"
+                   f"{'-' * 60}\n{resume.get('summary', '')}\n\n")
         for x in resume.get("experience", []):
-            out.insert("end", f"* {x.get('title')} @ {x.get('company')} "
-                              f"({x.get('dates')})\n  {x.get('description')}\n")
-        out.insert("end", f"\nSkills: {', '.join(resume.get('skills', []))}\n")
+            out.insert("end",
+                       f"* {x.get('title')} @ {x.get('company')} "
+                       f"({x.get('dates')})\n"
+                       f"  {x.get('description')}\n")
+        out.insert("end",
+                   f"\nSkills: {', '.join(resume.get('skills', []))}\n")
         if changes is not None:
-            out.insert("end", f"\n{'='*60}\nCHANGES MADE ({len(changes)}):\n")
+            out.insert("end",
+                       f"\n{'=' * 60}\n"
+                       f"CHANGES MADE ({len(changes)}):\n")
             for ch in changes:
                 out.insert("end",
                            f"  [{ch.get('field')}] {ch.get('change')}\n"
@@ -795,37 +768,101 @@ def run() -> None:  # pragma: no cover — needs a display
         res = ctrl.generate_resume(profile_text.get("1.0", "end"))
         if not res:
             return show_error(res)
-        current_resume.clear(); current_resume.append(res.payload["resume"])
-        career_status.set(f"Saved -> resumes/{res.payload['saved_as']}. "
-                          "Now set a Target Role and Enhance, or export.")
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        career_status.set(
+            f"Saved -> resumes/{res.payload['saved_as']}. "
+            "Now set a Target Role and Enhance, or export.")
         _render_resume_view(res.payload["resume"])
 
     def do_enhance_resume():
         if not current_resume:
             return messagebox.showinfo(
-                "Career", "Generate a resume first (or this session has none).")
+                "Career",
+                "Generate a resume first (or this session has none).")
         res = ctrl.enhance_resume(current_resume[0], role_var.get())
         if not res:
             return show_error(res)
-        current_resume.clear(); current_resume.append(res.payload["resume"])
-        career_status.set(f"Enhanced -> resumes/{res.payload['saved_as']}")
-        _render_resume_view(res.payload["resume"], res.payload["changes"])
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        career_status.set(
+            f"Enhanced -> resumes/{res.payload['saved_as']}")
+        _render_resume_view(res.payload["resume"],
+                            res.payload["changes"])
 
     def do_export_resume(fmt: str):
         if not current_resume:
-            return messagebox.showinfo("Career", "Generate a resume first.")
+            return messagebox.showinfo(
+                "Career", "Generate a resume first.")
         res = ctrl.export_artifact(current_resume[0], fmt)
         if not res:
             return show_error(res)
         base = self_slug(role_var.get() or "resume")
         saved = ctrl.save_raw_export(res.payload, f"{base}.{fmt}")
         if saved:
-            career_status.set(f"Exported {fmt.upper()} -> exports/{base}.{fmt}")
+            career_status.set(
+                f"Exported {fmt.upper()} -> exports/{base}.{fmt}")
 
-    def self_slug(t): return "".join(
-        c if c.isalnum() else "-" for c in t.lower()).strip("-")[:40] or "resume"
+    def self_slug(t):
+        return "".join(
+            c if c.isalnum() else "-" for c in t.lower()
+        ).strip("-")[:40] or "resume"
 
-    career_btns = ttk.Frame(career_form); career_btns.pack(fill="x", pady=4)
+    def _do_upload_resume():
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            filetypes=[("Resume", "*.pdf *.docx *.txt"),
+                       ("All", "*")])
+        if not path:
+            return
+        res = ctrl.upload_resume(path)
+        if not res:
+            return show_error(res)
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        flags = "\n".join(
+            res.payload["flags"]
+        ) or "(all fields high confidence)"
+        career_status.set(
+            f"Uploaded -> {res.payload['saved_as']}.\n"
+            f"Confidence flags:\n{flags}")
+        _render_resume_view(res.payload["resume"])
+
+    def _do_import_github():
+        if not current_resume:
+            return messagebox.showinfo(
+                "Career",
+                "Generate or upload a resume first.")
+        res = ctrl.import_github_projects(
+            gh_user.get(), current_resume[0])
+        if not res:
+            return show_error(res)
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        gh_status.set(
+            f"Imported {res.payload['imported']} repos")
+        career_status.set(
+            f"GitHub: {res.payload['imported']} projects added.")
+        _render_resume_view(res.payload["resume"])
+
+    def _do_linkedin():
+        if not current_resume:
+            return messagebox.showinfo(
+                "Career",
+                "Generate or upload a resume first.")
+        res = ctrl.fetch_linkedin_profile(current_resume[0])
+        if not res:
+            return show_error(res)
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        li_status.set(f"LinkedIn: {res.payload['who']}")
+        career_status.set(
+            f"LinkedIn profile connected: {res.payload['who']}")
+        _render_resume_view(res.payload["resume"])
+
+    # -- wire the action buttons (functions now exist) ----------------------
+    career_btns = ttk.Frame(career_top)
+    career_btns.pack(fill="x", pady=(4, 2))
     ttk.Button(career_btns, text="Generate resume",
                command=do_generate_resume).pack(side="left")
     ttk.Button(career_btns, text="Enhance for target role",
@@ -833,7 +870,21 @@ def run() -> None:  # pragma: no cover — needs a display
     for fmt in ("pdf", "docx"):
         ttk.Button(career_btns, text=f"Export {fmt.upper()}",
                    command=lambda f=fmt: do_export_resume(f)).pack(
-        side="left", padx=4)
+            side="left", padx=4)
+
+    # rewire upload button
+    for child in upload_row.winfo_children():
+        if isinstance(child, ttk.Button):
+            child.configure(command=_do_upload_resume)
+
+    # rewire connection buttons
+    for child in conn_row.winfo_children():
+        if isinstance(child, ttk.Button):
+            if child.cget("text") == "Import GitHub":
+                child.configure(command=_do_import_github)
+            elif child.cget("text") == "Connect LinkedIn":
+                child.configure(command=_do_linkedin)
+
 
     # -- final wiring --------------------------------------------------------
     refresh_health()
