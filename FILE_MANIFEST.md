@@ -6,6 +6,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 
 | Path | Reason |
 |------|--------|
+| `/index.html` | Project landing page — self-contained HTML overview of all four pillars, architecture, tech stack, job-board agent, ship-gate status, and development timeline |
 | `/CONSTITUTION.md` | Engineering constitution — governs all agent behavior; read first, always |
 | `/MASTER_STORY.md` | Canonical product vision and Four Pillars; read second |
 | `/BOOT_ROOT.md` | Workspace bootstrap protocol — defines folder skeleton and coordination rules |
