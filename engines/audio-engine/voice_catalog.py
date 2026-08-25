@@ -25,17 +25,19 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # One voice per supported language — used for narrator and pair roles.
+# IDs verified against rhasspy/piper-voices@main (2026-08-25); the
+# previous table had seven 404 names. ja/ko have no Piper voice and are
+# intentionally ABSENT: _resolve_language falls back to English with a
+# warning instead of failing downloads (provisioning reality).
 PIPER_LANGUAGE_VOICES: dict[str, str] = {
     "en": "en_US-lessac-medium",
-    "es": "es_ES-carlos-medium",
-    "fr": "fr_FR-alphonse-medium",
-    "de": "de_DE-karlsson-medium",
-    "it": "it_IT-eva-medium",
-    "pt": "pt_BR-isabella-medium",
+    "es": "es_ES-mls_10246-low",
+    "fr": "fr_FR-siwis-medium",
+    "de": "de_DE-thorsten-medium",
+    "it": "it_IT-paola-medium",
+    "pt": "pt_BR-faber-medium",
     "ru": "ru_RU-dmitri-medium",
-    "ja": "ja_JP-ken_medium",
     "zh": "zh_CN-huayan-medium",
-    "ko": "ko_KR-youngmi-medium",
 }
 
 # Distinct voices for multi-speaker scripts (podcast roles).

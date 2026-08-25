@@ -62,7 +62,52 @@ def run() -> None:  # pragma: no cover — needs a display
         res = ctrl.run_capability_probe()
         if not res:
             return show_error(res)
-        refresh_health()
+    # -- language lab tab ---------------------------------------------------
+    lab_tab = ttk.Frame(tab); tab.add(lab_tab, text="Language Lab")
+
+    lab_form = ttk.Frame(lab_tab); lab_form.pack(fill="x", pady=4)
+    lab_topic = tk.StringVar()
+    lab_target = tk.StringVar(value="es")
+    lab_known = tk.StringVar(value="en")
+    lab_level = tk.StringVar(value="beginner")
+    lab_status = tk.StringVar(value="Generate a full interactive lesson "
+                                    "pack: two-voice dialogue, flashcards, "
+                                    "grammar drills, evaluation. Opens in "
+                                    "your browser.")
+    ttk.Label(lab_form, text="Topic").grid(row=0, column=0, sticky="w")
+    ttk.Entry(lab_form, textvariable=lab_topic, width=32).grid(row=0, column=1,
+                                                               padx=4)
+    for i, (label, var) in enumerate((("Target", lab_target),
+                                      ("Known", lab_known)), start=2):
+        ttk.Label(lab_form, text=label).grid(row=0, column=i)
+        ttk.Combobox(lab_form, textvariable=var, width=5, state="readonly",
+                     values=["en", "es", "fr", "de", "it", "pt", "ru",
+                             "zh"]).grid(row=0, column=i + 1, padx=4)
+    ttk.Label(lab_form, text="Level").grid(row=0, column=6)
+    ttk.Combobox(lab_form, textvariable=lab_level, width=11,
+                 state="readonly",
+                 values=["beginner", "intermediate", "advanced"]).grid(
+        row=0, column=7, padx=4)
+
+    def do_lesson_pack():
+        res = ctrl.generate_lesson_pack(lab_topic.get(), lab_target.get(),
+                                        lab_known.get(), lab_level.get())
+        if not res:
+            return show_error(res)
+        import subprocess
+        lab_status.set(f"Saved -> {res.payload}  (opening…)")
+        root.update_idletasks()
+        subprocess.Popen(["xdg-open", str(res.payload)],
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+
+    lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
+    ttk.Button(lab_actions, text="Generate lesson pack",
+               command=do_lesson_pack).pack(side="left")
+    tk.Label(lab_tab, textvariable=lab_status, fg="gray",
+             wraplength=700, justify="left").pack(anchor="w", pady=8)
+
+    refresh_health()
 
     def show_error(res: FlowResult):
         messagebox.showerror(ERROR_TITLES.get(res.error_kind, "Error"),

@@ -49,33 +49,9 @@ RETRY_KEY = "bilingual_retry"
 DEFAULT_NUM_SEGMENTS = 10
 DEFAULT_SPEED = 0.9  # Slightly slower for language learning
 
-# Target-language voices (Piper)
-TARGET_VOICES = {
-    "es": "es_ES-carlos-medium",
-    "fr": "fr_FR-alphonse-medium",
-    "de": "de_DE-karlsson-medium",
-    "it": "it_IT-eva-medium",
-    "pt": "pt_BR-isabella-medium",
-    "ru": "ru_RU-dmitri-medium",
-    "ja": "ja_JP-ken_medium",
-    "zh": "zh_CN-huayan-medium",
-    "ko": "ko_KR-youngmi-medium",
-    "en": "en_US-lessac-medium",
-}
-
-# Known-language voices (Piper)
-KNOWN_VOICES = {
-    "en": "en_US-lessac-medium",
-    "es": "es_ES-carlos-medium",
-    "fr": "fr_FR-alphonse-medium",
-    "de": "de_DE-karlsson-medium",
-    "it": "it_IT-eva-medium",
-    "pt": "pt_BR-isabella-medium",
-    "ru": "ru_RU-dmitri-medium",
-    "ja": "ja_JP-ken_medium",
-    "zh": "zh_CN-huayan-medium",
-    "ko": "ko_KR-youngmi-medium",
-}
+# Voice resolution lives ONLY in the Voice Catalog (P2.3); the private
+# per-engine tables that used to live here were stale copies that 404'd
+# against the real Piper repository.
 
 
 # ---------------------------------------------------------------------------

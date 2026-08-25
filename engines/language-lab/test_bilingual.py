@@ -24,9 +24,8 @@ from engines.language_lab.bilingual import (
     BilingualSegment,
     DEFAULT_NUM_SEGMENTS,
     DEFAULT_SPEED,
-    TARGET_VOICES,
-    KNOWN_VOICES,
 )
+from engines.audio_engine.voice_catalog import pair_voices as _catalog_pair
 
 
 # ---------------------------------------------------------------------------
@@ -310,10 +309,11 @@ class TestRenderBilingualAudio:
         with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             render_bilingual_audio(SAMPLE_PAIR)
 
-        # First call should use Spanish voice
+        # First call should use the CATALOG's Spanish voice
+        expected_target, _ = _catalog_pair("es", "en")
         first_call = mock_synthesize.call_args_list[0]
-        assert first_call[1].get('voice') == TARGET_VOICES["es"] or \
-               (len(first_call[0]) > 1 and first_call[0][1] == TARGET_VOICES["es"])
+        assert first_call[1].get('voice') == expected_target or \
+               (len(first_call[0]) > 1 and first_call[0][1] == expected_target)
 
     @patch("engines.audio_engine.assembly.synthesize")
     def test_uses_known_voice_for_translation(self, mock_synthesize):
@@ -323,10 +323,11 @@ class TestRenderBilingualAudio:
         with patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b""):
             render_bilingual_audio(SAMPLE_PAIR)
 
-        # Second call should use English voice
+        # Second call should use the CATALOG's English voice
+        _, expected_known = _catalog_pair(SAMPLE_PAIR.target_language, "en")
         second_call = mock_synthesize.call_args_list[1]
-        assert second_call[1].get('voice') == KNOWN_VOICES["en"] or \
-               (len(second_call[0]) > 1 and second_call[0][1] == KNOWN_VOICES["en"])
+        assert second_call[1].get('voice') == expected_known or \
+               (len(second_call[0]) > 1 and second_call[0][1] == expected_known)
 
     @patch("engines.audio_engine.assembly.synthesize")
     @patch("engines.audio_engine.assembly.wav_to_mp3", return_value=b"mock-mp3")

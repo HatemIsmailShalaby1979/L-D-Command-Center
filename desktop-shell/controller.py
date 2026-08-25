@@ -137,6 +137,32 @@ class ShellController:
         path = self.storage.save_artifact("exports", name, html)
         return FlowResult(True, payload=path)
 
+    # -- language lab -------------------------------------------------------
+
+    @_flow
+    def generate_lesson_pack(self, topic: str, target_language: str,
+                             known_language: str, level: str) -> FlowResult:
+        """One guardrailed generation -> validated pack -> interactive
+        HTML saved under exports. Returns the file path for the UI to
+        open in a browser."""
+        from engines.language_lab.lesson_pack import generate_lesson_pack as run_generation
+        from engines.language_lab.renderer import render_lesson_pack_html
+
+        topic = topic.strip()
+        if not topic:
+            raise ValueError("Topic must be non-empty")
+        pack = run_generation(
+            topic, target_language.strip().lower(),
+            known_language.strip().lower(), level.strip().lower(),
+            client=self.client, model=self.model,
+        )
+        slug = "".join(c if c.isalnum() else "-" for c in topic.lower()).strip("-")
+        name = f"lesson-{slug or 'pack'}-{target_language.lower()}.html"
+        path = self.storage.save_artifact("exports", name,
+                                          render_lesson_pack_html(pack))
+        logger.info("Lesson pack rendered -> %s", path)
+        return FlowResult(True, payload=str(path))
+
     @_flow
     def export_artifact(self, content: dict, fmt: str) -> FlowResult:
         from engines.export_engine.export import export as run_export

@@ -37,14 +37,24 @@ class VoiceDownload:
     installed: bool
 
 
+# Piper quality tokens, longest first so x_low wins over low.
+_KNOWN_QUALITIES = ("x_low", "medium", "high", "low")
+
+
 def parse_voice_id(voice_id: str) -> tuple[str, str, str, str]:
     """'es_ES-carlos-medium' -> ('es', 'ES', 'carlos', 'medium').
 
-    Piper ids are inconsistent about the speaker/quality separator
-    ('carlos-medium' vs 'ken_medium' in ja_JP-ken_medium), so try '_'
-    first and fall back to '-'."""
+    Speaker names may themselves contain '_' or '-' (real example:
+    es_ES-mls_10246-low), so the quality is identified by its KNOWN
+    token at the end of the id rather than by separator guessing.
+    Falls back to legacy separator splitting for unknown tails."""
     lang_country, rest = voice_id.split("-", 1)
     lang, country = lang_country.split("_", 1)
+    for quality in _KNOWN_QUALITIES:
+        for sep in ("-", "_"):
+            suffix = sep + quality
+            if rest.endswith(suffix) and len(rest) > len(suffix):
+                return lang.lower(), country.upper(), rest[:-len(suffix)], quality
     if "_" in rest:
         speaker, quality = rest.rsplit("_", 1)
     else:

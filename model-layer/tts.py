@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import io
+import wave
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -78,7 +79,7 @@ def _synthesize_piper(
     voices; exact sample rate depends on the voice model).
     """
     try:
-        import piper
+        from piper import PiperVoice, SynthesisConfig
     except ImportError as e:
         raise RuntimeError(
             "piper-tts package not installed. Run: pip install piper-tts"
@@ -94,15 +95,14 @@ def _synthesize_piper(
             f"Download voice models from https://huggingface.co/rhasspy/piper-voices"
         )
 
-    # Load the Piper voice
-    with piper.Voice.load(model_path, config_path) as piper_voice:
-        # Synthesize — piper.Voice.synthesize returns a generator of bytes
-        audio_chunks = piper_voice.synthesize(text, speed=speed)
-        # Collect all chunks into a single WAV buffer
-        wav_buffer = io.BytesIO()
-        for chunk in audio_chunks:
-            wav_buffer.write(chunk)
-        return wav_buffer.getvalue()
+    # piper-tts >= 1.3: PiperVoice.synthesize_wav writes a complete WAV;
+    # length_scale is the inverse of playback speed.
+    piper_voice = PiperVoice.load(model_path, config_path)
+    syn_config = SynthesisConfig(length_scale=1.0 / max(speed, 0.01))
+    wav_buffer = io.BytesIO()
+    with wave.open(wav_buffer, "wb") as wav_file:
+        piper_voice.synthesize_wav(text, wav_file, syn_config)
+    return wav_buffer.getvalue()
 
 
 def _synthesize_kokoro(

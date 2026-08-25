@@ -55,8 +55,13 @@ class TestNarratorVoice:
 class TestPairVoices:
     def test_bilingual_pair_gets_two_language_voices(self):
         target, known = pair_voices("es", "en")
-        assert target == "es_ES-carlos-medium"
+        assert target == "es_ES-mls_10246-low"
         assert known == "en_US-lessac-medium"
+
+    def test_unsupported_language_falls_back_to_english(self):
+        # ja/ko have no Piper voice; the catalog omits them on purpose
+        assert "ja" not in PIPER_LANGUAGE_VOICES
+        assert narrator_voice("ja").startswith("en_")
 
     def test_pair_falls_back_per_side(self):
         target, known = pair_voices("zz", "en")

@@ -229,6 +229,47 @@ class TestPlayground:
             assert expected in names
 
 
+class TestLanguageLabTab:
+    def test_lesson_pack_flow_renders_and_saves_html(self, storage):
+        # A scripted MODEL CLIENT drives the REAL lesson-pack generation,
+        # validation, and rendering end-to-end.
+        import json
+
+        from model_layer.client import ModelResponse
+
+        pack = {
+            "topic": "coffee", "target_language": "es",
+            "known_language": "en", "level": "beginner",
+            "dialogue": [{"speaker": "A", "content": "x"},
+                         {"speaker": "B", "content": "y"}],
+            "vocab_cards": [{"term": "t", "reading": "r",
+                             "translation": "tr", "example": "e"}],
+            "grammar_cards": [{"point": "p", "explanation": "e",
+                               "drills": [{"prompt": "?", "answer": "a"},
+                                          {"prompt": "??", "answer": "b"}]}],
+            "evaluation": [{"type": "multiple_choice", "question": "q",
+                            "options": ["a", "b"], "correct_index": 0}],
+        }
+
+        class ScriptedModel:
+            def generate(self, request):
+                return ModelResponse(
+                    content=json.dumps(pack), model=request.model,
+                    finish_reason="stop", tool_calls=None, raw={})
+
+        ctrl = make_controller(ScriptedModel(), storage)
+        result = ctrl.generate_lesson_pack("coffee", "ES", "en", "Beginner")
+        assert result.ok
+        path = Path(str(result.payload))
+        assert path.exists() and path.name.startswith("lesson-coffee-es")
+        assert "Dialogue" in path.read_text(encoding="utf-8")
+
+    def test_empty_topic_maps_to_input_kind(self, storage):
+        result = make_controller(OkClient(), storage).generate_lesson_pack(
+            "  ", "es", "en", "beginner")
+        assert not result and result.error_kind == "input"
+
+
 class TestExportAndLibrary:
     JOURNEY = {"topic": "T", "level": "beginner",
                "cards": [{"id": "c", "title": "t", "content": "c",
