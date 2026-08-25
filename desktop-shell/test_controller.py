@@ -229,6 +229,59 @@ class TestPlayground:
             assert expected in names
 
 
+class TestAudioStudio:
+    def test_audiobook_saves_wav_and_mp3(self, storage, monkeypatch):
+        import engines.audio_engine.narration as nar
+        from types import SimpleNamespace
+        result = SimpleNamespace(
+            wav_bytes=b"WAVDATA", mp3_bytes=b"MP3DATA",
+            sample_rate=22050, backend_used="PIPER",
+            voice_used="en_US-lessac-medium")
+        captured = {}
+        def fake_narrate(text, **kw):
+            captured.update(kw)
+            return result
+        monkeypatch.setattr(nar, "narrate", fake_narrate)
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.generate_audiobook("The three little pigs", "en", 1.0)
+        assert res.ok
+        assert res.payload["mp3"].endswith(".mp3")
+        assert res.payload["duration_seconds"] == round(7/22050, 1)
+        assert captured["voice"] == "en_US-lessac-medium"
+
+    def test_audiobook_empty_text_maps_to_input(self, storage):
+        res = make_controller(OkClient(), storage).generate_audiobook("   ")
+        assert not res and res.error_kind == "input"
+
+    def test_podcast_generates_script_and_audio(self, storage, monkeypatch):
+        import engines.audio_engine.podcast_audio as pa
+        import engines.audio_engine.podcast_script as ps
+        from types import SimpleNamespace
+
+        script = SimpleNamespace(
+            segments=[SimpleNamespace(duration_seconds=30),
+                      SimpleNamespace(duration_seconds=40)],
+            to_dict=lambda: {"title": "T"},
+            title="Tea episode")
+        audio = SimpleNamespace(wav_bytes=b"W", mp3_bytes=b"M",
+                                duration_seconds=70.0)
+        captured = {}
+        monkeypatch.setattr(ps, "generate_script_from_topic",
+                            lambda topic, **kw: captured.update(kw) or script)
+        monkeypatch.setattr(pa, "render_podcast_to_audio",
+                            lambda s, **kw: audio)
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.generate_podcast("tea history", language="es")
+        assert res.ok and res.payload["segments"] == 2
+        assert res.payload["wav"].endswith(".wav")
+        assert "podcast-tea-history.json" in storage.list_artifacts("podcast_scripts")
+        assert captured["language"] == "Spanish"  # catalog name, not code
+
+    def test_podcast_empty_topic_maps_to_input(self, storage):
+        res = make_controller(OkClient(), storage).generate_podcast("")
+        assert not res and res.error_kind == "input"
+
+
 class TestLanguageLabTab:
     def test_lesson_pack_flow_renders_and_saves_html(self, storage):
         # A scripted MODEL CLIENT drives the REAL lesson-pack generation,

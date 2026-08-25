@@ -317,6 +317,108 @@ def run() -> None:  # pragma: no cover — needs a display
     info = tk.Text(conn_frame, height=4, width=80)
     info.pack(fill="x", padx=4, pady=4)
 
+    # == Audio Studio ========================================================
+    studio_tab = ttk.Frame(tab); tab.add(studio_tab, text="Audio Studio")
+
+    LANG_CODES = ["en", "es", "fr", "de", "it", "pt", "ru", "zh"]
+
+    def _open_path(path: str):
+        import subprocess
+        subprocess.Popen(["xdg-open", path],
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+
+    # --- audiobooks ---
+    ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook — text to narrated audio")
+    ab_frame.pack(fill="x", padx=6, pady=6)
+    ttk.Label(ab_frame, text="Text").grid(row=0, column=0, sticky="nw")
+    ab_text = tk.Text(ab_frame, height=5, width=70)
+    ab_text.grid(row=1, column=0, columnspan=4, padx=4, sticky="we")
+    ab_lang = tk.StringVar(value="en")
+    ab_speed = tk.StringVar(value="1.0")
+    ttk.Label(ab_frame, text="Voice language").grid(row=2, column=0, sticky="w")
+    ttk.Combobox(ab_frame, textvariable=ab_lang, width=5, state="readonly",
+                 values=LANG_CODES).grid(row=2, column=1, sticky="w")
+    ttk.Label(ab_frame, text="Speed").grid(row=2, column=2, sticky="e")
+    ttk.Combobox(ab_frame, textvariable=ab_speed, width=5, state="readonly",
+                 values=["0.8", "1.0", "1.2"]).grid(row=2, column=3, sticky="w")
+    ab_status = tk.StringVar(value="Paste any text — narrated WAV + MP3 land in exports.")
+    tk.Label(ab_frame, textvariable=ab_status, fg="gray",
+             wraplength=700, justify="left").grid(row=3, column=0,
+                                                  columnspan=4, sticky="w")
+
+    def do_audiobook():
+        text = ab_text.get("1.0", "end").strip()
+        if not text:
+            return messagebox.showinfo("Audio Studio", "Paste some text first.")
+        ab_status.set(f"Narrating {len(text)} characters…")
+        root.update_idletasks()
+        res = ctrl.generate_audiobook(text, ab_lang.get(), float(ab_speed.get()))
+        if not res:
+            ab_status.set("Audiobook failed.")
+            return show_error(res)
+        ab_status.set(f"Done ({res.payload['duration_seconds']}s, "
+                      f"{res.payload['voice']}). Opening player…")
+        _open_path(res.payload["mp3"] or res.payload["wav"])
+
+    ttk.Button(ab_frame, text="Generate audiobook",
+               command=do_audiobook).grid(row=4, column=0, sticky="w", pady=4)
+
+    # --- podcasts ---
+    pod_frame = ttk.LabelFrame(studio_tab, text="Podcast — topic to two-voice episode")
+    pod_frame.pack(fill="x", padx=6, pady=6)
+    pod_row1 = ttk.Frame(pod_frame); pod_row1.pack(fill="x", pady=2)
+    ttk.Label(pod_row1, text="Topic").pack(side="left")
+    pod_topic = tk.StringVar()
+    ttk.Entry(pod_row1, textvariable=pod_topic, width=34).pack(side="left", padx=4)
+    ttk.Label(pod_row1, text="Language").pack(side="left")
+    pod_lang = tk.StringVar(value="en")
+    ttk.Combobox(pod_row1, textvariable=pod_lang, width=5, state="readonly",
+                 values=LANG_CODES).pack(side="left", padx=4)
+    ttk.Label(pod_row1, text="Level").pack(side="left")
+    pod_level = tk.StringVar(value="beginner")
+    ttk.Combobox(pod_row1, textvariable=pod_level, width=11, state="readonly",
+                 values=["beginner", "intermediate", "advanced"]).pack(
+        side="left", padx=4)
+    pod_row2 = ttk.Frame(pod_frame); pod_row2.pack(fill="x", pady=2)
+    ttk.Label(pod_row2, text="Host").pack(side="left")
+    pod_host = tk.StringVar(value="Alex")
+    ttk.Entry(pod_row2, textvariable=pod_host, width=10).pack(side="left", padx=4)
+    ttk.Label(pod_row2, text="Segments").pack(side="left")
+    pod_segments = tk.StringVar(value="6")
+    ttk.Spinbox(pod_row2, from_=2, to=14, textvariable=pod_segments,
+                width=4).pack(side="left", padx=4)
+    ttk.Label(pod_row2, text="Minutes").pack(side="left")
+    pod_minutes = tk.StringVar(value="5")
+    ttk.Spinbox(pod_row2, from_=1, to=30, textvariable=pod_minutes,
+                width=4).pack(side="left", padx=4)
+    pod_status = tk.StringVar(
+        value="Two AI hosts discuss the topic entirely in the target "
+              "language. Script is saved alongside the audio.")
+    tk.Label(pod_frame, textvariable=pod_status, fg="gray",
+             wraplength=700, justify="left").pack(anchor="w", pady=2)
+
+    def do_podcast():
+        topic = pod_topic.get().strip()
+        if not topic:
+            return messagebox.showinfo("Audio Studio", "Enter a topic first.")
+        pod_status.set(f"Writing script for '{topic}' then recording two "
+                       "voices… (a few minutes)")
+        root.update_idletasks()
+        res = ctrl.generate_podcast(topic, pod_lang.get(), pod_level.get(),
+                                    int(pod_segments.get()),
+                                    int(pod_minutes.get()), pod_host.get())
+        if not res:
+            pod_status.set("Podcast failed.")
+            return show_error(res)
+        pod_status.set(f"'{res.payload['title']}' ready — "
+                       f"{res.payload['segments']} segments, "
+                       f"{res.payload['duration_seconds']}s. Opening player…")
+        _open_path(res.payload["mp3"] or res.payload["wav"])
+
+    ttk.Button(pod_frame, text="Generate podcast",
+               command=do_podcast).pack(anchor="w", pady=4)
+
     # -- final wiring --------------------------------------------------------
     refresh_health()
     inbox_note.config(text=f"inbox: {ctrl.default_inbox_path()}")

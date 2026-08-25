@@ -88,7 +88,7 @@ def wav_to_mp3(wav_bytes: bytes) -> bytes:
         result = subprocess.run(
             [FFMPEG_PATH, "-i", "pipe:0", "-ab", "192k",
              "-ar", "22050", "-ac", "1", "-f", "mp3", "pipe:1"],
-            stdin=__import__("io").BytesIO(wav_bytes),
+            input=wav_bytes,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
         )
         return result.stdout

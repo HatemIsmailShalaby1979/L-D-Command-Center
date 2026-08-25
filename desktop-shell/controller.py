@@ -114,6 +114,92 @@ class ShellController:
             return FlowResult(True, payload=None)
         return FlowResult(True, payload=summarize_verdict(doc))
 
+    # -- audio studio -------------------------------------------------------
+
+    def _slug(self, text: str, fallback: str) -> str:
+        return "".join(c if c.isalnum() else "-" for c in text.lower()).strip("-")[:40] or fallback
+
+    @_flow
+    def generate_audiobook(self, text: str, language: str = "en",
+                           speed: float = 1.0) -> FlowResult:
+        """Narration engine -> WAV+MP3 saved under exports."""
+        from engines.audio_engine import voice_catalog
+        from engines.audio_engine.narration import narrate
+
+        text = (text or "").strip()
+        if not text:
+            raise ValueError("Text must be non-empty")
+        result = narrate(
+            text, voice=voice_catalog.narrator_voice(language),
+            include_mp3=True, speed=float(speed))
+        existing = set(self.storage.list_artifacts("exports"))
+        base = unique_artifact_name(existing, f"{self._slug(text, 'audiobook')}.wav")
+        base = base[:-4]  # strip .wav; we add per-format suffixes
+        wav_path = self.storage.save_artifact("exports", f"{base}.wav",
+                                              result.wav_bytes)
+        payload: dict[str, Any] = {
+            "wav": str(wav_path),
+            "mp3": None,
+            "duration_seconds": round(len(result.wav_bytes) / 2
+                                      / max(result.sample_rate, 1), 1),
+            "voice": result.voice_used,
+        }
+        if result.mp3_bytes:
+            payload["mp3"] = str(self.storage.save_artifact(
+                "exports", f"{base}.mp3", result.mp3_bytes))
+        logger.info("Audiobook generated (%s): %.1fs",
+                    payload["voice"], payload["duration_seconds"])
+        return FlowResult(True, payload=payload)
+
+    @_flow
+    def generate_podcast(self, topic: str, language: str = "en",
+                         level: str = "beginner", num_segments: int = 6,
+                         duration_minutes: int = 5,
+                         host_name: str = "Alex") -> FlowResult:
+        """Script generation (Guardrail Loop) + two-voice render -> WAV/MP3."""
+        from engines.audio_engine import voice_catalog
+        from engines.audio_engine.podcast_audio import (
+            render_podcast_to_audio,
+        )
+        from engines.audio_engine.podcast_script import (
+            generate_script_from_topic,
+        )
+
+        topic = (topic or "").strip()
+        if not topic:
+            raise ValueError("Topic must be non-empty")
+        script = generate_script_from_topic(
+            topic,
+            num_segments=int(num_segments),
+            duration_minutes=int(duration_minutes),
+            host_name=(host_name or "Alex").strip() or "Alex",
+            language=voice_catalog.language_name(language),
+            level=level,
+            client=self.client, model=self.model,
+        )
+        audio = render_podcast_to_audio(script, include_mp3=True)
+        existing = set(self.storage.list_artifacts("exports"))
+        base = unique_artifact_name(existing,
+                                    f"podcast-{self._slug(topic, 'episode')}.wav")
+        base = base[:-4]
+        self.storage.save_artifact("podcast_scripts", f"{base}.json",
+                                   script.to_dict())
+        wav_path = self.storage.save_artifact("exports", f"{base}.wav",
+                                              audio.wav_bytes)
+        payload: dict[str, Any] = {
+            "wav": str(wav_path),
+            "mp3": None,
+            "segments": len(script.segments),
+            "duration_seconds": audio.duration_seconds,
+            "title": script.title,
+        }
+        if audio.mp3_bytes:
+            payload["mp3"] = str(self.storage.save_artifact(
+                "exports", f"{base}.mp3", audio.mp3_bytes))
+        logger.info("Podcast generated: %s (%d segments)",
+                    script.title, len(script.segments))
+        return FlowResult(True, payload=payload)
+
     # -- journeys -----------------------------------------------------------
 
     @_flow
