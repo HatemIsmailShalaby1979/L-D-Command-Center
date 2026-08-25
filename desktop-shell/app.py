@@ -163,6 +163,10 @@ def run() -> None:  # pragma: no cover — needs a display
             output.insert("end", f"[{i}] {card.get('title','')}\n{card.get('content','')}\n\n")
         if saved:
             output.insert("end", f"\nSaved interactive HTML -> {saved.payload}")
+            import subprocess
+            subprocess.Popen(["xdg-open", str(saved.payload)],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
 
     def do_export(fmt: str):
         if not last_journey:
