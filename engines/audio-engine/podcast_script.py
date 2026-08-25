@@ -186,12 +186,20 @@ def validate_podcast_script(data: dict[str, Any]) -> tuple[bool, list[str]]:
                 errors.append(
                     f"speaker {dominant!r} has {dominant_n}/{len(segments)} "
                     "turns — rebalance so both hosts genuinely converse")
+            max_consecutive = 0
+            streak = 1
             for i in range(1, len(speakers_in_turns)):
                 if speakers_in_turns[i] == speakers_in_turns[i - 1]:
-                    errors.append(
-                        f"segment {i}: same speaker as previous turn — "
-                        "hosts must alternate to read as a conversation")
-                    break
+                    streak += 1
+                    if streak > max_consecutive:
+                        max_consecutive = streak
+                else:
+                    streak = 1
+            if max_consecutive > 2:
+                errors.append(
+                    f"{max_consecutive} consecutive segments with the same "
+                    "speaker — hosts should alternate more often to feel "
+                    "like a conversation")
 
     return len(errors) == 0, errors
 
