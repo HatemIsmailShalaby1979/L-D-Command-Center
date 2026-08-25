@@ -438,6 +438,7 @@ class TestConversationContract:
         from model_layer.prompts import PromptRegistry
         system, user, _ = PromptRegistry().render("podcast_script_generate", {
             "topic": "t", "num_segments": 6, "duration_minutes": 5,
+            "segment_duration_seconds": 50,
             "host_name": "Alex", "co_host_name": "Maya",
             "language": "English", "level": "beginner"})
         assert "Maya" in user and "EXACTLY TWO hosts" in user

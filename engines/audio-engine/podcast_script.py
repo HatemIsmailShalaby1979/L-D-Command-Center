@@ -45,6 +45,7 @@ DEFAULT_HOST_NAME = "Alex"
 DEFAULT_CO_HOST_NAME = "Maya"
 DEFAULT_DURATION_MINUTES = 15
 DEFAULT_NUM_SEGMENTS = 5
+SEGMENT_SECONDS_PER_MINUTE = 90  # each segment ~90 seconds = 1.5 min
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +241,12 @@ def generate_podcast_script(
     if journey:
         topic = journey.get("topic", "General Topic")
 
+    # Auto-scale segments to match the requested duration
+    total_seg_seconds = duration_minutes * 60
+    num_segments = max(num_segments,
+                       round(total_seg_seconds / SEGMENT_SECONDS_PER_MINUTE))
+    seg_dur = round(total_seg_seconds / num_segments)
+
     parsed = run_guardrail_loop(
         PromptRegistry(),
         client if client is not None else LmStudioClient(),
@@ -249,6 +256,7 @@ def generate_podcast_script(
             "topic": topic,
             "num_segments": num_segments,
             "duration_minutes": duration_minutes,
+            "segment_duration_seconds": seg_dur,
             "host_name": host_name,
             "co_host_name": co_host_name,
             "language": language,

@@ -295,6 +295,11 @@ class PromptRegistry:
         "}}\n\n"
         "Requirements:\n"
         "- Produce exactly {num_segments} segments.\n"
+        "- Each segment's 'duration_seconds' MUST be approximately "
+        "{segment_duration_seconds} seconds (i.e. the total adds up "
+        "to ~{duration_minutes} minutes). Intro and conclusion are "
+        "shorter (~45-60s); the bulk of the time goes to monologue "
+        "and dialogue segments.\n"
         "- There are EXACTLY TWO hosts: {host_name} and {co_host_name}. "
         "Every segment is spoken by one of them — no other speakers.\n"
         "- It is a REAL conversation: they ask each other questions, "
@@ -324,6 +329,8 @@ class PromptRegistry:
         "{errors}\n\n"
         "The topic is \"{topic}\".\n"
         "Generate a corrected podcast script with {num_segments} segments.\n"
+        "Each segment must be approximately {segment_duration_seconds} "
+        "seconds long so the total adds up to ~{duration_minutes} minutes.\n"
         "Return valid JSON only."
     )
 
