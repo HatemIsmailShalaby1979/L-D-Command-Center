@@ -279,6 +279,49 @@ class TestAudioStudio:
         assert captured["co_host_name"] == "Maya"
         assert res.payload["speakers"] == ["Alex", "Maya"]
 
+    def test_missing_voice_downloads_on_demand_and_retries(self, storage,
+                                                           monkeypatch):
+        import engines.audio_engine.narration as nar
+        from engines.audio_engine import provisioning
+        from types import SimpleNamespace
+
+        calls = []
+        def flaky(text, **kw):
+            if not calls:
+                calls.append("fail")
+                raise FileNotFoundError(
+                    "Piper voice model not found: "
+                    "/x/models/tts/en_US-joe-medium.onnx")
+            calls.append("ok")
+            return SimpleNamespace(wav_bytes=b"W", mp3_bytes=b"M",
+                                   sample_rate=22050, backend_used="PIPER",
+                                   voice_used="en_US-joe-medium")
+
+        monkeypatch.setattr(nar, "narrate", flaky)
+        downloaded = []
+        monkeypatch.setattr(provisioning, "download_voice",
+                            lambda vid, d: downloaded.append(vid))
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.generate_audiobook("hello", "en")
+        assert res.ok
+        assert downloaded == ["en_US-joe-medium"]
+        assert len(calls) == 2  # failed once, retried after provisioning
+
+    def test_download_voice_flow_validates_id(self, storage, monkeypatch):
+        from engines.audio_engine import provisioning
+        seen = []
+        monkeypatch.setattr(provisioning, "download_voice",
+                            lambda vid, d: seen.append(vid))
+        ctrl = make_controller(OkClient(), storage)
+        bad = ctrl.download_voice("../../etc/passwd")
+        assert not bad and bad.error_kind == "input"
+        good = ctrl.download_voice("en_GB-alan-medium")
+        assert good.ok and seen == ["en_GB-alan-medium"]
+
+    def test_all_known_voices_marks_uninstalled(self, storage):
+        known = make_controller(OkClient(), storage).all_known_voices()
+        assert any("(will download on first use)" in v for v in known)
+
     def test_podcast_empty_topic_maps_to_input(self, storage):
         res = make_controller(OkClient(), storage).generate_podcast("")
         assert not res and res.error_kind == "input"

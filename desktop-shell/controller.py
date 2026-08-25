@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -120,6 +121,45 @@ class ShellController:
 
     # -- audio studio -------------------------------------------------------
 
+    _TTS_MODELS_DIR = Path(__file__).resolve().parent.parent / "models" / "tts"
+
+    @staticmethod
+    def _voice_id_from_error(exc: FileNotFoundError) -> Optional[str]:
+        m = re.search(r"([A-Za-z]{2}_[A-Za-z]{2}-[A-Za-z0-9_.\-]+)\.onnx",
+                      str(exc))
+        return m.group(1) if m else None
+
+    def _ensure_voice(self, exc: FileNotFoundError) -> str:
+        """Download the missing Piper voice named in the error and return
+        its id. Re-raises when the message carries no usable id."""
+        from engines.audio_engine.provisioning import download_voice
+        voice_id = self._voice_id_from_error(exc)
+        if not voice_id:
+            raise exc
+        logger.info("Voice %s missing — downloading on demand", voice_id)
+        download_voice(voice_id, self._TTS_MODELS_DIR)
+        return voice_id
+
+    @_flow
+    def download_voice(self, voice_id: str) -> FlowResult:
+        """Explicitly fetch one Piper voice (model + config)."""
+        from engines.audio_engine.provisioning import download_voice
+        if not re.fullmatch(r"[A-Za-z]{2}_[A-Za-z]{2}-[A-Za-z0-9_.\-]+",
+                            voice_id or ""):
+            raise ValueError(f"Invalid voice id: {voice_id!r}")
+        download_voice(voice_id, self._TTS_MODELS_DIR)
+        return FlowResult(True, payload=voice_id)
+
+    def all_known_voices(self) -> list[str]:
+        """Every voice the app can ever reference: catalog narrators plus
+        the podcast speaker pool."""
+        from engines.audio_engine import voice_catalog
+        known = sorted(set(voice_catalog.PIPER_LANGUAGE_VOICES.values())
+                       | set(voice_catalog.PIPER_SPEAKER_POOL))
+        installed = set(self.available_voices())
+        return [v + ("   (will download on first use)" if v not in installed
+                     else "") for v in known]
+
     def _slug(self, text: str, fallback: str) -> str:
         return "".join(c if c.isalnum() else "-" for c in text.lower()).strip("-")[:40] or fallback
 
@@ -140,8 +180,13 @@ class ShellController:
         if not text:
             raise ValueError("Text must be non-empty")
         narrator = voice or voice_catalog.narrator_voice(language)
-        result = narrate(text, voice=narrator,
-                         include_mp3=True, speed=float(speed))
+        try:
+            result = narrate(text, voice=narrator,
+                             include_mp3=True, speed=float(speed))
+        except FileNotFoundError as exc:
+            self._ensure_voice(exc)
+            result = narrate(text, voice=narrator,
+                             include_mp3=True, speed=float(speed))
         existing = set(self.storage.list_artifacts("exports"))
         base = unique_artifact_name(existing, f"{self._slug(text, 'audiobook')}.wav")
         base = base[:-4]  # strip .wav; we add per-format suffixes
@@ -199,8 +244,13 @@ class ShellController:
             voice_map[host] = voice_a
         if voice_b:
             voice_map[co_host] = voice_b
-        audio = render_podcast_to_audio(script, include_mp3=True,
-                                        voice_map=voice_map or None)
+        try:
+            audio = render_podcast_to_audio(script, include_mp3=True,
+                                            voice_map=voice_map or None)
+        except FileNotFoundError as exc:
+            self._ensure_voice(exc)
+            audio = render_podcast_to_audio(script, include_mp3=True,
+                                            voice_map=voice_map or None)
         existing = set(self.storage.list_artifacts("exports"))
         base = unique_artifact_name(existing,
                                     f"podcast-{self._slug(topic, 'episode')}.wav")

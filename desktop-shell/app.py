@@ -358,6 +358,8 @@ def run() -> None:  # pragma: no cover — needs a display
     ab_lang = tk.StringVar(value="en")
     ab_speed = tk.StringVar(value="1.0")
     installed = ctrl.available_voices()
+    known_marked = ctrl.all_known_voices()
+    known_plain = [v.split("   ")[0] for v in known_marked]
     ttk.Label(ab_frame, text="Voice language").grid(row=2, column=0, sticky="w")
     ttk.Combobox(ab_frame, textvariable=ab_lang, width=5, state="readonly",
                  values=LANG_CODES).grid(row=2, column=1, sticky="w")
@@ -367,9 +369,9 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Label(ab_frame, text="Narrator voice").grid(row=2, column=4,
                                                     sticky="w", padx=(10, 0))
     ab_voice = tk.StringVar(value="")
-    ab_voice_combo = ttk.Combobox(ab_frame, textvariable=ab_voice, width=24,
+    ab_voice_combo = ttk.Combobox(ab_frame, textvariable=ab_voice, width=34,
                                   state="readonly",
-                                  values=["(auto by language)"] + installed)
+                                  values=["(auto by language)"] + known_marked)
     ab_voice_combo.grid(row=2, column=5, sticky="w")
     ab_voice.set("(auto by language)")
     ab_status = tk.StringVar(value="Paste any text — narrated WAV + MP3 land in exports.")
@@ -383,7 +385,8 @@ def run() -> None:  # pragma: no cover — needs a display
             return messagebox.showinfo("Audio Studio", "Paste some text first.")
         ab_status.set(f"Narrating {len(text)} characters…")
         root.update_idletasks()
-        voice = None if ab_voice.get().startswith("(") else ab_voice.get()
+        voice = None if ab_voice.get().startswith("(") \
+            else ab_voice.get().split("   ")[0]
         res = ctrl.generate_audiobook(text, ab_lang.get(),
                                       float(ab_speed.get()), voice)
         if not res:
@@ -421,15 +424,15 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Entry(pod_row2, textvariable=pod_cohost, width=9).pack(side="left", padx=4)
     ttk.Label(pod_row2, text="Voice A").pack(side="left")
     pod_voice_a = tk.StringVar(value="")
-    ttk.Combobox(pod_row2, textvariable=pod_voice_a, width=20,
+    ttk.Combobox(pod_row2, textvariable=pod_voice_a, width=30,
                  state="readonly",
-                 values=["(auto)"] + installed).pack(side="left", padx=2)
+                 values=["(auto)"] + known_marked).pack(side="left", padx=2)
     pod_voice_a.set("(auto)")
     ttk.Label(pod_row2, text="Voice B").pack(side="left")
     pod_voice_b = tk.StringVar(value="")
-    ttk.Combobox(pod_row2, textvariable=pod_voice_b, width=20,
+    ttk.Combobox(pod_row2, textvariable=pod_voice_b, width=30,
                  state="readonly",
-                 values=["(auto)"] + installed).pack(side="left", padx=2)
+                 values=["(auto)"] + known_marked).pack(side="left", padx=2)
     pod_voice_b.set("(auto)")
 
     pod_row3 = ttk.Frame(pod_frame); pod_row3.pack(fill="x", pady=2)
@@ -459,9 +462,9 @@ def run() -> None:  # pragma: no cover — needs a display
                                     int(pod_minutes.get()), pod_host.get(),
                                     pod_cohost.get(),
                                     None if pod_voice_a.get().startswith("(")
-                                    else pod_voice_a.get(),
+                                    else pod_voice_a.get().split("   ")[0],
                                     None if pod_voice_b.get().startswith("(")
-                                    else pod_voice_b.get())
+                                    else pod_voice_b.get().split("   ")[0])
         if not res:
             pod_status.set("Podcast failed.")
             return show_error(res)
@@ -473,6 +476,43 @@ def run() -> None:  # pragma: no cover — needs a display
 
     ttk.Button(pod_frame, text="Generate podcast",
                command=do_podcast).pack(anchor="w", pady=4)
+
+    # --- voice manager ---
+    vm_frame = ttk.LabelFrame(studio_tab, text="Voices (Piper)")
+    vm_frame.pack(fill="x", padx=6, pady=6)
+    vm_var = tk.StringVar()
+    missing_now = [v for v in known_plain
+                   if v not in set(ctrl.available_voices())]
+    ttk.Label(vm_frame,
+              text=f"{len(installed)} installed on this machine. "
+                   f"{len(missing_now)} more known to the app:"
+              ).pack(anchor="w")
+    vm_combo = ttk.Combobox(vm_frame, textvariable=vm_var, state="readonly",
+                            width=44, values=missing_now or ["(all known voices installed)"])
+    if missing_now:
+        vm_combo.current(0)
+    vm_combo.pack(side="left", padx=4, pady=4)
+
+    def do_download_voice():
+        vid = vm_var.get().strip()
+        if not vid or vid.startswith("("):
+            return messagebox.showinfo("Voices", "Nothing left to download.")
+        vm_status.set(f"Downloading {vid}… (~70 MB, one time)")
+        root.update_idletasks()
+        res = ctrl.download_voice(vid.split("   ")[0])
+        if not res:
+            vm_status.set("Download failed.")
+            return show_error(res)
+        global installed  # noqa — refresh local lists via closure recompute
+        installed = ctrl.available_voices()
+        vm_status.set(f"Installed {vid}. It now appears in every voice "
+                      "dropdown.")
+
+    vm_status = tk.StringVar(value="")
+    tk.Label(vm_frame, textvariable=vm_status, fg="green").pack(
+        side="left", padx=6)
+    ttk.Button(vm_frame, text="Download selected voice",
+               command=do_download_voice).pack(side="left", padx=4)
 
     # -- final wiring --------------------------------------------------------
     refresh_health()
