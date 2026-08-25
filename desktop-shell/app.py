@@ -436,14 +436,12 @@ def run() -> None:  # pragma: no cover — needs a display
     pod_voice_b.set("(auto)")
 
     pod_row3 = ttk.Frame(pod_frame); pod_row3.pack(fill="x", pady=2)
-    ttk.Label(pod_row3, text="Segments").pack(side="left")
-    pod_segments = tk.StringVar(value="6")
-    ttk.Spinbox(pod_row3, from_=2, to=14, textvariable=pod_segments,
-                width=4).pack(side="left", padx=4)
-    ttk.Label(pod_row3, text="Minutes").pack(side="left")
+    ttk.Label(pod_row3, text="Length (minutes)").pack(side="left")
     pod_minutes = tk.StringVar(value="5")
-    ttk.Spinbox(pod_row3, from_=1, to=30, textvariable=pod_minutes,
-                width=4).pack(side="left", padx=4)
+    ttk.Spinbox(pod_row3, from_=1, to=240, textvariable=pod_minutes,
+                width=5).pack(side="left", padx=4)
+    ttk.Label(pod_row3, text="(segments auto-calculated)").pack(side="left",
+                                                                 padx=4)
     pod_status = tk.StringVar(
         value="Two AI hosts discuss the topic entirely in the target "
               "language. Script is saved alongside the audio.")
@@ -458,13 +456,14 @@ def run() -> None:  # pragma: no cover — needs a display
                        "voices… (a few minutes)")
         root.update_idletasks()
         res = ctrl.generate_podcast(topic, pod_lang.get(), pod_level.get(),
-                                    int(pod_segments.get()),
-                                    int(pod_minutes.get()), pod_host.get(),
-                                    pod_cohost.get(),
-                                    None if pod_voice_a.get().startswith("(")
-                                    else pod_voice_a.get().split("   ")[0],
-                                    None if pod_voice_b.get().startswith("(")
-                                    else pod_voice_b.get().split("   ")[0])
+                                     num_segments=6,
+                                     duration_minutes=int(pod_minutes.get()),
+                                     host_name=pod_host.get(),
+                                     co_host_name=pod_cohost.get(),
+                                     voice_a=(None if pod_voice_a.get().startswith("(")
+                                              else pod_voice_a.get().split("   ")[0]),
+                                     voice_b=(None if pod_voice_b.get().startswith("(")
+                                              else pod_voice_b.get().split("   ")[0]))
         if not res:
             pod_status.set("Podcast failed.")
             return show_error(res)
