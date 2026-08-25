@@ -264,6 +264,100 @@ class TestLanguageLabTab:
         assert path.exists() and path.name.startswith("lesson-coffee-es")
         assert "Dialogue" in path.read_text(encoding="utf-8")
 
+    def test_lesson_pack_flow_wires_per_segment_audio(self, storage,
+                                                      monkeypatch):
+        # spec C2: listening items must reach the learner — the flow
+        # renders per-turn audio and hands the renderer its name map
+        import json
+
+        from model_layer.client import ModelResponse
+
+        pack = {
+            "topic": "tea", "target_language": "es",
+            "known_language": "en", "level": "beginner",
+            "dialogue": [{"speaker": "A", "content": "x"},
+                         {"speaker": "B", "content": "y"}],
+            "vocab_cards": [{"term": "t", "reading": "r",
+                             "translation": "tr", "example": "e"}],
+            "grammar_cards": [{"point": "p", "explanation": "e",
+                               "drills": [{"prompt": "?", "answer": "a"},
+                                          {"prompt": "??", "answer": "b"}]}],
+            "evaluation": [{"type": "multiple_choice", "question": "q",
+                            "options": ["a", "b"], "correct_index": 0}],
+        }
+
+        class ScriptedModel:
+            def generate(self, request):
+                return ModelResponse(
+                    content=json.dumps(pack), model=request.model,
+                    finish_reason="stop", tool_calls=None, raw={})
+
+        captured = {}
+
+        def fake_render_audio(pack, *, stem, output_path):
+            from engines.language_lab.pack_audio import SegmentAudio
+            captured["stem"] = stem
+            captured["output_path"] = output_path
+            return [SegmentAudio("dialogue-0", f"{stem}-dialogue-0.wav",
+                                 b"RIFF", 0.5),
+                    SegmentAudio("dialogue-1", f"{stem}-dialogue-1.wav",
+                                 b"RIFF", 0.5)]
+
+        import engines.language_lab.pack_audio as pa
+        monkeypatch.setattr(pa, "render_pack_audio", fake_render_audio)
+
+        ctrl = make_controller(ScriptedModel(), storage)
+        result = ctrl.generate_lesson_pack("tea", "es", "en", "beginner")
+        assert result.ok
+        html = Path(str(result.payload)).read_text(encoding="utf-8")
+        assert 'src="lesson-tea-es-dialogue-0.wav"' in html
+        assert "<h2>Listening</h2>" in html
+        assert captured["output_path"].endswith("exports")
+
+    def test_lesson_pack_flow_survives_missing_tts(self, storage):
+        # piper absent -> honest silent pack, never a failed generation
+        import json
+
+        from model_layer.client import ModelResponse
+
+        pack = {
+            "topic": "tea", "target_language": "es",
+            "known_language": "en", "level": "beginner",
+            "dialogue": [{"speaker": "A", "content": "x"},
+                         {"speaker": "B", "content": "y"}],
+            "vocab_cards": [{"term": "t", "reading": "r",
+                             "translation": "tr", "example": "e"}],
+            "grammar_cards": [{"point": "p", "explanation": "e",
+                               "drills": [{"prompt": "?", "answer": "a"},
+                                          {"prompt": "??", "answer": "b"}]}],
+            "evaluation": [{"type": "multiple_choice", "question": "q",
+                            "options": ["a", "b"], "correct_index": 0}],
+        }
+
+        class ScriptedModel:
+            def generate(self, request):
+                return ModelResponse(
+                    content=json.dumps(pack), model=request.model,
+                    finish_reason="stop", tool_calls=None, raw={})
+
+        class NoPiper(RuntimeError):
+            pass
+
+        ctrl = make_controller(ScriptedModel(), storage)
+        import engines.language_lab.pack_audio as pa
+        original = pa.render_pack_audio
+
+        def boom(*a, **k):
+            raise RuntimeError("piper-tts package not installed")
+
+        pa.render_pack_audio = boom
+        try:
+            result = ctrl.generate_lesson_pack("tea", "es", "en",
+                                               "beginner")
+        finally:
+            pa.render_pack_audio = original
+        assert result.ok
+
     def test_empty_topic_maps_to_input_kind(self, storage):
         result = make_controller(OkClient(), storage).generate_lesson_pack(
             "  ", "es", "en", "beginner")

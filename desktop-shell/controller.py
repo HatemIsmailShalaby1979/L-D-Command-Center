@@ -169,9 +169,26 @@ class ShellController:
                                        audit)
         except (SchemaValidationError, ApiError) as exc:
             logger.warning("Pack fidelity audit skipped: %s", exc)
-        path = self.storage.save_artifact("exports", f"{base}.html",
-                                          render_lesson_pack_html(pack))
-        logger.info("Lesson pack rendered -> %s", path)
+
+        # per-segment audio: rendered NEXT TO the HTML so its relative
+        # <audio> srcs resolve when opened in a browser (spec C2). TTS
+        # absence degrades honestly — the pack ships without audio.
+        audio_files: dict[str, str] = {}
+        try:
+            from engines.language_lab.pack_audio import render_pack_audio
+            exports_dir = Path(self.storage.root) / "exports"
+            segments = render_pack_audio(
+                pack, stem=base, output_path=str(exports_dir))
+            audio_files = {s.key: s.name for s in segments}
+        except (RuntimeError, FileNotFoundError) as exc:
+            logger.warning("Pack audio skipped (%s); shipping silent pack",
+                           exc)
+
+        path = self.storage.save_artifact(
+            "exports", f"{base}.html",
+            render_lesson_pack_html(pack, audio_files=audio_files or None))
+        logger.info("Lesson pack rendered -> %s (%d audio segments)",
+                    path, len(audio_files))
         return FlowResult(True, payload=str(path))
 
     @_flow
