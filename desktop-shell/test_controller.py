@@ -259,8 +259,8 @@ class TestAudioStudio:
         from types import SimpleNamespace
 
         script = SimpleNamespace(
-            segments=[SimpleNamespace(duration_seconds=30),
-                      SimpleNamespace(duration_seconds=40)],
+            segments=[SimpleNamespace(duration_seconds=30, speaker="Alex"),
+                      SimpleNamespace(duration_seconds=40, speaker="Maya")],
             to_dict=lambda: {"title": "T"},
             title="Tea episode")
         audio = SimpleNamespace(wav_bytes=b"W", mp3_bytes=b"M",
@@ -276,6 +276,8 @@ class TestAudioStudio:
         assert res.payload["wav"].endswith(".wav")
         assert "podcast-tea-history.json" in storage.list_artifacts("podcast_scripts")
         assert captured["language"] == "Spanish"  # catalog name, not code
+        assert captured["co_host_name"] == "Maya"
+        assert res.payload["speakers"] == ["Alex", "Maya"]
 
     def test_podcast_empty_topic_maps_to_input(self, storage):
         res = make_controller(OkClient(), storage).generate_podcast("")

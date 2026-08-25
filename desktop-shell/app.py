@@ -85,6 +85,27 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Button(header, text="Probe model",
                command=lambda: run_probe()).pack(side="left")
 
+    # model picker — the user always sees and chooses what is running
+    model_var = tk.StringVar()
+    models_res = ctrl.list_available_models()
+    model_frame = ttk.Frame(header); model_frame.pack(side="right")
+    ttk.Label(model_frame, text="Model:").pack(side="left")
+    model_combo = ttk.Combobox(model_frame, textvariable=model_var,
+                               state="readonly", width=26,
+                               values=models_res.payload if models_res.ok else [])
+    model_combo.pack(side="left", padx=4)
+    if models_res.ok and ctrl.model in (models_res.payload or []):
+        model_var.set(ctrl.model)
+    elif models_res.ok and models_res.payload:
+        ctrl.model = models_res.payload[0]
+        model_var.set(models_res.payload[0])
+
+    def on_model_selected(_event=None):
+        ctrl.model = model_var.get()
+        refresh_health()
+
+    model_combo.bind("<<ComboboxSelected>>", on_model_selected)
+
     def refresh_health():
         res = ctrl.check_model_health()
         if res.ok:
@@ -336,12 +357,22 @@ def run() -> None:  # pragma: no cover — needs a display
     ab_text.grid(row=1, column=0, columnspan=4, padx=4, sticky="we")
     ab_lang = tk.StringVar(value="en")
     ab_speed = tk.StringVar(value="1.0")
+    voices_res = ctrl.available_voices()
+    installed = voices_res.payload if voices_res.ok else []
     ttk.Label(ab_frame, text="Voice language").grid(row=2, column=0, sticky="w")
     ttk.Combobox(ab_frame, textvariable=ab_lang, width=5, state="readonly",
                  values=LANG_CODES).grid(row=2, column=1, sticky="w")
     ttk.Label(ab_frame, text="Speed").grid(row=2, column=2, sticky="e")
     ttk.Combobox(ab_frame, textvariable=ab_speed, width=5, state="readonly",
                  values=["0.8", "1.0", "1.2"]).grid(row=2, column=3, sticky="w")
+    ttk.Label(ab_frame, text="Narrator voice").grid(row=2, column=4,
+                                                    sticky="w", padx=(10, 0))
+    ab_voice = tk.StringVar(value="")
+    ab_voice_combo = ttk.Combobox(ab_frame, textvariable=ab_voice, width=24,
+                                  state="readonly",
+                                  values=["(auto by language)"] + installed)
+    ab_voice_combo.grid(row=2, column=5, sticky="w")
+    ab_voice_combo.current(0)
     ab_status = tk.StringVar(value="Paste any text — narrated WAV + MP3 land in exports.")
     tk.Label(ab_frame, textvariable=ab_status, fg="gray",
              wraplength=700, justify="left").grid(row=3, column=0,
@@ -353,7 +384,9 @@ def run() -> None:  # pragma: no cover — needs a display
             return messagebox.showinfo("Audio Studio", "Paste some text first.")
         ab_status.set(f"Narrating {len(text)} characters…")
         root.update_idletasks()
-        res = ctrl.generate_audiobook(text, ab_lang.get(), float(ab_speed.get()))
+        voice = None if ab_voice.get().startswith("(") else ab_voice.get()
+        res = ctrl.generate_audiobook(text, ab_lang.get(),
+                                      float(ab_speed.get()), voice)
         if not res:
             ab_status.set("Audiobook failed.")
             return show_error(res)
@@ -381,16 +414,33 @@ def run() -> None:  # pragma: no cover — needs a display
                  values=["beginner", "intermediate", "advanced"]).pack(
         side="left", padx=4)
     pod_row2 = ttk.Frame(pod_frame); pod_row2.pack(fill="x", pady=2)
-    ttk.Label(pod_row2, text="Host").pack(side="left")
+    ttk.Label(pod_row2, text="Host A").pack(side="left")
     pod_host = tk.StringVar(value="Alex")
-    ttk.Entry(pod_row2, textvariable=pod_host, width=10).pack(side="left", padx=4)
-    ttk.Label(pod_row2, text="Segments").pack(side="left")
+    ttk.Entry(pod_row2, textvariable=pod_host, width=9).pack(side="left", padx=4)
+    ttk.Label(pod_row2, text="Host B").pack(side="left")
+    pod_cohost = tk.StringVar(value="Maya")
+    ttk.Entry(pod_row2, textvariable=pod_cohost, width=9).pack(side="left", padx=4)
+    ttk.Label(pod_row2, text="Voice A").pack(side="left")
+    pod_voice_a = tk.StringVar(value="")
+    ttk.Combobox(pod_row2, textvariable=pod_voice_a, width=20,
+                 state="readonly",
+                 values=["(auto)"] + installed).pack(side="left", padx=2)
+    pod_voice_a.current(0)
+    ttk.Label(pod_row2, text="Voice B").pack(side="left")
+    pod_voice_b = tk.StringVar(value="")
+    ttk.Combobox(pod_row2, textvariable=pod_voice_b, width=20,
+                 state="readonly",
+                 values=["(auto)"] + installed).pack(side="left", padx=2)
+    pod_voice_b.current(0)
+
+    pod_row3 = ttk.Frame(pod_frame); pod_row3.pack(fill="x", pady=2)
+    ttk.Label(pod_row3, text="Segments").pack(side="left")
     pod_segments = tk.StringVar(value="6")
-    ttk.Spinbox(pod_row2, from_=2, to=14, textvariable=pod_segments,
+    ttk.Spinbox(pod_row3, from_=2, to=14, textvariable=pod_segments,
                 width=4).pack(side="left", padx=4)
-    ttk.Label(pod_row2, text="Minutes").pack(side="left")
+    ttk.Label(pod_row3, text="Minutes").pack(side="left")
     pod_minutes = tk.StringVar(value="5")
-    ttk.Spinbox(pod_row2, from_=1, to=30, textvariable=pod_minutes,
+    ttk.Spinbox(pod_row3, from_=1, to=30, textvariable=pod_minutes,
                 width=4).pack(side="left", padx=4)
     pod_status = tk.StringVar(
         value="Two AI hosts discuss the topic entirely in the target "
@@ -407,12 +457,18 @@ def run() -> None:  # pragma: no cover — needs a display
         root.update_idletasks()
         res = ctrl.generate_podcast(topic, pod_lang.get(), pod_level.get(),
                                     int(pod_segments.get()),
-                                    int(pod_minutes.get()), pod_host.get())
+                                    int(pod_minutes.get()), pod_host.get(),
+                                    pod_cohost.get(),
+                                    None if pod_voice_a.get().startswith("(")
+                                    else pod_voice_a.get(),
+                                    None if pod_voice_b.get().startswith("(")
+                                    else pod_voice_b.get())
         if not res:
             pod_status.set("Podcast failed.")
             return show_error(res)
         pod_status.set(f"'{res.payload['title']}' ready — "
                        f"{res.payload['segments']} segments, "
+                       f"voices: {', '.join(res.payload['speakers'])}, "
                        f"{res.payload['duration_seconds']}s. Opening player…")
         _open_path(res.payload["mp3"] or res.payload["wav"])
 

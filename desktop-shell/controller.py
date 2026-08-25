@@ -89,6 +89,10 @@ class ShellController:
     # -- health -----------------------------------------------------------
 
     @_flow
+    def list_available_models(self) -> FlowResult:
+        return FlowResult(True, payload=self.client.list_models())
+
+    @_flow
     def check_model_health(self) -> FlowResult:
         if self.client.is_available():
             return FlowResult(True, payload="ready")
@@ -119,9 +123,15 @@ class ShellController:
     def _slug(self, text: str, fallback: str) -> str:
         return "".join(c if c.isalnum() else "-" for c in text.lower()).strip("-")[:40] or fallback
 
+    def available_voices(self, models_dir=None) -> list[str]:
+        """Installed Piper voices — the UI's voice pickers feed from this."""
+        from model_layer.tts import get_available_voices
+        return get_available_voices(models_dir=models_dir)
+
     @_flow
     def generate_audiobook(self, text: str, language: str = "en",
-                           speed: float = 1.0) -> FlowResult:
+                           speed: float = 1.0,
+                           voice: Optional[str] = None) -> FlowResult:
         """Narration engine -> WAV+MP3 saved under exports."""
         from engines.audio_engine import voice_catalog
         from engines.audio_engine.narration import narrate
@@ -129,9 +139,9 @@ class ShellController:
         text = (text or "").strip()
         if not text:
             raise ValueError("Text must be non-empty")
-        result = narrate(
-            text, voice=voice_catalog.narrator_voice(language),
-            include_mp3=True, speed=float(speed))
+        narrator = voice or voice_catalog.narrator_voice(language)
+        result = narrate(text, voice=narrator,
+                         include_mp3=True, speed=float(speed))
         existing = set(self.storage.list_artifacts("exports"))
         base = unique_artifact_name(existing, f"{self._slug(text, 'audiobook')}.wav")
         base = base[:-4]  # strip .wav; we add per-format suffixes
@@ -155,7 +165,10 @@ class ShellController:
     def generate_podcast(self, topic: str, language: str = "en",
                          level: str = "beginner", num_segments: int = 6,
                          duration_minutes: int = 5,
-                         host_name: str = "Alex") -> FlowResult:
+                         host_name: str = "Alex",
+                         co_host_name: str = "Maya",
+                         voice_a: Optional[str] = None,
+                         voice_b: Optional[str] = None) -> FlowResult:
         """Script generation (Guardrail Loop) + two-voice render -> WAV/MP3."""
         from engines.audio_engine import voice_catalog
         from engines.audio_engine.podcast_audio import (
@@ -168,16 +181,26 @@ class ShellController:
         topic = (topic or "").strip()
         if not topic:
             raise ValueError("Topic must be non-empty")
+        host = (host_name or "Alex").strip() or "Alex"
+        co_host = (co_host_name or "Maya").strip() or "Maya"
+        if co_host == host:
+            raise ValueError("Co-host needs a different name than the host")
         script = generate_script_from_topic(
             topic,
             num_segments=int(num_segments),
             duration_minutes=int(duration_minutes),
-            host_name=(host_name or "Alex").strip() or "Alex",
+            host_name=host, co_host_name=co_host,
             language=voice_catalog.language_name(language),
             level=level,
             client=self.client, model=self.model,
         )
-        audio = render_podcast_to_audio(script, include_mp3=True)
+        voice_map = {}
+        if voice_a:
+            voice_map[host] = voice_a
+        if voice_b:
+            voice_map[co_host] = voice_b
+        audio = render_podcast_to_audio(script, include_mp3=True,
+                                        voice_map=voice_map or None)
         existing = set(self.storage.list_artifacts("exports"))
         base = unique_artifact_name(existing,
                                     f"podcast-{self._slug(topic, 'episode')}.wav")
@@ -192,6 +215,7 @@ class ShellController:
             "segments": len(script.segments),
             "duration_seconds": audio.duration_seconds,
             "title": script.title,
+            "speakers": sorted({seg.speaker for seg in script.segments}),
         }
         if audio.mp3_bytes:
             payload["mp3"] = str(self.storage.save_artifact(

@@ -41,7 +41,8 @@ logger = logging.getLogger(__name__)
 
 PROMPT_KEY = "podcast_script_generate"
 
-DEFAULT_HOST_NAME = "Host"
+DEFAULT_HOST_NAME = "Alex"
+DEFAULT_CO_HOST_NAME = "Maya"
 DEFAULT_DURATION_MINUTES = 15
 DEFAULT_NUM_SEGMENTS = 5
 
@@ -85,6 +86,7 @@ class PodcastScript:
     duration_minutes: int
     segments: list[PodcastSegment]
     speakers: list[str]
+    co_host_name: str = "Maya"
 
     @property
     def total_duration_seconds(self) -> int:
@@ -95,6 +97,7 @@ class PodcastScript:
             "topic": self.topic,
             "title": self.title,
             "host_name": self.host_name,
+            "co_host_name": self.co_host_name,
             "duration_minutes": self.duration_minutes,
             "segments": [seg.to_dict() for seg in self.segments],
             "speakers": self.speakers,
@@ -107,6 +110,7 @@ class PodcastScript:
             topic=data["topic"],
             title=data["title"],
             host_name=data.get("host_name", DEFAULT_HOST_NAME),
+            co_host_name=data.get("co_host_name", DEFAULT_CO_HOST_NAME),
             duration_minutes=data.get("duration_minutes", DEFAULT_DURATION_MINUTES),
             segments=segments,
             speakers=data.get("speakers", []),
@@ -160,6 +164,34 @@ def validate_podcast_script(data: dict[str, Any]) -> tuple[bool, list[str]]:
     if not isinstance(data["speakers"], list) or len(data["speakers"]) == 0:
         errors.append("speakers must be a non-empty list")
 
+    # A podcast is a CONVERSATION: a script where one host talks to
+    # themselves is an audiobook wearing a podcast's name (review
+    # 2026-08-25: granite produced exactly that and it shipped).
+    segments = data.get("segments") or []
+    if isinstance(segments, list) and len(segments) >= 2:
+        speakers_in_turns = [s.get("speaker") for s in segments
+                             if isinstance(s, dict)]
+        distinct = {x for x in speakers_in_turns if x}
+        if len(distinct) < 2:
+            errors.append(
+                "podcast needs at least TWO distinct speakers having a "
+                f"conversation; got {sorted(map(str, distinct))!r} — this "
+                "is an audiobook, not a podcast")
+        else:
+            from collections import Counter
+            counts = Counter(speakers_in_turns)
+            dominant, dominant_n = counts.most_common(1)[0]
+            if len(segments) >= 4 and dominant_n > 0.6 * len(segments):
+                errors.append(
+                    f"speaker {dominant!r} has {dominant_n}/{len(segments)} "
+                    "turns — rebalance so both hosts genuinely converse")
+            for i in range(1, len(speakers_in_turns)):
+                if speakers_in_turns[i] == speakers_in_turns[i - 1]:
+                    errors.append(
+                        f"segment {i}: same speaker as previous turn — "
+                        "hosts must alternate to read as a conversation")
+                    break
+
     return len(errors) == 0, errors
 
 
@@ -174,6 +206,7 @@ def generate_podcast_script(
     num_segments: int = DEFAULT_NUM_SEGMENTS,
     duration_minutes: int = DEFAULT_DURATION_MINUTES,
     host_name: str = DEFAULT_HOST_NAME,
+    co_host_name: str = DEFAULT_CO_HOST_NAME,
     language: str = "English",
     level: str = "beginner",
     client: LmStudioClient | None = None,
@@ -217,6 +250,7 @@ def generate_podcast_script(
             "num_segments": num_segments,
             "duration_minutes": duration_minutes,
             "host_name": host_name,
+            "co_host_name": co_host_name,
             "language": language,
             "level": level,
         },

@@ -281,6 +281,7 @@ class PromptRegistry:
         '  "topic": "<the topic string>",\n'
         '  "title": "<episode title>",\n'
         '  "host_name": "{host_name}",\n'
+        '  "co_host_name": "{co_host_name}",\n'
         '  "duration_minutes": <number>,\n'
         '  "segments": [\n'
         '    {{\n'
@@ -290,15 +291,21 @@ class PromptRegistry:
         '      "duration_seconds": <number>\n'
         '    }}\n'
         "  ],\n"
-        '  "speakers": ["<speaker1>", "<speaker2>"]\n'
+        '  "speakers": ["{host_name}", "{co_host_name}"]\n'
         "}}\n\n"
         "Requirements:\n"
         "- Produce exactly {num_segments} segments.\n"
-        "- The host is named {host_name}; use that name in the intro and "
-        "conclusion segments.\n"
+        "- There are EXACTLY TWO hosts: {host_name} and {co_host_name}. "
+        "Every segment is spoken by one of them — no other speakers.\n"
+        "- It is a REAL conversation: they ask each other questions, "
+        "disagree, react to what the other just said. {co_host_name} is "
+        "never a silent sidekick.\n"
+        "- Hosts MUST alternate: two consecutive segments may never have "
+        "the same speaker.\n"
         "- First segment must be type 'intro'.\n"
         "- Last segment must be type 'conclusion'.\n"
-        "- Include a mix of monologue and dialogue segments.\n"
+        "- Intro and conclusion are spoken by {host_name}, who welcomes "
+        "and thanks {co_host_name} by name.\n"
         "- Total duration should be approximately {duration_minutes} minutes.\n"
         "- Vocabulary and sentence complexity must suit {level} learners of {language}.\n"
         "- Content must be engaging, informative, and appropriate for a podcast audience.\n"

@@ -54,6 +54,7 @@ def render_podcast_to_audio(
     output_path: Optional[str] = None,
     speed: float = DEFAULT_SPEED,
     pause_duration: float = PAUSE_DURATION_SECONDS,
+    voice_map: Optional[dict[str, str]] = None,
 ) -> PodcastAudioResult:
     """
     Contract: render a PodcastScript to a single audio artifact.
@@ -83,9 +84,19 @@ def render_podcast_to_audio(
     if not script.segments:
         raise ValueError("PodcastScript has no segments")
 
-    # Distinct voice per speaker, ordered by first appearance.
+    # Distinct voice per speaker, ordered by first appearance. An explicit
+    # voice_map (speaker -> voice id) wins — the UI's Voice A / Voice B
+    # pickers land here.
     unique_speakers = list(dict.fromkeys(seg.speaker for seg in script.segments))
-    voice_map = dict(zip(unique_speakers, voice_catalog.speaker_voices(len(unique_speakers))))
+    assigned = dict(zip(unique_speakers,
+                        voice_catalog.speaker_voices(len(unique_speakers))))
+    if voice_map:
+        unknown = set(voice_map) - set(unique_speakers)
+        if unknown:
+            raise ValueError(
+                f"voice_map names speakers not in the script: {sorted(unknown)}")
+        assigned.update({k: v for k, v in voice_map.items() if v})
+    voice_map = assigned
 
     segments: list[tuple] = []
     for i, segment in enumerate(script.segments):

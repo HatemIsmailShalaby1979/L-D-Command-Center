@@ -55,35 +55,36 @@ def _make_valid_script_dict() -> dict:
     return {
         "topic": SAMPLE_TOPIC,
         "title": "Python for Beginners Episode",
-        "host_name": "John Doe",
+        "host_name": "Alex",
+        "co_host_name": "Maya",
         "duration_minutes": 15,
         "segments": [
             {
                 "type": "intro",
-                "speaker": "John Doe",
+                "speaker": "Alex",
                 "content": "Welcome to our episode about Python!",
                 "duration_seconds": 60,
             },
             {
                 "type": "monologue",
-                "speaker": "John Doe",
+                "speaker": "Maya",
                 "content": "Python is a versatile language...",
                 "duration_seconds": 300,
             },
             {
                 "type": "dialogue",
-                "speaker": "John Doe",
+                "speaker": "Alex",
                 "content": "Let's discuss some examples.",
                 "duration_seconds": 240,
             },
             {
                 "type": "conclusion",
-                "speaker": "John Doe",
+                "speaker": "Maya",
                 "content": "Thanks for listening!",
                 "duration_seconds": 60,
             },
         ],
-        "speakers": ["John Doe"],
+        "speakers": ["Alex", "Maya"],
     }
 
 
@@ -93,13 +94,14 @@ VALID_SCRIPT_DICT = _make_valid_script_dict()
 SAMPLE_SCRIPT = PodcastScript(
     topic=SAMPLE_TOPIC,
     title="Python for Beginners Episode",
-    host_name="John Doe",
+    host_name="Alex",
+    co_host_name="Maya",
     duration_minutes=15,
     segments=[
-        PodcastSegment(type="intro", speaker="John Doe", content="Welcome!", duration_seconds=60),
-        PodcastSegment(type="conclusion", speaker="John Doe", content="Thanks!", duration_seconds=60),
+        PodcastSegment(type="intro", speaker="Alex", content="Welcome!", duration_seconds=60),
+        PodcastSegment(type="conclusion", speaker="Maya", content="Thanks!", duration_seconds=60),
     ],
-    speakers=["John Doe"],
+    speakers=["Alex", "Maya"],
 )
 
 
@@ -150,14 +152,14 @@ class TestPodcastScript:
         assert data["topic"] == SAMPLE_TOPIC
         assert data["title"] == "Python for Beginners Episode"
         assert len(data["segments"]) == 2
-        assert data["speakers"] == ["John Doe"]
+        assert data["speakers"] == ["Alex", "Maya"]
 
     def test_from_dict(self):
         script = PodcastScript.from_dict(_make_valid_script_dict())
         assert script.topic == SAMPLE_TOPIC
         assert script.title == "Python for Beginners Episode"
         assert len(script.segments) == 4
-        assert script.speakers == ["John Doe"]
+        assert script.speakers == ["Alex", "Maya"]
 
     def test_total_duration_seconds(self):
         assert SAMPLE_SCRIPT.total_duration_seconds == 120
@@ -396,3 +398,46 @@ def test_manual_verification():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+# ---------------------------------------------------------------------------
+# Conversation contract (a podcast is TWO people talking — review 2026-08-25)
+# ---------------------------------------------------------------------------
+
+class TestConversationContract:
+    from engines.audio_engine.podcast_script import validate_podcast_script
+    def _script(self):
+        return validate_podcast_script
+
+    def test_single_speaker_rejected_as_audiobook(self):
+        data = _make_valid_script_dict()
+        for seg in data["segments"]:
+            seg["speaker"] = "Alex"
+        ok, errors = self._script()(data)
+        assert not ok
+        assert any("audiobook" in e for e in errors)
+
+    def test_consecutive_same_speaker_rejected(self):
+        data = _make_valid_script_dict()
+        data["segments"][1]["speaker"] = "Alex"  # Alex twice in a row
+        ok, errors = self._script()(data)
+        assert not ok and any("alternate" in e for e in errors)
+
+    def test_dominant_host_rebalanced(self):
+        data = _make_valid_script_dict()
+        # base is alternating A/M/A/M; two extra Alex turns -> 4/6 = 67%
+        extra = [{"type": "dialogue", "speaker": "Alex",
+                  "content": "more", "duration_seconds": 30}
+                 for _ in range(2)]
+        data["segments"] = data["segments"] + extra
+        ok, errors = self._script()(data)
+        assert not ok and any("rebalance" in e for e in errors)
+
+    def test_template_names_both_hosts(self):
+        import pytest
+        from model_layer.prompts import PromptRegistry
+        system, user, _ = PromptRegistry().render("podcast_script_generate", {
+            "topic": "t", "num_segments": 6, "duration_minutes": 5,
+            "host_name": "Alex", "co_host_name": "Maya",
+            "language": "English", "level": "beginner"})
+        assert "Maya" in user and "EXACTLY TWO hosts" in user
