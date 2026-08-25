@@ -38,12 +38,16 @@ comprehension tied to exact podcast segments, and final evaluations:
   speak only the target language, as a normal target-language podcast.
 
 ### 3. Career Development
-Resume generation, upload, and enhancement. Account connections to
-LinkedIn, GitHub, and a personal portfolio. The model can research a
-topic on YouTube and summarize it with reference back to the source
-video, and can post to LinkedIn — both only when the user explicitly
-asks for it in a prompt, and only citing authenticated/traceable
-sources.
+Resume generation, upload (PDF/DOCX/TXT with confidence flags),
+enhancement with inspectable changes, and export to PDF/DOCX. Account
+connections to LinkedIn and GitHub (profile → contact fields, repos →
+projects list). A job-board search agent hunts Greenhouse, Ashby, and
+RemoteOK for matching roles, ranks by keyword hits, and prepares full
+application packages (tailored resume + cover letter + listing reference)
+for each listing — the agent finds and prepares, the human submits.
+A saved-search watchlist reports only new listings on a configurable
+timer. YouTube research and LinkedIn posting available when the user
+explicitly asks.
 
 ### 4. Paradise Playground
 The media playground — a kids' area, an opera for musicians. Users import
@@ -84,14 +88,15 @@ multiple micro-engines) and are **not** to be imported, copied, or
 refactored into this workspace. Lessons from them inform this build;
 their code does not.
 
-## Open Scoping Questions
+## Resolved Scoping Decisions (formerly "Open Questions")
 
-These are proposed, not decided — flag disagreement rather than silently
-picking one:
-- v1 cut: which of the four pillars ships first? (Recommendation: get
-  Learning Journeys + export solid before Language Lab, Career Dev, and
-  Paradise Playground, since the other three each depend on the same
-  generation/export core working reliably first.)
-- Which social/creative integrations are v1 vs. later (LinkedIn+GitHub
-  are core to Career Dev; YouTube, Gmail, Figma, Suno, Notion can likely
-  follow once the core engine is proven).
+All resolved as of 2026-08-25:
+- **v1 scope**: All four pillars ship in v1 — Learning Journeys, Language
+  Lab (flagship), Career Development (with job-board agent), Paradise
+  Playground (universal media + connector hub). See D5 in PRODUCTION_PLAN.
+- **Social/creative integrations**: LinkedIn + GitHub are core to Career
+  Dev (v1). YouTube research, LinkedIn posting, Notion, Figma, Suno
+  included as keyless connectors in Playground (v1). Gmail deferred post-v1.
+- **UI toolkit**: Tkinter (D3 resolved).
+- **Target OS**: Windows + Linux together (D4 resolved).
+- **Git init**: Done, baseline tagged audit-2026-08-24 (D1 resolved).

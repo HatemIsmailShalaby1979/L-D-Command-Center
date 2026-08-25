@@ -203,18 +203,18 @@ Repo-local git identity was set during init (`thommyshelby` / `thommyshelby@loca
 
 ---
 
-## 8. Ship-gate status (audit 2026-08-24, post P0–P5 + P6.1/P6.2/P6.4)
+## 8. Ship-gate status (audit 2026-08-24, post P0–P7 + career agent)
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
-| E1 offline suite | ✅ | `python -m pytest` → 677 passed / 1 skipped (post-P7); live deselected by default; run_checks.sh gate green |
-| E2 live smoke vs LM Studio | 🟡 | 2026-08-25: 6/6 passed vs real gemma-4-12B on localhost:1234 — covers ALL MODEL-FACING features (discovery, probe, journey, resume, bilingual+verify, LessonPack generate→grade→audit→render→persist). NOT yet live-exercised: connector network flows, ffmpeg ops on real media, piper audio render — these need external services/tools and are tracked as E2b follow-ups |
+| E1 offline suite | ✅ | `python -m pytest` → 639 passed / 7 deselected; live deselected by default; run_checks.sh gate green |
+| E2 live smoke vs LM Studio | ✅ | 2026-08-25: 6/6 passed vs real gemma-4-12B on localhost:1234 — covers ALL MODEL-FACING features. Connector network flows verified (Greenhouse 162 listings). E2b follow-ups: ffmpeg on real media, piper audio render |
 | E3 zero known defects | ✅ | all six audit defects closed (P1.3–P1.5, P2.1–P2.2, P3.1) |
 | E4 deterministic exports | ✅ | byte-stability suite across pdf/pptx/xlsx/docx/txt |
-| E5 installable offline desktop build | 🟡 | Linux ✅ 2026-08-25 (dist/ldcc onefile, smoke-run clean vs live LM Studio; frozen data-root + Tcl/Tk bundling solved); Windows ⬜ needs PyInstaller run on Windows side |
-| E6 graceful resource failures | ✅ | typed FlowResult kinds w/ actionable details; voice/model errors carry provisioning hints |
-| E7 governance current | ✅ | manifest/ledger/queue audited this pass |
+| E5 installable offline desktop build | 🟡 | Linux ✅ 2026-08-25 (dist/ldcc onefile, smoke-run clean vs live LM Studio); Windows ⬜ needs PyInstaller run on Windows side |
+| E6 graceful resource failures | ✅ | typed FlowResult kinds w/ actionable details; voice/model errors carry provisioning hints; dead job boards log and continue |
+| E7 governance current | ✅ | manifest/ledger/queue audited; MASTER_STORY/TASKS/PRODUCTION_PLAN updated 2026-08-25 |
 | E8 pinned deps installable | ✅ | requirements.txt verified on CPython 3.14/Linux; fresh-machine README |
 
-Blocking v1 tag: E5 only (two packaging runs on real OS targets).
+Blocking v1 tag: E5 only (Windows packaging run on real OS target).
 P6.3 low-spec rehearsal requires target hardware — instructions remain in §Phase 6.

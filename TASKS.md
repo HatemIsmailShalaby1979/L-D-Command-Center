@@ -56,3 +56,12 @@ DONE:opencode: P7.9 Connector Hub seam + gradio_client adapter — connectors_hu
 DONE:opencode: P7.10 Figma REST adapter — connectors_figma.py on the Hub seam: free-account FIGMA_TOKEN via secrets seam, two-leg export (images endpoint → asset bytes), png/svg + scale, list_frames() picker, injectable transport; failures are actionable failed Jobs
 DONE:opencode: P7.11 Pollinations keyless image adapter — connectors_pollinations.py on the Hub seam: zero-account GET generation (urlencoded prompt, width/height/model/seed/nologo), content-type guard, injectable transport, failures-as-data
 DONE:opencode: P7.12 Playground tab — controller playground seam (connector roster keyless-first with quota-note payloads, run_connector_job → media/generated, import_files + scan_import_inbox, media list/load, new "connector" error kind) + thin Playground tab (canvas list over library/generated/inbox, file-picker import + inbox folder drop path, connector panel rendering quota notes, prompt Generate)
+
+--- Career agent: job-board search + application packages (owner-directed 2026-08-25) ---
+
+DONE:opencode: engines/career-engine/job_boards.py — keyless connectors for Greenhouse (v1 boards-api), Ashby, RemoteOK; unified JobListing dataclass; keyword matching (title×3 + snippet×1 scoring); cross-source URL dedupe; dead-source isolation (logged, never fatal)
+DONE:opencode: cover letter generation — cover_letter_generate prompt template + generate_cover_letter() in career generator; grounded 150-250 word letters mentioning company; pipeline-validated
+DONE:opencode: controller agent flows — search_jobs_now (keyword filter, score-ranked top-30), check_job_watchlist (seen-URL diff, 10min auto-check), save_job_watchlist (persist role/filters/seen-set), prepare_application (enhance + cover letter + PDF/DOCX + listing.txt), upload_resume (PDF/DOCX/TXT + confidence flags), import_github_projects (repos → projects), fetch_linkedin_profile (name/email → contact)
+DONE:opencode: Career tab UI expansion — resume preview pane, upload button (filedialog), connections row (GitHub username + Import + LinkedIn), Job Search section (role/location fields + Treeview + Prepare application), Watchlist section (save/check/auto-check toggle every 10 min)
+DONE:opencode: PDF Unicode fix — _UnicodeFPDF mixin auto-swaps Helvetica for DejaVu (Linux) or Arial (Windows) TTF; regression-tested with em-dash/curly-quotes crash from live use
+DONE:opencode: live smoke — Greenhouse search verified against real network (162 Stripe listings, keyword matching returning ranked results)
