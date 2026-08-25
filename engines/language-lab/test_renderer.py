@@ -142,9 +142,14 @@ class TestAudioWiring:
 
     def test_dialogue_turns_reference_their_artifacts(self):
         html = render_lesson_pack_html(good_pack(), audio_files=self.AUDIO)
+        assert 'type="audio/wav"' in html
+        assert "Play full dialogue" in html
         assert 'src="lesson-d0.wav"' in html
         assert 'src="lesson-d1.wav"' in html
         assert 'src="lesson-d2.wav"' not in html  # no mapping -> no tag
+
+    def test_no_play_all_button_without_audio(self, html):
+        assert "Play full dialogue" not in html
 
     def test_listening_rows_use_listening_key_then_dialogue_fallback(self):
         html = render_lesson_pack_html(good_pack(), audio_files=self.AUDIO)

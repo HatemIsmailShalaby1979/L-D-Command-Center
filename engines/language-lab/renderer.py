@@ -130,6 +130,19 @@ function checkDrill(btn){
   else{mark(m,'bad','Not quite — expected: '+btn.dataset.answer);}
   input.disabled=true;btn.disabled=true;
 }
+function playDialogue(btn){
+  var card=btn.closest('.card');
+  var list=card.querySelectorAll('.turn audio');
+  var i=0;
+  btn.disabled=true;
+  function next(){
+    if(i>=list.length){btn.disabled=false;return;}
+    var a=list[i];a.currentTime=0;a.play();
+    a.onended=function(){i++;next();};
+    a.onerror=function(){i++;next();};
+  }
+  if(list.length)next();
+}
 function chooseOpt(btn){
   var q=btn.closest('.q'),buttons=q.querySelectorAll('.opts button');
   Array.prototype.forEach.call(buttons,function(b){b.disabled=true;});
@@ -193,7 +206,12 @@ _DIALOGUE_TURN = (
     '{audio}</div>\n'
 )
 
-_AUDIO_TAG = '<audio controls preload="none" src="{src}"></audio>'
+_AUDIO_TAG = ('<audio controls preload="metadata" type="audio/wav" '
+              'src="{src}"></audio>')
+
+_PLAY_ALL_BUTTON = ('<button class="play-all" '
+                    'onclick="playDialogue(this)">\u25b6 Play full '
+                    'dialogue</button>')
 
 _FLIP_CARD = """\
 <div class="flip-card" onclick="this.classList.toggle('flipped')">
@@ -360,7 +378,9 @@ class LanguageLabRenderer:
                 audio=audio,
             ))
         body = "".join(turns)
-        return (f'<div class="card"><h2>Dialogue</h2>{body}</div>')
+        play_all = _PLAY_ALL_BUTTON if audio_files else ""
+        return (f'<div class="card"><h2>Dialogue</h2>'
+                f'<p style="margin-bottom:.5rem">{play_all}</p>{body}</div>')
 
     def _render_vocab(self, vocab):
         cards = "".join(_FLIP_CARD.format(

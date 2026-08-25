@@ -330,16 +330,20 @@ class ShellController:
         except (SchemaValidationError, ApiError) as exc:
             logger.warning("Pack fidelity audit skipped: %s", exc)
 
-        # per-segment audio: rendered NEXT TO the HTML so its relative
-        # <audio> srcs resolve when opened in a browser (spec C2). TTS
-        # absence degrades honestly — the pack ships without audio.
+        # per-segment audio: EMBEDDED into the HTML as data URIs so no
+        # browser file:// policy or moved file can silence it; disk WAVs
+        # are also written next to the HTML (P7.5 artifact contract).
         audio_files: dict[str, str] = {}
         try:
+            import base64
             from engines.language_lab.pack_audio import render_pack_audio
             exports_dir = Path(self.storage.root) / "exports"
             segments = render_pack_audio(
                 pack, stem=base, output_path=str(exports_dir))
-            audio_files = {s.key: s.name for s in segments}
+            for seg in segments:
+                data_uri = ("data:audio/wav;base64,"
+                            + base64.b64encode(seg.wav_bytes).decode())
+                audio_files[seg.key] = data_uri
         except (RuntimeError, FileNotFoundError) as exc:
             logger.warning("Pack audio skipped (%s); shipping silent pack",
                            exc)

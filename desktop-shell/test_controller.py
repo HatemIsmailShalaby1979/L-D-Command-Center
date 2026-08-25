@@ -318,9 +318,15 @@ class TestAudioStudio:
         good = ctrl.download_voice("en_GB-alan-medium")
         assert good.ok and seen == ["en_GB-alan-medium"]
 
-    def test_all_known_voices_marks_uninstalled(self, storage):
-        known = make_controller(OkClient(), storage).all_known_voices()
-        assert any("(will download on first use)" in v for v in known)
+    def test_all_known_voices_marks_uninstalled(self, storage, monkeypatch):
+        ctrl = make_controller(OkClient(), storage)
+        # pretend only one voice is installed; the rest must be flagged
+        monkeypatch.setattr(ctrl, "available_voices",
+                            lambda: ["en_US-lessac-medium"])
+        known = ctrl.all_known_voices()
+        marked = [v for v in known if "(will download on first use)" in v]
+        assert marked and all("en_US-lessac-medium" != v.split("   ")[0]
+                              for v in marked)
 
     def test_podcast_empty_topic_maps_to_input(self, storage):
         res = make_controller(OkClient(), storage).generate_podcast("")
@@ -397,9 +403,9 @@ class TestLanguageLabTab:
             captured["stem"] = stem
             captured["output_path"] = output_path
             return [SegmentAudio("dialogue-0", f"{stem}-dialogue-0.wav",
-                                 b"RIFF", 0.5),
+                                 b"RIFFDATA", 0.5),
                     SegmentAudio("dialogue-1", f"{stem}-dialogue-1.wav",
-                                 b"RIFF", 0.5)]
+                                 b"RIFFDATA2", 0.5)]
 
         import engines.language_lab.pack_audio as pa
         monkeypatch.setattr(pa, "render_pack_audio", fake_render_audio)
@@ -408,7 +414,11 @@ class TestLanguageLabTab:
         result = ctrl.generate_lesson_pack("tea", "es", "en", "beginner")
         assert result.ok
         html = Path(str(result.payload)).read_text(encoding="utf-8")
-        assert 'src="lesson-tea-es-dialogue-0.wav"' in html
+        # audio is EMBEDDED (data URI): no file:// policy can silence it
+        assert "data:audio/wav;base64" in html
+        import base64 as _b64
+        assert _b64.b64encode(b"RIFFDATA").decode() in html
+        assert "Play full dialogue" in html
         assert "<h2>Listening</h2>" in html
         assert captured["output_path"].endswith("exports")
 
