@@ -14,6 +14,8 @@ from __future__ import annotations
 import sys
 import tempfile
 from pathlib import Path
+
+import pytest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -160,6 +162,7 @@ class TestFullPipelineMocked:
         assert pdf_path.stat().st_size > 500  # reasonable PDF size
 
 
+@pytest.mark.live
 class TestFullPipelineLive:
     """
     Live integration test that actually calls LM Studio.
