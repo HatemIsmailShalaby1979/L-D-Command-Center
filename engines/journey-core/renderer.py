@@ -139,7 +139,7 @@ _HTML_BODY_HEADER = """\
 """
 
 _CARD_TEMPLATE = """\
-<div class="card">
+<div>
   <h2>{card_title}</h2>
   <div class="content">{content}</div>
   <span class="quiz-label">Quiz:</span>
@@ -362,7 +362,7 @@ class JourneyRenderer:
             explanation=explanation,
         )
 
-        return f'<div id="card-{card_id}">{card_html}</div>'
+        return f'<div id="card-{card_id}" class="card">{card_html}</div>'
 
 
 # ---------------------------------------------------------------------------
