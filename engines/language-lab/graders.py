@@ -158,6 +158,10 @@ def grade_deterministic(item: dict[str, Any], answer: Any) -> Optional[GradeResu
         return grade_fill_in_blank(item, answer)
     if item_type == "translation":
         return _grade_translation(item, answer)
+    if item_type == "transformation":
+        # keyed rewrite: deterministic when it matches the model's key
+        # (alternatives/accent-folded accepted), judge fallback otherwise
+        return _grade_translation(item, answer)
     raise ValueError(f"Unknown evaluation item type: {item_type!r}")
 
 

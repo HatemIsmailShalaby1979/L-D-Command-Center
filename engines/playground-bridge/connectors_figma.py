@@ -21,6 +21,7 @@ from engines.playground_bridge.connectors_hub import (
     Capabilities,
     Capability,
     Connector,
+    InputArtifact,
     Job,
     Result,
     new_job_id,
@@ -86,9 +87,12 @@ class FigmaConnector(Connector):
                 "Import Figma frames/designs as PNG or SVG assets",
                 "Free account token required; export API is rate-limited "
                 "but generous for personal use"),
-        ))
+        ), file_types=("png", "svg"), ops=("export_frame",))
 
-    def send(self, op: dict[str, Any]) -> Job:
+    def send(self, artifact: Optional[InputArtifact],
+             op: dict[str, Any]) -> Job:
+        # Figma's own semantics export FROM the user's file; an inbound
+        # artifact is meaningless here and intentionally ignored.
         job_id = new_job_id()
         token = self._token_provider() or ""
         if not token:

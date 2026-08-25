@@ -73,7 +73,7 @@ class TestHubSeam:
         class Nameless(Connector):
             def capabilities(self): ...
 
-            def send(self, op): ...
+            def send(self, artifact, op): ...
 
             def poll(self, job): ...
 
@@ -95,7 +95,7 @@ class TestGradioAdapter:
         media.write_bytes(b"PNGBYTES")
         client = FakeGradioClient(str(media))
         connector = make_connector(tmp_path, client)
-        job = connector.send({"prompt": "a lighthouse in fog"})
+        job = connector.send(None, {"prompt": "a lighthouse in fog"})
         assert job.status == "done"
         result = connector.poll(job)
         assert result.ok and result.media_bytes == b"PNGBYTES"
@@ -105,7 +105,7 @@ class TestGradioAdapter:
         media.write_bytes(b"x")
         client = FakeGradioClient(str(media))
         connector = make_connector(tmp_path, client)
-        connector.send({"prompt": "p", "seed": 7})
+        connector.send(None, {"prompt": "p", "seed": 7})
         call = client.calls[0]
         assert call["prompt"] == "p" and call["seed"] == 7
         assert call["api_name"] == "/infer"
@@ -117,7 +117,7 @@ class TestGradioAdapter:
     ])
     def test_unexpected_shapes_become_failed_jobs(self, tmp_path, output):
         connector = make_connector(tmp_path, FakeGradioClient(output))
-        job = connector.send({"prompt": "p"})
+        job = connector.send(None, {"prompt": "p"})
         assert job.status == "failed"
         result = connector.poll(job)
         assert not result.ok and "expected a media file" in result.error
@@ -125,7 +125,7 @@ class TestGradioAdapter:
     def test_space_exception_becomes_failed_job_with_message(self, tmp_path):
         connector = make_connector(
             tmp_path, FakeGradioClient(None, fail=True))
-        job = connector.send({"prompt": "p"})
+        job = connector.send(None, {"prompt": "p"})
         result = connector.poll(job)
         assert not result.ok and "GPU queue timeout" in result.error
 
@@ -135,23 +135,35 @@ class TestGradioAdapter:
         connector = GradioSpaceConnector(
             name="t", space_id="s/s", kind="image", description="d",
             quota_note="q", client_factory=broken_factory)
-        result = connector.poll(connector.send({"prompt": "p"}))
+        result = connector.poll(connector.send(None, {"prompt": "p"}))
         assert not result.ok and "gradio_client" in result.error
 
     def test_empty_prompt_fails_fast_without_client_call(self, tmp_path):
         client = FakeGradioClient(None)
         connector = make_connector(tmp_path, client)
-        job = connector.send({"prompt": "   "})
+        job = connector.send(None, {"prompt": "   "})
         assert job.status == "failed" and client.calls == []
 
     def test_poll_twice_reports_unknown_job(self, tmp_path):
         media = tmp_path / "y.bin"
         media.write_bytes(b"y")
         connector = make_connector(tmp_path, FakeGradioClient(str(media)))
-        job = connector.send({"prompt": "p"})
+        job = connector.send(None, {"prompt": "p"})
         connector.poll(job)
         second = connector.poll(Job(job.id, job.connector, "done"))
         assert not second.ok and "already-polled" in second.error
+
+    def test_capabilities_declare_ops_per_spec_b3(self, tmp_path):
+        caps = make_connector(tmp_path, FakeGradioClient(None)).capabilities()
+        assert caps.ops == ("text_to_image",) and caps.file_types == ()
+
+    def test_artifact_rejected_with_actionable_message(self, tmp_path):
+        from engines.playground_bridge.connectors_hub import InputArtifact
+        connector = make_connector(
+            tmp_path, FakeGradioClient(None))
+        result = connector.poll(connector.send(
+            InputArtifact("in.png", b"x", "image/png"), {"prompt": "p"}))
+        assert not result.ok and "does not accept input media" in result.error
 
     def test_empty_space_id_hides_capability(self, tmp_path):
         connector = GradioSpaceConnector(

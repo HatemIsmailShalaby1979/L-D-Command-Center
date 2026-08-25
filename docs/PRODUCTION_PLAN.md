@@ -208,7 +208,7 @@ Repo-local git identity was set during init (`thommyshelby` / `thommyshelby@loca
 | Criterion | Status | Notes |
 |-----------|--------|-------|
 | E1 offline suite | ✅ | `python -m pytest` → 677 passed / 1 skipped (post-P7); live deselected by default; run_checks.sh gate green |
-| E2 live smoke vs LM Studio | ✅ | 2026-08-25: engines/test_e2e_live.py — 6/6 passed in ~7 min against real gemma-4-12B-it-QAT on localhost:1234 (discovery, capability probe, journey, resume, bilingual+verify, LessonPack full pipeline) |
+| E2 live smoke vs LM Studio | 🟡 | 2026-08-25: 6/6 passed vs real gemma-4-12B on localhost:1234 — covers ALL MODEL-FACING features (discovery, probe, journey, resume, bilingual+verify, LessonPack generate→grade→audit→render→persist). NOT yet live-exercised: connector network flows, ffmpeg ops on real media, piper audio render — these need external services/tools and are tracked as E2b follow-ups |
 | E3 zero known defects | ✅ | all six audit defects closed (P1.3–P1.5, P2.1–P2.2, P3.1) |
 | E4 deterministic exports | ✅ | byte-stability suite across pdf/pptx/xlsx/docx/txt |
 | E5 installable offline desktop build | 🟡 | Linux ✅ 2026-08-25 (dist/ldcc onefile, smoke-run clean vs live LM Studio; frozen data-root + Tcl/Tk bundling solved); Windows ⬜ needs PyInstaller run on Windows side |

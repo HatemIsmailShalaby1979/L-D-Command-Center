@@ -46,7 +46,7 @@ class TestSend:
             FakeResponse(content=b"PNGDATA"),
         ])
         connector = make_connector(transport)
-        job = connector.send({"file_key": "FK", "node_id": "1:2"})
+        job = connector.send(None, {"file_key": "FK", "node_id": "1:2"})
         assert job.status == "done"
         result = connector.poll(job)
         assert result.ok and result.media_bytes == b"PNGDATA"
@@ -56,7 +56,7 @@ class TestSend:
             FakeResponse(payload=IMAGES_OK), FakeResponse(content=b"z"),
         ])
         connector = make_connector(transport)
-        connector.send({"file_key": "FK", "node_id": "1:2",
+        connector.send(None, {"file_key": "FK", "node_id": "1:2",
                         "format": "png", "scale": 2.0})
         first = transport.calls[0]
         assert first["method"] == "GET"
@@ -73,14 +73,14 @@ class TestSend:
             FakeResponse(content=b"<svg/>"),
         ])
         connector = make_connector(transport)
-        connector.send({"file_key": "FK", "node_id": "1:2",
+        connector.send(None, {"file_key": "FK", "node_id": "1:2",
                         "format": "svg"})
         assert "scale" not in transport.calls[0]["params"]
 
     def test_missing_token_is_failed_job_with_setup_hint(self):
         connector = make_connector(RecordingTransport([]), token="")
         result = connector.poll(
-            connector.send({"file_key": "F", "node_id": "n"}))
+            connector.send(None, {"file_key": "F", "node_id": "n"}))
         assert not result.ok
         assert "FIGMA_TOKEN" in result.error and "secrets" in result.error
 
@@ -88,14 +88,14 @@ class TestSend:
         transport = RecordingTransport([])
         connector = make_connector(transport)
         for op in ({}, {"file_key": "F"}, {"node_id": "n"}):
-            assert connector.poll(connector.send(op)).ok is False
+            assert connector.poll(connector.send(None, op)).ok is False
         assert transport.calls == []
 
     def test_bad_format_rejected_before_any_call(self):
         transport = RecordingTransport([])
         connector = make_connector(transport)
         result = connector.poll(connector.send(
-            {"file_key": "F", "node_id": "n", "format": "pdf"}))
+            None, {"file_key": "F", "node_id": "n", "format": "pdf"}))
         assert not result.ok and "png or svg" in result.error
         assert transport.calls == []
 
@@ -103,14 +103,14 @@ class TestSend:
         transport = RecordingTransport([FakeResponse(status_code=403)])
         connector = make_connector(transport)
         result = connector.poll(
-            connector.send({"file_key": "F", "node_id": "n"}))
+            connector.send(None, {"file_key": "F", "node_id": "n"}))
         assert not result.ok and "403" in result.error
 
     def test_node_not_in_images_map_is_actionable(self):
         transport = RecordingTransport([FakeResponse(payload={"images": {}})])
         connector = make_connector(transport)
         result = connector.poll(
-            connector.send({"file_key": "F", "node_id": "9:9"}))
+            connector.send(None, {"file_key": "F", "node_id": "9:9"}))
         assert not result.ok and "not found" in result.error
 
 

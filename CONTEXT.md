@@ -42,6 +42,32 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
   extracted from an uploaded file (high/medium/low/unknown); gaps are shown,
   never invented.
 
+## Language Lab flagship (Pillar 2, Phase 7)
+
+- **LessonPack** — one validated generation per (topic, target language,
+  level): two-voice dialogue Segments, vocab cards (term/reading/
+  translation/example), grammar cards with drills, and mixed evaluation
+  items. The Language Lab's core artifact; rendered to interactive HTML
+  by LanguageLabRenderer.
+- **Evaluation Item** — one gradable question inside a LessonPack:
+  multiple_choice, fill_in_blank, translation, or transformation.
+  Grading is deterministic-first; the model judge is fallback only.
+
+## Playground (Pillar 4)
+
+- **Media Workspace** — local ffmpeg-based editing core: pure plan
+  functions (trim/concat/mix/overlay/scale/pad/convert) plus probe and
+  ingest. Editing is offline; cloud only for generation.
+- **Import Inbox** — a watch-folder: files dropped from any no-API
+  service land as `media/<subkind>` Storage artifacts.
+- **Connector Hub** — the single adapter seam to external generation
+  services: `capabilities()` (file types, ops, quota notes, auth kind),
+  `send(artifact, op) -> Job`, `poll(job) -> Result`. Keyless services
+  before accounts. The Hub never learns individual vendors.
+- **Capability Verdict** — the stored result of grading the loaded model
+  against task profiles: per-task ready/degraded/failed plus review
+  notes; surfaces in the shell health bar.
+
 ## Platform concepts
 
 - **Model Layer** — the guardrail tier: LM Studio client, prompt templates,

@@ -261,6 +261,19 @@ _TRANSLATION_ITEM = (
     '</span><span class="mark"></span></div>\n'
 )
 
+_TRANSFORMATION_ITEM = (
+    '<div class="q"><p><strong>{prompt}</strong></p>'
+    '<input type="text" placeholder="rewrite the sentence"/>'
+    '<button data-answer="{answer}" onclick="checkBlank(this)">Check</button>'
+    '<p class="reference" style="display:none">Reference rewrite: '
+    '<strong>{answer_display}</strong> — equally valid rewrites '
+    'can\'t be auto-judged offline.</p>'
+    '<span class="selfgrade-inline" style="display:none;gap:.4rem">'
+    '<button data-grade="got" onclick="selfGrade(this,\'evaluation\',1)">I was right</button>'
+    '<button data-grade="again" onclick="selfGrade(this,\'evaluation\',0)">I was wrong</button>'
+    '</span><span class="mark"></span></div>\n'
+)
+
 _LISTENING_ROW = (
     '<div class="listening-row">'
     '<audio controls preload="none" src="{src}"></audio>'
@@ -380,6 +393,8 @@ class LanguageLabRenderer:
                 blocks.append(self._render_blank(item))
             elif kind == "translation":
                 blocks.append(self._render_translation(item, target))
+            elif kind == "transformation":
+                blocks.append(self._render_transformation(item))
             else:  # validator rejects unknown types; stay honest if it slips
                 blocks.append(f'<p class="reading">Unsupported item type: '
                               f'{html.escape(str(kind))}</p>')
@@ -418,6 +433,14 @@ class LanguageLabRenderer:
         return _TRANSLATION_ITEM.format(
             prompt=html.escape(str(item.get("prompt", ""))),
             target=html.escape(target),
+            answer=html.escape(answer, quote=True),
+            answer_display=html.escape(answer),
+        )
+
+    def _render_transformation(self, item):
+        answer = str(item.get("answer", ""))
+        return _TRANSFORMATION_ITEM.format(
+            prompt=html.escape(str(item.get("prompt", ""))),
             answer=html.escape(answer, quote=True),
             answer_display=html.escape(answer),
         )

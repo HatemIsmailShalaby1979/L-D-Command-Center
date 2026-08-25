@@ -176,3 +176,4 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 ## Notes
 
 - 2026-08-24: owner amended vision (Phase 7). TASKS.md carries P7.1–P7.12; plan in docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md.
+- 2026-08-25 (review): models/tts/*.onnx untracked from git (~483 MB) — voices are runtime-provisioned via engines/audio-engine/provisioning.py and stay local-only; .gitignore now excludes models/tts/. CONTEXT.md gained LessonPack/Connector Hub/Media Workspace/Import Inbox/Capability Verdict terms; storage gains lesson_packs kind (packs no longer filed under journeys); transformation evaluation type added across lesson_pack/graders/renderer per spec C2/C3; Connector.send signature conforms to spec B3 send(artifact, op) with Capabilities.file_types/ops declared.

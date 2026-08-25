@@ -31,7 +31,10 @@ LONG_TIMEOUT = 900  # seconds per HTTP request; CPU inference is slow
 @pytest.fixture(scope="session")
 def live_client():
     client = LmStudioClient(timeout=LONG_TIMEOUT)
-    models = client.list_models()
+    try:
+        models = client.list_models()
+    except Exception as exc:  # noqa: BLE001 — unreachable == skip, never fail
+        pytest.skip(f"LM Studio not reachable ({exc})")
     if not models:
         pytest.skip("LM Studio reachable but no model available")
     return client
@@ -184,10 +187,16 @@ class TestLessonPackFlagshipE2E:
                         "<h2>Evaluation</h2>"):
             assert section in html
 
-        # persistence roundtrip through the real storage layout
+        # persistence roundtrip through the real storage layout — a
+        # LessonPack is not a Journey: it gets its own kind, and its
+        # fidelity audit lands under verdicts
         storage = Storage(root=tmp_path)
-        name = "e2e-pack.json"
-        storage.save_artifact("journeys", name, pack)
-        reloaded = storage.load_artifact("journeys", name)
+        pack_name = "e2e-pack.json"
+        storage.save_artifact("lesson_packs", pack_name, pack)
+        reloaded = storage.load_artifact("lesson_packs", pack_name)
         ok_again, _ = validate_lesson_pack(reloaded)
         assert ok_again
+        audit_name = "e2e-pack-audit.json"
+        storage.save_artifact("verdicts", audit_name, audit)
+        assert storage.load_artifact("verdicts", audit_name)["passed"] \
+            == audit["passed"]

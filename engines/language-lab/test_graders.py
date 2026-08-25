@@ -52,6 +52,13 @@ def blank_item(**over):
     return item
 
 
+def transformation_item(**over):
+    item = {"type": "transformation", "prompt": "Yo soy alto.",
+            "answer": "El es alto"}
+    item.update(over)
+    return item
+
+
 def translation_item(**over):
     item = {"type": "translation", "prompt": "I am tall.",
             "answer": "Soy alto"}
@@ -170,6 +177,14 @@ class TestDeterministicGraders:
     def test_translation_free_variant_needs_the_judge(self):
         assert grade_deterministic(
             translation_item(), "yo soy una persona alta") is None
+
+    def test_transformation_keyed_rewrite_passes_deterministically(self):
+        result = grade_deterministic(transformation_item(), "el es alto.")
+        assert result is not None and result.correct
+
+    def test_transformation_free_variant_needs_the_judge(self):
+        assert grade_deterministic(
+            transformation_item(), "ella es muy alta") is None
 
     def test_unknown_type_raises(self):
         with pytest.raises(ValueError, match="telepathy"):

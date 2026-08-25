@@ -41,7 +41,8 @@ DEFAULT_NUM_VOCAB = 6
 DEFAULT_NUM_GRAMMAR = 3
 DEFAULT_NUM_EVAL = 5
 
-EVALUATION_TYPES = ("multiple_choice", "fill_in_blank", "translation")
+EVALUATION_TYPES = ("multiple_choice", "fill_in_blank", "translation",
+                    "transformation")
 
 BLANK_MARKER = "___"
 
@@ -183,10 +184,19 @@ def _check_translation(item: dict[str, Any], errors: list[str]) -> None:
         errors.append("translation item missing answer")
 
 
+def _check_transformation(item: dict[str, Any], errors: list[str]) -> None:
+    """Grammar transformation: rewrite a sentence per a grammar target
+    (tense change, negation, plural...). Same shape as translation; the
+    difference is pedagogical, and the grader treats the answer as a
+    keyed rewrite (deterministic-first, judge fallback)."""
+    _check_translation(item, errors)
+
+
 _EVAL_CHECKS = {
     "multiple_choice": _check_multiple_choice,
     "fill_in_blank": _check_fill_in_blank,
     "translation": _check_translation,
+    "transformation": _check_transformation,
 }
 
 

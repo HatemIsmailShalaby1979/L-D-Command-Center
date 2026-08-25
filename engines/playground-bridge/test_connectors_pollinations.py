@@ -34,7 +34,7 @@ def make_connector(response):
 class TestSend:
     def test_keyless_get_returns_image_bytes(self):
         connector = make_connector(FakeResponse(content=b"IMGBYTES"))
-        job = connector.send({"prompt": "a lighthouse"})
+        job = connector.send(None, {"prompt": "a lighthouse"})
         assert job.status == "done"
         result = connector.poll(job)
         assert result.ok and result.media_bytes == b"IMGBYTES"
@@ -42,7 +42,7 @@ class TestSend:
     def test_url_shape_prompt_encoded_defaults_present(self):
         transport = RecordingTransport(FakeResponse(content=b"x"))
         PollinationsConnector(
-            transport=transport).send({"prompt": "blue bird sky"})
+            transport=transport).send(None, {"prompt": "blue bird sky"})
         method, url = transport.calls[0]
         assert (method, transport.calls) and method == "GET"
         assert url.startswith("https://image.pollinations.ai/prompt/")
@@ -52,7 +52,7 @@ class TestSend:
 
     def test_optional_params_flow_into_query(self):
         transport = RecordingTransport(FakeResponse(content=b"x"))
-        PollinationsConnector(transport=transport).send({
+        PollinationsConnector(transport=transport).send(None, {
             "prompt": "p", "width": 512, "height": 256,
             "model": "flux", "seed": 42})
         _, url = transport.calls[0]
@@ -61,39 +61,39 @@ class TestSend:
 
     def test_special_characters_urlencoded(self):
         transport = RecordingTransport(FakeResponse(content=b"x"))
-        PollinationsConnector(transport=transport).send({"prompt": "a & b?"})
+        PollinationsConnector(transport=transport).send(None, {"prompt": "a & b?"})
         _, url = transport.calls[0]
         assert "a+%26+b%3F" in url
 
     def test_empty_prompt_fails_without_network_call(self):
         transport = RecordingTransport(FakeResponse())
         connector = PollinationsConnector(transport=transport)
-        result = connector.poll(connector.send({"prompt": "  "}))
+        result = connector.poll(connector.send(None, {"prompt": "  "}))
         assert not result.ok and "non-empty 'prompt'" in result.error
         assert transport.calls == []
 
     def test_non_200_is_failed_job(self):
         connector = make_connector(FakeResponse(status_code=502))
-        result = connector.poll(connector.send({"prompt": "p"}))
+        result = connector.poll(connector.send(None, {"prompt": "p"}))
         assert not result.ok and "502" in result.error
 
     def test_empty_body_rejected(self):
         connector = make_connector(FakeResponse(content=b""))
-        result = connector.poll(connector.send({"prompt": "p"}))
+        result = connector.poll(connector.send(None, {"prompt": "p"}))
         assert not result.ok and "empty response body" in result.error
 
     def test_non_image_content_type_rejected(self):
         connector = make_connector(FakeResponse(
             content=b"<html>slow down</html>",
             headers={"content-type": "text/html"}))
-        result = connector.poll(connector.send({"prompt": "p"}))
+        result = connector.poll(connector.send(None, {"prompt": "p"}))
         assert not result.ok and "content-type" in result.error
 
     def test_transport_exception_becomes_failed_job(self):
         def boom(method, url):
             raise ConnectionError("no route to host")
         connector = PollinationsConnector(transport=boom)
-        result = connector.poll(connector.send({"prompt": "p"}))
+        result = connector.poll(connector.send(None, {"prompt": "p"}))
         assert not result.ok and "ConnectionError" in result.error
 
 
@@ -103,3 +103,4 @@ class TestCapabilities:
         assert caps.connector == "pollinations"
         assert caps.auth == "none"
         assert "No account at all" in caps.items[0].quota_note
+        assert caps.ops == ("text_to_image",)

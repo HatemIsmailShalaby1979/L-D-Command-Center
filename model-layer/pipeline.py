@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from model_layer.client import ApiError, LmStudioClient, ModelRequest
 from model_layer.prompts import PromptRegistry
@@ -112,7 +112,11 @@ def generate(
         ApiError: non-retryable errors propagate immediately; retryable
             ones consume attempts and are raised when exhausted.
     """
-    def _call_and_extract(system: str, user: str) -> tuple[Any | None, list[str]]:
+    def _call_and_extract(system: str, user: str) -> tuple[Any | None, list[str], Optional[ApiError]]:
+        """Returns (parsed, errors, transient_exc). transient_exc carries
+        the retryable ApiError when THIS attempt died on connectivity —
+        callers surface it verbatim instead of masking a dead server as
+        'invalid content'."""
         try:
             raw = _call_model(
                 client, model, system, user,
@@ -121,18 +125,20 @@ def generate(
         except ApiError as exc:
             if not exc.retryable:
                 raise
-            return None, [f"transient error: {exc}"]
+            return None, [f"transient error: {exc}"], exc
         parsed = extract_json_from_text(raw)
         if parsed is None:
-            return None, ["could not extract JSON from model output"]
-        return parsed, []
+            return None, ["could not extract JSON from model output"], None
+        return parsed, [], None
 
     def _feedback_errors(errors: list[str]) -> dict[str, Any]:
         return {**variables, "errors": "\n".join(f"  - {e}" for e in errors)}
 
     last_errors: list[str] = []
+    final_transient: Optional[ApiError] = None
 
     for attempt in range(1, max_attempts + 1):
+        final_transient = None
         if attempt == 1:
             system, user, _ = registry.render(template, variables)
         else:
@@ -140,7 +146,7 @@ def generate(
                 raise SchemaValidationError(last_errors, 1)
             system, user, _ = registry.render(retry_template, _feedback_errors(last_errors))
 
-        parsed, errs = _call_and_extract(system, user)
+        parsed, errs, transient = _call_and_extract(system, user)
 
         if parsed is not None:
             is_valid, validation_errors = validator(parsed)
@@ -149,6 +155,12 @@ def generate(
                 return parsed
             errs = validation_errors
         last_errors = errs
+        final_transient = transient
         logger.warning("Attempt %d failed (%s): %s", attempt, template, last_errors)
 
+    # Every transport-level failure is NOT a schema problem: if the last
+    # attempt died on connectivity/rate-limit, raise THAT so the UI can
+    # say "start LM Studio" instead of blaming the model.
+    if final_transient is not None:
+        raise final_transient
     raise SchemaValidationError(last_errors, max_attempts)

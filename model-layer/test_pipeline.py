@@ -24,6 +24,7 @@ from model_layer.client import (
     ToolCall,
 )
 from model_layer.pipeline import DEFAULT_MODEL, generate
+from model_layer.schema import SchemaValidationError
 
 
 # ---------------------------------------------------------------------------
@@ -196,15 +197,30 @@ class TestClientErrors:
         assert result["topic"] == "t"
         assert len(client.requests) == 2
 
-    def test_persistent_connection_errors_exhaust_and_raise(self, registry):
+    def test_persistent_connection_errors_raise_the_connection_error(self, registry):
+        # A dead server is NOT "invalid content": after retries exhaust,
+        # the last transient ApiError surfaces verbatim so the UI can say
+        # "start LM Studio" (E6 honesty).
         err = ConnectionError("still down")
         client = ScriptedClient(err, err)
-        with pytest.raises(Exception) as excinfo:
+        with pytest.raises(ConnectionError) as excinfo:
             generate(registry, client, template="gen", variables={"topic": "t"},
                      retry_template="retry", validator=always_valid,
                      max_attempts=2)
-        assert "transient error" in excinfo.value.errors[0]
+        assert "still down" in str(excinfo.value)
         assert len(client.requests) == 2
+
+    def test_transient_then_validation_failure_still_schema_error(self, registry):
+        # Mixed causes: the FINAL failure decides the exception type.
+        client = ScriptedClient(
+            ConnectionError("blip"),
+            content_response("not json at all"),
+            content_response("still not json"),
+        )
+        with pytest.raises(SchemaValidationError):
+            generate(registry, client, template="gen", variables={"topic": "t"},
+                     retry_template="retry", validator=always_valid,
+                     max_attempts=3)
 
     def test_non_retryable_error_propagates_immediately(self, registry):
         client = ScriptedClient(

@@ -22,8 +22,8 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "Capability", "Capabilities", "Job", "Result", "Connector",
-    "ConnectorHub",
+    "Capability", "Capabilities", "InputArtifact", "Job", "Result",
+    "Connector", "ConnectorHub",
 ]
 
 
@@ -41,6 +41,19 @@ class Capabilities:
     connector: str
     auth: str            # "none" | "account" | "token"
     items: tuple[Capability, ...]
+    # Plan B3 contract fields: what media the connector accepts and what
+    # operations it exposes, so the UI never offers impossible flows.
+    file_types: tuple[str, ...] = ()   # e.g. ("png", "wav", "mp4")
+    ops: tuple[str, ...] = ()          # e.g. ("text_to_image", "upscale")
+
+
+@dataclass(frozen=True)
+class InputArtifact:
+    """Media handed TO a connector when the operation consumes inputs
+    (image-to-image, upscale, remix). None for pure prompt generators."""
+    name: str
+    data: bytes
+    media_type: str = "application/octet-stream"
 
 
 @dataclass(frozen=True)
@@ -61,12 +74,17 @@ class Result:
 class Connector(ABC):
     """Contract: one external service adapter.
 
-    send() submits a generation request and returns a Job immediately
-    (synchronous backends finish the work inside send and return a
-    terminal Job; their results are held until polled). poll() resolves
-    any Job to exactly one Result — success carries media bytes,
-    failure carries an actionable message. Adapters must not raise past
-    poll(); failures are data, so the UI can show them as quota notes.
+    send(artifact, op) submits a generation request and returns a Job
+    immediately; synchronous backends finish inside send and hold their
+    result until polled. `artifact` carries INPUT media for operations
+    that consume it (image-to-image, upscale); adapters that cannot use
+    one MUST fail the job with an actionable message instead of silently
+    ignoring it — except where the service's own semantics make the
+    artifact meaningless (e.g. Figma exports FROM its own files).
+    poll() resolves any Job to exactly one Result — success carries
+    media bytes, failure carries an actionable message. Adapters must
+    not raise past poll(); failures are data, so the UI can show them
+    as quota notes.
     """
     name: str = ""
 
@@ -74,7 +92,8 @@ class Connector(ABC):
     def capabilities(self) -> Capabilities: ...
 
     @abstractmethod
-    def send(self, op: dict[str, Any]) -> Job: ...
+    def send(self, artifact: Optional[InputArtifact],
+             op: dict[str, Any]) -> Job: ...
 
     @abstractmethod
     def poll(self, job: Job) -> Result: ...

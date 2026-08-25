@@ -157,8 +157,19 @@ class ShellController:
             client=self.client, model=self.model,
         )
         slug = "".join(c if c.isalnum() else "-" for c in topic.lower()).strip("-")
-        name = f"lesson-{slug or 'pack'}-{target_language.lower()}.html"
-        path = self.storage.save_artifact("exports", name,
+        base = f"lesson-{slug or 'pack'}-{target_language.lower()}"
+        # the pack itself persists under its own kind; its fidelity audit
+        # lands under verdicts so both stay inspectable (CONTEXT.md)
+        self.storage.save_artifact("lesson_packs", f"{base}.json", pack)
+        try:
+            from engines.language_lab.graders import verify_lesson_pack
+            audit = verify_lesson_pack(pack, client=self.client,
+                                       model=self.model)
+            self.storage.save_artifact("verdicts", f"{base}-audit.json",
+                                       audit)
+        except (SchemaValidationError, ApiError) as exc:
+            logger.warning("Pack fidelity audit skipped: %s", exc)
+        path = self.storage.save_artifact("exports", f"{base}.html",
                                           render_lesson_pack_html(pack))
         logger.info("Lesson pack rendered -> %s", path)
         return FlowResult(True, payload=str(path))
@@ -242,7 +253,7 @@ class ShellController:
             connector = hub.get(name)
         except KeyError as exc:
             raise ValueError(str(exc)) from exc
-        job = connector.send(op)
+        job = connector.send(None, op)
         result = connector.poll(Job(job.id, job.connector, job.status))
         if not result.ok:
             logger.warning("Connector %s failed: %s", name, result.error)

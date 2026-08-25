@@ -46,7 +46,8 @@ def default_data_root() -> Path:
 
 ALLOWED_KINDS = {
     "journeys", "resumes", "podcast_scripts", "bilingual_pairs",
-    "narrations", "exports", "preferences", "capabilities", "verdicts",
+    "lesson_packs", "narrations", "exports", "preferences",
+    "capabilities", "verdicts",
 }
 
 # Media kinds are namespaced rather than enumerated: "media/<subkind>"

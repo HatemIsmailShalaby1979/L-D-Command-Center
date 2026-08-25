@@ -125,6 +125,15 @@ class TestSrsStore:
         store.forget("card-1")
         assert store.get("card-1") is None
 
+    def test_progress_is_exportable_as_artifact(self, store):
+        # plan §C4: reviews survive restarts AND stay exportable
+        store.review("k1", 5, today=TODAY)
+        path = store.export_json()
+        assert path.exists()
+        snapshot = store._storage.load_artifact("exports", path.name)
+        assert set(snapshot) == {"k1"}
+        assert snapshot["k1"]["repetitions"] == 1
+
     def test_all_states_roundtrip(self, store):
         store.review("k1", 5, today=TODAY)
         states = store.all_states()

@@ -146,7 +146,7 @@ class TestPlayground:
             return Capabilities("fake-gen", "none", (
                 Capability("image", "test image gen", "free forever"),))
 
-        def send(self, op):
+        def send(self, artifact, op):
             self.ops.append(op)
             job_id = f"job-{len(self.ops)}"
             if self.fail:

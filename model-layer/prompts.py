@@ -516,6 +516,11 @@ class PromptRegistry:
         '      "type": "translation",\n'
         '      "prompt": "<sentence in {known_language}>",\n'
         '      "answer": "<faithful translation in {target_language}>"\n'
+        '    }},\n'
+        '    {{\n'
+        '      "type": "transformation",\n'
+        '      "prompt": "<sentence in {target_language} to rewrite",\n'
+        '      "answer": "<correctly rewritten sentence>"\n'
         '    }}\n'
         "  ]\n"
         "}}\n\n"
@@ -527,7 +532,8 @@ class PromptRegistry:
         "{known_language}.\n"
         "- Produce exactly {num_vocab} vocab cards, {num_grammar} grammar "
         "cards (each with at least 2 drills), and {num_eval} evaluation "
-        "items mixing all three types.\n"
+        "items mixing the four types (multiple_choice, fill_in_blank, "
+        "translation, transformation).\n"
         "- fill_in_blank sentences must contain a ___ blank marker.\n"
         "- correct_index must be an integer within range of options.\n"
         "- Content must suit {level} learners.\n"

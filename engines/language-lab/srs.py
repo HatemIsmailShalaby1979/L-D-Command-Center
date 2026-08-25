@@ -17,6 +17,7 @@ import dataclasses
 import logging
 from dataclasses import asdict, dataclass, replace
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any, Optional
 
 from storage.persistence import Storage, default_storage
@@ -170,3 +171,16 @@ class SrsStore:
         if card_id in blob:
             del blob[card_id]
             self._storage.set_preference(SRS_PREFERENCE_KEY, blob)
+
+    def export_json(self, *, name: str = "srs-progress.json") -> Path:
+        """
+        Contract: snapshot every card schedule into a single portable
+        JSON artifact under the exports kind — reviews stay offline AND
+        exportable (plan §C4). Returns the artifact path.
+        """
+        snapshot = {cid: state.to_dict()
+                    for cid, state in self.all_states().items()}
+        path = self._storage.save_artifact("exports", name, snapshot)
+        logger.info("SRS progress exported -> %s (%d cards)",
+                    path, len(snapshot))
+        return path

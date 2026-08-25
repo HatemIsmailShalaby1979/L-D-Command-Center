@@ -61,6 +61,8 @@ def good_pack() -> dict:
             {"type": "fill_in_blank", "sentence_with_blank": "Un cafe ___ leche, por favor.",
              "answer": "con"},
             {"type": "translation", "prompt": "See you later!", "answer": "Hasta luego!"},
+            {"type": "transformation", "prompt": "Yo soy alto.",
+             "answer": "Ella es alta."},
         ],
     }
 
@@ -260,9 +262,10 @@ class TestTemplates:
             "lesson_pack_generate", dict(self.VARS))
         for section in ("dialogue", "vocab_cards", "grammar_cards",
                         "evaluation", "multiple_choice", "fill_in_blank",
-                        "translation", "correct_index"):
+                        "translation", "transformation", "correct_index"):
             assert section in user, section
 
     def test_evaluation_types_are_stable_vocabulary(self):
         assert EVALUATION_TYPES == (
-            "multiple_choice", "fill_in_blank", "translation")
+            "multiple_choice", "fill_in_blank", "translation",
+            "transformation")

@@ -52,3 +52,7 @@ out/
 build/
 dist/
 *.spec.bak
+
+# Piper TTS voices: provisioned at runtime (engines/audio-engine/provisioning.py),
+# never committed — see review 2026-08-25
+models/tts/

@@ -20,6 +20,7 @@ from engines.playground_bridge.connectors_hub import (
     Capabilities,
     Capability,
     Connector,
+    InputArtifact,
     Job,
     Result,
     new_job_id,
@@ -69,10 +70,16 @@ class PollinationsConnector(Connector):
                 "Keyless text-to-image generation",
                 "No account at all; prompts are public and queued "
                 "best-effort — retry if it times out"),
-        ))
+        ), file_types=(), ops=("text_to_image",))
 
-    def send(self, op: dict[str, Any]) -> Job:
+    def send(self, artifact: Optional[InputArtifact],
+             op: dict[str, Any]) -> Job:
         job_id = new_job_id()
+        if artifact is not None:
+            return self._fail(
+                job_id,
+                f"connector {self.name!r} generates from text only — "
+                "it does not accept input media")
         prompt = str(op.get("prompt", "")).strip()
         if not prompt:
             return self._fail(job_id,
