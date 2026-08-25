@@ -274,6 +274,50 @@ class ShellController:
                     script.title, len(script.segments))
         return FlowResult(True, payload=payload)
 
+    # -- career -------------------------------------------------------------
+
+    @_flow
+    def generate_resume(self, profile: str) -> FlowResult:
+        from engines.career_engine.resume.generator import (
+            generate as run_generate,
+        )
+        profile = (profile or "").strip()
+        if not profile:
+            raise ValueError("Profile must be non-empty")
+        resume = run_generate(profile, client=self.client, model=self.model)
+        slug = self._slug(profile[:60], "resume")
+        self.storage.save_artifact("resumes", f"{slug}.json", resume)
+        logger.info("Resume generated and saved as %s.json", slug)
+        return FlowResult(True, payload={"resume": resume,
+                                         "saved_as": f"{slug}.json"})
+
+    @_flow
+    def enhance_resume(self, resume: dict[str, Any],
+                       target_role: str) -> FlowResult:
+        """Rewrite toward a target role; the human-inspectable changes
+        list always accompanies the artifact (CONSTITUTION §3)."""
+        from engines.career_engine.resume.generator import (
+            enhance as run_enhance,
+        )
+        role = (target_role or "").strip()
+        if not role:
+            raise ValueError("Target role must be non-empty")
+        if not isinstance(resume, dict) or not resume:
+            raise ValueError("Generate or load a resume first")
+        result = run_enhance(resume, role, client=self.client,
+                             model=self.model)
+        enhanced = result["enhanced_resume"]
+        changes = result.get("changes") or []
+        name = unique_artifact_name(
+            set(self.storage.list_artifacts("resumes")),
+            f"{self._slug(role[:40], 'resume')}-enhanced.json")
+        self.storage.save_artifact("resumes", name, enhanced)
+        logger.info("Resume enhanced for %s -> %s (%d changes)",
+                    role[:40], name, len(changes))
+        return FlowResult(True, payload={"resume": enhanced,
+                                         "changes": changes,
+                                         "saved_as": name})
+
     # -- journeys -----------------------------------------------------------
 
     @_flow

@@ -514,6 +514,89 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Button(vm_frame, text="Download selected voice",
                command=do_download_voice).pack(side="left", padx=4)
 
+    # == Career ==============================================================
+    career_tab = ttk.Frame(tab); tab.add(career_tab, text="Career")
+
+    career_form = ttk.Frame(career_tab); career_form.pack(fill="x", pady=4)
+    ttk.Label(career_form, text="Your profile / background").pack(anchor="w")
+    profile_text = tk.Text(career_form, height=6, width=90)
+    profile_text.pack(fill="x", pady=2)
+
+    career_row = ttk.Frame(career_form); career_row.pack(fill="x", pady=2)
+    ttk.Label(career_row, text="Target role").pack(side="left")
+    role_var = tk.StringVar()
+    ttk.Entry(career_row, textvariable=role_var, width=30).pack(side="left",
+                                                                padx=4)
+    current_resume: list[dict] = []
+
+    career_status = tk.StringVar(
+        value="Describe your background plainly. Generate a structured "
+              "resume, tailor it toward a target role (you'll see every "
+              "change and why), then export.")
+    tk.Label(career_form, textvariable=career_status, fg="gray",
+             wraplength=760, justify="left").pack(anchor="w", pady=2)
+
+    def _render_resume_view(resume: dict, changes=None):
+        out.delete("1.0", "end")
+        c = resume.get("contact", {})
+        out.insert("end",
+                   f"{c.get('name','')}  <{c.get('email','')}>\n"
+                   f"{'-'*60}\n{resume.get('summary','')}\n\n")
+        for x in resume.get("experience", []):
+            out.insert("end", f"* {x.get('title')} @ {x.get('company')} "
+                              f"({x.get('dates')})\n  {x.get('description')}\n")
+        out.insert("end", f"\nSkills: {', '.join(resume.get('skills', []))}\n")
+        if changes is not None:
+            out.insert("end", f"\n{'='*60}\nCHANGES MADE ({len(changes)}):\n")
+            for ch in changes:
+                out.insert("end",
+                           f"  [{ch.get('field')}] {ch.get('change')}\n"
+                           f"      why: {ch.get('reason')}\n")
+
+    def do_generate_resume():
+        res = ctrl.generate_resume(profile_text.get("1.0", "end"))
+        if not res:
+            return show_error(res)
+        current_resume.clear(); current_resume.append(res.payload["resume"])
+        career_status.set(f"Saved -> resumes/{res.payload['saved_as']}. "
+                          "Now set a Target Role and Enhance, or export.")
+        _render_resume_view(res.payload["resume"])
+
+    def do_enhance_resume():
+        if not current_resume:
+            return messagebox.showinfo(
+                "Career", "Generate a resume first (or this session has none).")
+        res = ctrl.enhance_resume(current_resume[0], role_var.get())
+        if not res:
+            return show_error(res)
+        current_resume.clear(); current_resume.append(res.payload["resume"])
+        career_status.set(f"Enhanced -> resumes/{res.payload['saved_as']}")
+        _render_resume_view(res.payload["resume"], res.payload["changes"])
+
+    def do_export_resume(fmt: str):
+        if not current_resume:
+            return messagebox.showinfo("Career", "Generate a resume first.")
+        res = ctrl.export_artifact(current_resume[0], fmt)
+        if not res:
+            return show_error(res)
+        base = self_slug(role_var.get() or "resume")
+        saved = ctrl.save_raw_export(res.payload, f"{base}.{fmt}")
+        if saved:
+            career_status.set(f"Exported {fmt.upper()} -> exports/{base}.{fmt}")
+
+    def self_slug(t): return "".join(
+        c if c.isalnum() else "-" for c in t.lower()).strip("-")[:40] or "resume"
+
+    career_btns = ttk.Frame(career_form); career_btns.pack(fill="x", pady=4)
+    ttk.Button(career_btns, text="Generate resume",
+               command=do_generate_resume).pack(side="left")
+    ttk.Button(career_btns, text="Enhance for target role",
+               command=do_enhance_resume).pack(side="left", padx=6)
+    for fmt in ("pdf", "docx"):
+        ttk.Button(career_btns, text=f"Export {fmt.upper()}",
+                   command=lambda f=fmt: do_export_resume(f)).pack(
+        side="left", padx=4)
+
     # -- final wiring --------------------------------------------------------
     refresh_health()
     inbox_note.config(text=f"inbox: {ctrl.default_inbox_path()}")

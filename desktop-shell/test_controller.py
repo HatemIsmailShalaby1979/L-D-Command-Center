@@ -333,6 +333,65 @@ class TestAudioStudio:
         assert not res and res.error_kind == "input"
 
 
+class TestCareerTab:
+    VALID_RESUME = {
+        "contact": {"name": "Ada", "email": "ada@example.com"},
+        "summary": "Mathematician.",
+        "experience": [{"title": "Analyst", "company": "Analytical Engines",
+                        "dates": "1843-1845", "description": "First programmer."}],
+        "education": [{"degree": "Mathematics", "school": "Self-taught",
+                       "dates": "1835"}],
+        "skills": ["math"], "projects": [{"name": "Notes", "description": "n"}],
+    }
+
+    def _patch_career(self, monkeypatch, enhance_result=None):
+        import engines.career_engine.resume.generator as gen
+        monkeypatch.setattr(gen, "generate",
+                            lambda profile, **kw: dict(self.VALID_RESUME))
+        monkeypatch.setattr(gen, "enhance",
+                            lambda resume, role, **kw: enhance_result
+                            or {"enhanced_resume": dict(self.VALID_RESUME),
+                                "changes": [{"field": "summary",
+                                             "change": "tailored",
+                                             "reason": role}]})
+
+    def test_generate_saves_under_resumes_kind(self, storage, monkeypatch):
+        self._patch_career(monkeypatch)
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.generate_resume("  Ada Lovelace, mathematician.  ")
+        assert res.ok and res.payload["saved_as"].endswith(".json")
+        assert "ada-lovelace--mathematician.json" in storage.list_artifacts("resumes")
+
+    def test_enhance_returns_inspectable_changes_and_persists(self, storage,
+                                                              monkeypatch):
+        self._patch_career(monkeypatch)
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.enhance_resume(self.VALID_RESUME, "Data Engineer")
+        assert res.ok and res.payload["changes"][0]["field"] == "summary"
+        assert any("-enhanced.json" in n
+                   for n in storage.list_artifacts("resumes"))
+
+    @pytest.mark.parametrize("kwargs,resume", [
+        ({"profile": "   "}, None),
+        ({}, {}),
+        ({}, None),
+    ])
+    def test_empty_inputs_map_to_input_kind(self, storage, monkeypatch,
+                                            kwargs, resume):
+        self._patch_career(monkeypatch)
+        ctrl = make_controller(OkClient(), storage)
+        if "profile" in kwargs:
+            res = ctrl.generate_resume(**kwargs)
+        else:
+            res = ctrl.enhance_resume(resume, kwargs.get("_role", ""))
+        assert not res and res.error_kind == "input"
+
+    def test_resume_exports_to_pdf_through_dispatcher(self, storage):
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.export_artifact(self.VALID_RESUME, "pdf")
+        assert res.ok and isinstance(res.payload, bytes) and len(res.payload) > 500
+
+
 class TestLanguageLabTab:
     def test_lesson_pack_flow_renders_and_saves_html(self, storage):
         # A scripted MODEL CLIENT drives the REAL lesson-pack generation,
