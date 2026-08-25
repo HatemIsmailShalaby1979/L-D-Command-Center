@@ -8,6 +8,44 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path as _Path
+
+_FONT_CANDIDATES = [
+    ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf"),          # Linux
+    ("arial.ttf", "arialbd.ttf"),                        # Windows
+]
+
+def _find_unicode_fonts():
+    roots = [
+        _Path("/usr/share/fonts/truetype/dejavu"),
+        _Path("/usr/share/fonts/truetype/msttcorefonts"),
+        _Path("C:/Windows/Fonts"),
+    ]
+    for root in roots:
+        for regular, bold in _FONT_CANDIDATES:
+            r, b = root / regular, root / bold
+            if r.exists() and b.exists():
+                return str(r), str(b)
+        if (root / "DejaVuSans.ttf").exists():
+            return str(root / "DejaVuSans.ttf"), str(root / "DejaVuSans-Bold.ttf")
+    return None
+
+_UNICODE_FONT = _find_unicode_fonts()
+
+class _UnicodeFPDF:
+    """Mixin: transparently swaps Helvetica for a Unicode-capable TTF
+    (em-dashes, curly quotes, accents) when such a font exists on this
+    machine. Falls back to core Helvetica otherwise — callers drawing
+    exotic glyphs should sanitize first."""
+    def set_font(self, family=None, style="", size=0):
+        if family and family.lower() == "helvetica" and _UNICODE_FONT:
+            key = "_dejavu_registered"
+            if not getattr(self, key, False):
+                self.add_font("DejaVuUnicode", "", _UNICODE_FONT[0])
+                self.add_font("DejaVuUnicode", "B", _UNICODE_FONT[1])
+                setattr(self, key, True)
+            family = "DejaVuUnicode"
+        return super().set_font(family, style, size)
 from datetime import datetime
 from io import BytesIO
 from typing import Any
@@ -33,6 +71,7 @@ def export_to_pdf(journey: dict[str, Any]) -> bytes:
     """
     try:
         from fpdf import FPDF
+        pdf_cls = type('_FPDF', (_UnicodeFPDF, FPDF), {})
     except ImportError as exc:
         raise ImportError(
             "pdfexport requires fpdf2: pip install fpdf2"
@@ -47,7 +86,7 @@ def export_to_pdf(journey: dict[str, Any]) -> bytes:
     if not cards:
         raise ValueError("Journey must contain at least one card")
 
-    pdf = FPDF()
+    pdf = pdf_cls()
     pdf.set_creation_date(_EPOCH)  # byte-stability
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
@@ -132,6 +171,7 @@ def export_resume_to_pdf(resume: dict[str, Any]) -> bytes:
     """
     try:
         from fpdf import FPDF
+        pdf_cls = type('_FPDF', (_UnicodeFPDF, FPDF), {})
     except ImportError as exc:
         raise ImportError(
             "pdfexport requires fpdf2: pip install fpdf2"
@@ -149,7 +189,7 @@ def export_resume_to_pdf(resume: dict[str, Any]) -> bytes:
     if not experience:
         raise ValueError("Resume must contain at least one experience entry")
 
-    pdf = FPDF()
+    pdf = pdf_cls()
     pdf.set_creation_date(_EPOCH)  # byte-stability
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()

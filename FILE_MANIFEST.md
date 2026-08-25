@@ -42,9 +42,10 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/storage/test_persistence.py` | 14 tests: roundtrips, kind isolation, name validation, preference defaults/cross-instance persistence |
 | `/storage/test_secrets.py` | 9 tests: comment/first-'=' parsing, explicit-path precedence, sorted scan fallback, empty-value policy |
 | `/desktop-shell/README.md` | Packaging and installer pipeline for the desktop-native, offline-first executable. |
-| `/desktop-shell/controller.py` | Shell controller — the entire engine surface behind typed FlowResults; all UI behavior, headless-tested (P5.2/P5.3); P7.12 adds playground seam: connector roster (keyless-first: pollinations, HF image/music, figma) with quota-note payloads, run_connector_job storing into media/generated, import_files/scan_import_inbox/list+load media, "connector" error kind |
+| `/desktop-shell/controller.py` | Shell controller — the entire engine surface behind typed FlowResults; all UI behavior, headless-tested (P5.2/P5.3); career agent: search_jobs_now/check_job_watchlist/save_job_watchlist (keyless board hunting with seen-URL diff), prepare_application (enhance+cover letter+PDF/DOCX+listing.txt), upload_resume (PDF/DOCX/TXT), import_github_projects, fetch_linkedin_profile; playground seam: connector roster (keyless-first: pollinations, HF image/music, figma) with quota-note payloads, run_connector_job storing into media/generated, import_files/scan_import_inbox/list+load media, "connector" error kind |
+| `/desktop-shell/app.py` | Tkinter UI — 6 tabs (Journey, Audio Studio, Career, Language Lab, Export, Playground); Career tab: generate/enhance/export, upload PDF/DOCX/TXT, GitHub/LinkedIn connections, job search (treeview + prepare application + watchlist auto-check every 10 min), connector browse |
 | `/desktop-shell/app.py` | Thin Tkinter window over the controller; tkinter imported only at runtime (P5.2); P7.12 Playground tab — canvas list (library/generated/inbox), file-picker import + inbox scan (native tkinter has no OS drop target; inbox folder is the drop path), connector panel rendering quota notes + prompt Generate |
-| `/desktop-shell/test_controller.py` | 21 controller tests: health, journey flow, typed-error mapping (no_model/bad_output/input/unexpected/connector), render+persist, export routing, library roundtrip, capabilities probe, playground import/inbox/connectors |
+| `/desktop-shell/test_controller.py` | 51 controller tests: health, journey flow, typed-error mapping (no_model/bad_output/input/unexpected/connector), render+persist, export routing, library roundtrip, capabilities probe, playground import/inbox/connectors, career agent flows (search_jobs_now, watchlist diff, prepare_application, upload_resume, import_github, fetch_linkedin), PDF unicode regression |
 | `/desktop-shell/ldcc.spec` | PyInstaller spec for the single-file `ldcc` executable (P5.4); secrets/voices deliberately not bundled |
 | `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
 | `/docs/PRODUCTION_PLAN.md` | Phased v1 production-readiness plan: task IDs (P0–P6) used by TASKS.md, exit criteria, decision log, defect register |
@@ -59,7 +60,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 |------|--------|
 | `/model-layer/client.py` | Real LM Studio HTTP client (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check |
 | `/model-layer/schema.py` | Journey JSON schema + validate_journey() + SchemaValidator with 3-attempt retry loop + extract_json_from_text() bracket-scanner |
-| `/model-layer/prompts.py` | PromptRegistry with journey_generate and journey_retry templates, {placeholder} rendering, schema_key wiring |
+| `/model-layer/prompts.py` | PromptRegistry with journey_generate, journey_retry, cover_letter_generate, and lesson_verify templates, {placeholder} rendering, schema_key wiring |
 | `/model-layer/pipeline.py` | Generation Pipeline — the single Guardrail Loop (render→call→extract→validate→retry→typed error) every engine generates through; owns model-id defaults and transient-error policy |
 | `/model-layer/test_pipeline.py` | 11 contract tests for the Pipeline via a ScriptedClient matching the real LmStudioClient interface (retry counts, feedback formatting, error taxonomy) |
 
@@ -81,7 +82,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/export-engine/export.py` | Thin public surface: honest `export()` dispatcher (journey/resume/narration; rejects generation-requiring kinds per P4.2) + re-exports from format adapters |
 | `/engines/export-engine/detect.py` | Content-type detection (`_detect_type`) extracted from the former god-module (P4.1) |
 | `/engines/export-engine/text_format.py` | Deterministic plain-text renderers/writers (Journey + Resume) |
-| `/engines/export-engine/pdf_format.py` | Deterministic PDF renderers/writers; creation date pinned for byte-stability |
+| `/engines/export-engine/pdf_format.py` | Deterministic PDF renderers/writers with `_UnicodeFPDF` mixin that auto-swaps Helvetica for DejaVu/Arial for full Unicode support (em-dashes, accents, curly quotes); creation date pinned for byte-stability |
 | `/engines/export-engine/docx_format.py` | Deterministic DOCX renderer/writer; core properties pinned |
 | `/engines/export-engine/pptx_format.py` | Journey -> PowerPoint deck (title slide + one slide per Card); properties pinned (P4.3) |
 | `/engines/export-engine/xlsx_format.py` | Journey -> spreadsheet (metadata header + card rows); properties pinned (P4.3) |
@@ -97,6 +98,8 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/career-engine/resume/test_generator.py` | 11 tests: 3 for generate() (mocked), 4 for validate_resume(), 4 for enhance() (mocked, including retry and persistent failure) |
 | `/engines/career-engine/resume/parser.py` | PDF/DOCX resume parser — extracts fields via pattern matching, returns (resume_dict, confidence_flags) with unknown/missing fields flagged |
 | `/engines/career-engine/resume/test_parser.py` | 16 tests: text parsing patterns, PDF/DOCX extraction, confidence flagging, file dispatch |
+| `/engines/career-engine/job_boards.py` | Keyless job-board search (Greenhouse, Ashby, RemoteOK): unified `JobListing` dataclass, per-source connectors with injectable transports, keyword matching, cross-source dedupe |
+| `/engines/career-engine/test_job_boards.py` | 9 tests: per-source shape parsing (Greenhouse/Ashby/Lever/RemoteOK), dead-source isolation, cross-source URL dedupe, keyword-matching scoring |
 
 ## Career-Engine Integrations
 

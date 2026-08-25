@@ -619,6 +619,30 @@ class PromptRegistry:
     )
 
     # ------------------------------------------------------------------
+    # Cover letter template (career agent)
+    # ------------------------------------------------------------------
+
+    _COVER_LETTER_SYSTEM = (
+        "You are a concise, honest career coach writing a cover letter "
+        "for a candidate. Use only facts from the provided resume and "
+        "job details — never invent experience. Specific and warm, no "
+        "cliches. Return valid JSON only."
+    )
+
+    _COVER_LETTER_USER_BASE = (
+        "Target role: {role}\n"
+        "Company: {company}\n"
+        "Job listing snippet:\n{snippet}\n\n"
+        "Candidate resume:\n{resume}\n\n"
+        'Return a JSON object: {{"cover_letter": "<full letter text>"}}\n'
+        "Rules:\n"
+        "- 150-250 words.\n"
+        "- Reference the company and role by name.\n"
+        "- Ground every claim in the resume.\n"
+        "- Return valid JSON only."
+    )
+
+    # ------------------------------------------------------------------
     # Capability probe template (P7.1)
     # ------------------------------------------------------------------
 
@@ -665,6 +689,7 @@ class PromptRegistry:
             Lab flagship (P7.2)
           - lesson_judge: one-shot learner-answer grading verdict (P7.3)
           - lesson_verify: pack explanation/translation fidelity audit (P7.3)
+          - cover_letter_generate: tailored cover letter for a listing (career agent)
         """
         self._templates["journey_generate"] = PromptTemplate(
             name="journey_generate",
@@ -780,6 +805,12 @@ class PromptRegistry:
             system=self._LESSON_JUDGE_SYSTEM,
             user=self._LESSON_JUDGE_USER_BASE,
             metadata={"default_max_tokens": 512, "default_temperature": 0.0},
+        )
+        self._templates["cover_letter_generate"] = PromptTemplate(
+            name="cover_letter_generate",
+            system=self._COVER_LETTER_SYSTEM,
+            user=self._COVER_LETTER_USER_BASE,
+            metadata={"default_max_tokens": 1024, "default_temperature": 0.4},
         )
         self._templates["lesson_verify"] = PromptTemplate(
             name="lesson_verify",

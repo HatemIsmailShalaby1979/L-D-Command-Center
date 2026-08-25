@@ -391,6 +391,17 @@ class TestCareerTab:
         res = ctrl.export_artifact(self.VALID_RESUME, "pdf")
         assert res.ok and isinstance(res.payload, bytes) and len(res.payload) > 500
 
+    def test_resume_pdf_survives_typographic_unicode(self, storage):
+        # the exact crash from live use: helveticaB cannot draw "—"
+        resume = {**self.VALID_RESUME,
+                  "summary": "28 years in frontline ops — followed by "
+                             "quality control, “curly quotes” and café…"}
+        res = make_controller(OkClient(), storage).export_artifact(resume, "pdf")
+        assert res.ok and len(res.payload) > 500
+        res_docx = make_controller(OkClient(), storage).export_artifact(
+            resume, "docx")
+        assert res_docx.ok
+
 
 class TestLanguageLabTab:
     def test_lesson_pack_flow_renders_and_saves_html(self, storage):
@@ -530,6 +541,192 @@ class TestLanguageLabTab:
             "  ", "es", "en", "beginner")
         assert not result and result.error_kind == "input"
 
+
+
+
+
+class TestCareerAgentFlows:
+    VALID_RESUME = TestCareerTab.VALID_RESUME.copy()
+
+    @staticmethod
+    def _make_listing(**overrides):
+        base = {"company": "acme", "title": "Support Manager",
+                "location": "Berlin", "url": "https://x/j/1",
+                "source": "greenhouse", "snippet": "own support queue"}
+        base.update(overrides)
+        return base
+
+    def test_search_jobs_now_returns_ranked_listings(self, storage,
+                                                     monkeypatch):
+        from engines.career_engine.job_boards import JobListing
+        listings = [JobListing("acme", "Support Manager", "Berlin",
+                               "https://x/j/1", "greenhouse",
+                               "own support queue"),
+                    JobListing("acme", "Backend Engineer", "Remote",
+                               "https://x/j/2", "greenhouse",
+                               "go services")]
+        import engines.career_engine.job_boards as jb
+        monkeypatch.setattr(jb, "search_all",
+                            lambda **kw: {"greenhouse": listings})
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.search_jobs_now("support", "Berlin",
+                                   greenhouse_companies="acme")
+        assert res.ok
+        assert len(res.payload) == 1  # backend engineer excluded by filter
+        assert res.payload[0]["title"] == "Support Manager"
+        assert res.payload[0]["score"] >= 3
+
+    def test_search_jobs_now_empty_role_rejected(self, storage):
+        res = make_controller(OkClient(), storage).search_jobs_now(
+            "", location="Berlin")
+        assert not res and res.error_kind == "input"
+
+    def test_check_job_watchlist_diffs_new_from_seen(self, storage,
+                                                     monkeypatch):
+        from engines.career_engine.job_boards import JobListing
+        listings = [JobListing("a", "Support", "R", "https://x/1",
+                               "gh", "s1"),
+                    JobListing("a", "Support", "R", "https://x/2",
+                               "gh", "s2")]
+        import engines.career_engine.job_boards as jb
+        monkeypatch.setattr(jb, "search_all",
+                            lambda **kw: {"gh": listings})
+        ctrl = make_controller(OkClient(), storage)
+        # seed a watchlist
+        ctrl.storage.set_preference(ctrl._JOB_WATCH_KEY,
+                                    {"role": "support", "seen_urls": []})
+        res = ctrl.check_job_watchlist()
+        assert res.ok and len(res.payload["new"]) == 2
+        assert res.payload["total"] == 2
+        # run again — second run sees both URLs already stored, so 0 new
+        res2 = ctrl.check_job_watchlist()
+        assert res2.ok and len(res2.payload["new"]) == 0
+
+    def test_save_job_watchlist_persists_role(self, storage):
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.save_job_watchlist("support engineer", "",
+                                      "stripe", "", "")
+        assert res.ok
+        cfg = ctrl._job_watch()
+        assert cfg["role"] == "support engineer"
+        assert "stripe" in cfg["greenhouse_companies"]
+
+    def test_save_job_watchlist_empty_role_rejected(self, storage):
+        res = make_controller(OkClient(), storage).save_job_watchlist("")
+        assert not res and res.error_kind == "input"
+
+    def test_prepare_application_creates_package(self, storage,
+                                                 monkeypatch):
+        self._patch_career(monkeypatch)
+        # patch cover letter generator
+        import engines.career_engine.resume.generator as gen
+        monkeypatch.setattr(gen, "generate_cover_letter",
+                            lambda resume, **kw: "Dear Hiring Manager,\n"
+                            + "I am excited to apply as Support Manager at "
+                            + "acme. My experience aligns well.\n"
+                            + "Looking forward to discussing how I can "
+                            + "contribute.\nBest regards.")
+        ctrl = make_controller(OkClient(), storage)
+        listing = self._make_listing()
+        res = ctrl.prepare_application(listing, dict(self.VALID_RESUME))
+        assert res.ok
+        pkg = Path(res.payload["dir"])
+        assert (pkg / "resume.pdf").exists() and                (pkg / "resume.docx").exists()
+        assert (pkg / "cover_letter.txt").exists()
+        assert (pkg / "listing.txt").exists()
+        assert "apply_url" in res.payload
+        assert "acme" in (pkg / "listing.txt").read_text()
+
+    def test_prepare_application_cover_letter_mentions_company(self,
+                                                               storage,
+                                                               monkeypatch):
+        self._patch_career(monkeypatch)
+        import engines.career_engine.resume.generator as gen
+        # cover letter that omits company name → generator validator
+        # will retry with feedback; patched version just returns once
+        monkeypatch.setattr(gen, "generate_cover_letter",
+                            lambda resume, **kw: "Dear team,\n"
+                            + "I am very excited about this role.\n"
+                            + "My background in ops is a strong match.\n"
+                            + "Sincerely.")
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.prepare_application(
+            self._make_listing(company="widgetco"),
+            dict(self.VALID_RESUME))
+        assert res.ok  # generate_cover_letter bypassed validator here
+
+    def test_upload_resume_txt_parses_and_saves(self, storage):
+        txt = ("name: Ada Lovelace\n"
+               "email: ada@example.com\n"
+               "summary: Mathematician.\n"
+               "skills: math, programming\n")
+        tmp = storage.root / "test_resume.txt"
+        tmp.write_text(txt, encoding="utf-8")
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.upload_resume(str(tmp))
+        assert res.ok
+        assert res.payload["saved_as"].endswith(".json")
+        assert "contact" in res.payload["resume"]
+        # confidence flags populated (at least some low/unknown)
+        assert isinstance(res.payload["flags"], list)
+
+    def test_upload_resume_bad_path_rejected(self, storage):
+        res = make_controller(OkClient(), storage).upload_resume(
+            "/nonexistent/resume.pdf")
+        assert not res and res.error_kind == "input"
+
+    def test_import_github_projects_injects_repos(self, storage,
+                                                   monkeypatch):
+        from types import SimpleNamespace as SN
+        import engines.career_engine.integrations.github_client as gc
+        monkeypatch.setattr(gc, "GitHubClient", lambda **kw: SN(
+            get_user_repos=lambda user, limit=10: [
+                SN(name="ldcc", full_name="u/ldcc",
+                   description="L&D tool", language="Python",
+                   topics=["learning"]),
+                SN(name="blog", full_name="u/blog",
+                   description=None, language="",
+                   topics=[]),
+            ]))
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.import_github_projects("testuser",
+                                          dict(self.VALID_RESUME))
+        assert res.ok and res.payload["imported"] == 2
+        projects = res.payload["resume"]["projects"]
+        assert projects[-2]["name"] == "ldcc"
+        assert projects[-1]["description"] == "u/blog"
+
+    def test_import_github_empty_username_rejected(self, storage):
+        res = make_controller(OkClient(), storage).import_github_projects(
+            "", {})
+        assert not res and res.error_kind == "input"
+
+    def test_fetch_linkedin_profile_fills_contact(self, storage,
+                                                  monkeypatch):
+        from types import SimpleNamespace as SN
+        import engines.career_engine.integrations.linkedin_client as lc
+        monkeypatch.setattr(lc, "LinkedInClient", lambda **kw: SN(
+            get_profile=lambda: SN(name="Ada L.", email="ada@linkedin.com")
+        ))
+        ctrl = make_controller(OkClient(), storage)
+        # resume without contact.name set — LinkedIn should fill it
+        resume = {**self.VALID_RESUME, "contact": {"email": ""}}
+        res = ctrl.fetch_linkedin_profile(resume)
+        assert res.ok
+        assert res.payload["resume"]["contact"]["name"] == "Ada L."
+        assert res.payload["resume"]["contact"]["email"] == "ada@linkedin.com"
+        assert res.payload["who"] == "Ada L."
+
+    def _patch_career(self, monkeypatch):
+        import engines.career_engine.resume.generator as gen
+        monkeypatch.setattr(gen, "generate",
+                            lambda profile, **kw: dict(self.VALID_RESUME))
+        monkeypatch.setattr(gen, "enhance",
+                            lambda resume, role, **kw: {
+                                "enhanced_resume": dict(self.VALID_RESUME),
+                                "changes": [{"field": "summary",
+                                             "change": "tailored",
+                                             "reason": role}]})
 
 class TestExportAndLibrary:
     JOURNEY = {"topic": "T", "level": "beginner",

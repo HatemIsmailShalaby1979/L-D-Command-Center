@@ -132,3 +132,47 @@ def enhance(
         "enhanced_resume": validated["enhanced_resume"],
         "changes": changes,
     }
+
+
+def generate_cover_letter(
+    resume: dict[str, Any],
+    *,
+    role: str,
+    company: str,
+    snippet: str = "",
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> str:
+    """
+    Contract: draft a grounded cover letter for one specific listing.
+    Facts come ONLY from the resume and the listing snippet; the letter
+    is schema-validated (non-empty, mentions the company).
+    """
+    def validator(parsed: Any) -> tuple[bool, list[str]]:
+        if not isinstance(parsed, dict):
+            return False, ["expected a JSON object"]
+        letter = parsed.get("cover_letter")
+        if not isinstance(letter, str) or len(letter.strip()) < 80:
+            return False, ["cover_letter must be a substantial string"]
+        if company.lower()[:6] not in letter.lower():
+            return False, [f"cover_letter must mention the company {company!r}"]
+        return True, []
+
+    validated = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="cover_letter_generate",
+        variables={
+            "role": role,
+            "company": company,
+            "snippet": snippet or "(full listing not captured)",
+            "resume": json.dumps(resume, ensure_ascii=False, indent=2),
+        },
+        validator=validator,
+        model=model,
+        max_tokens=2048,
+        temperature=0.4,
+    )
+    logger.info("Cover letter generated for %s @ %s", role[:40], company[:40])
+    return validated["cover_letter"].strip()
+

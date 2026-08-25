@@ -41,6 +41,17 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
 - **Confidence Flag** — parser output marking how surely a Resume field was
   extracted from an uploaded file (high/medium/low/unknown); gaps are shown,
   never invented.
+- **Job Listing** — a unified record from keyless job boards (Greenhouse,
+  Ashby, RemoteOK): company, title, location, URL, source, snippet.
+- **Cover Letter** — a grounded, role-specific letter generated from a
+  Resume and listing details; schema-validated (non-empty, mentions
+  company).
+- **Application Package** — the prepared bundle for one job: tailored
+  resume (PDF + DOCX), cover letter (TXT), and listing reference (TXT),
+  stored under `exports/applications/<company>-<role>/`.
+- **Watchlist** — a saved job-search configuration (role, filters,
+  company lists) plus a seen-URL set that enables diff-based polling:
+  the agent checks periodically and reports only NEW listings.
 
 ## Language Lab flagship (Pillar 2, Phase 7)
 

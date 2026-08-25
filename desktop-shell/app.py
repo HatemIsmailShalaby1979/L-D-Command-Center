@@ -536,6 +536,244 @@ def run() -> None:  # pragma: no cover — needs a display
     tk.Label(career_form, textvariable=career_status, fg="gray",
              wraplength=760, justify="left").pack(anchor="w", pady=2)
 
+    # -- resume preview pane -------------------------------------------------
+    out = tk.Text(career_form, height=14, width=90)
+    out.pack(fill="x", pady=4)
+
+    # -- upload existing resume ----------------------------------------------
+    upload_row = ttk.Frame(career_tab); upload_row.pack(fill="x", pady=4)
+    ttk.Label(upload_row, text="Upload resume").pack(side="left")
+    ttk.Button(upload_row, text="Select PDF / DOCX / TXT",
+               command=lambda: _do_upload_resume()).pack(side="left", padx=6)
+
+    def _do_upload_resume():
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            filetypes=[("Resume", "*.pdf *.docx *.txt"), ("All", "*")])
+        if not path:
+            return
+        res = ctrl.upload_resume(path)
+        if not res:
+            return show_error(res)
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        flags = "\n".join(res.payload["flags"]) or "(all fields high confidence)"
+        career_status.set(
+            f"Uploaded -> {res.payload['saved_as']}.\n"
+            f"Confidence flags:\n{flags}")
+        _render_resume_view(res.payload["resume"])
+
+    # -- connections ---------------------------------------------------------
+    conn_frame = ttk.LabelFrame(career_tab, text="Connections")
+    conn_frame.pack(fill="x", pady=4)
+    conn_row = ttk.Frame(conn_frame); conn_row.pack(fill="x", padx=6, pady=4)
+
+    ttk.Label(conn_row, text="GitHub username").pack(side="left")
+    gh_user = tk.StringVar()
+    ttk.Entry(conn_row, textvariable=gh_user, width=20).pack(side="left", padx=4)
+    gh_status = tk.StringVar(value="")
+
+    def _do_import_github():
+        if not current_resume:
+            return messagebox.showinfo("Career",
+                                       "Generate or upload a resume first.")
+        res = ctrl.import_github_projects(gh_user.get(), current_resume[0])
+        if not res:
+            return show_error(res)
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        gh_status.set(f"Imported {res.payload['imported']} repos")
+        career_status.set(f"GitHub: {res.payload['imported']} projects added.")
+        _render_resume_view(res.payload["resume"])
+
+    ttk.Button(conn_row, text="Import GitHub",
+               command=_do_import_github).pack(side="left", padx=4)
+    tk.Label(conn_row, textvariable=gh_status, fg="gray").pack(side="left")
+
+    ttk.Label(conn_row, text="  |  ").pack(side="left")
+    li_status = tk.StringVar(value="")
+
+    def _do_linkedin():
+        if not current_resume:
+            return messagebox.showinfo("Career",
+                                       "Generate or upload a resume first.")
+        res = ctrl.fetch_linkedin_profile(current_resume[0])
+        if not res:
+            return show_error(res)
+        current_resume.clear()
+        current_resume.append(res.payload["resume"])
+        li_status.set(f"LinkedIn: {res.payload['who']}")
+        career_status.set(f"LinkedIn profile connected: {res.payload['who']}")
+        _render_resume_view(res.payload["resume"])
+
+    ttk.Button(conn_row, text="LinkedIn",
+               command=_do_linkedin).pack(side="left", padx=4)
+    tk.Label(conn_row, textvariable=li_status, fg="gray").pack(side="left")
+
+    # -- job search ----------------------------------------------------------
+    search_frame = ttk.LabelFrame(career_tab, text="Job Search")
+    search_frame.pack(fill="x", pady=4)
+
+    search_row = ttk.Frame(search_frame); search_row.pack(fill="x", padx=6, pady=4)
+    ttk.Label(search_row, text="Role keywords").pack(side="left")
+    search_role = tk.StringVar(value="customer support")
+    ttk.Entry(search_row, textvariable=search_role, width=25).pack(
+        side="left", padx=4)
+    ttk.Label(search_row, text="Location").pack(side="left")
+    search_loc = tk.StringVar()
+    ttk.Entry(search_row, textvariable=search_loc, width=18).pack(
+        side="left", padx=4)
+
+    search_status = tk.StringVar(value="")
+    job_results_var = []  # store JobListing dicts for prepare_application
+    job_tree = None  # created lazily below
+
+    def _ensure_tree():
+        nonlocal job_tree
+        if job_tree is not None:
+            return job_tree
+        cols = ("company", "title", "location", "source", "score")
+        tv = ttk.Treeview(search_frame, columns=cols, show="headings",
+                          height=8)
+        for col, label, w in [
+            ("company", "Company", 100), ("title", "Title", 180),
+            ("location", "Location", 120), ("source", "Source", 80),
+            ("score", "Score", 50),
+        ]:
+            tv.heading(col, text=label)
+            tv.column(col, width=w, anchor="w")
+        scroll = ttk.Scrollbar(search_frame, orient="vertical", command=tv.yview)
+        tv.configure(yscrollcommand=scroll.set)
+        tv.pack(fill="both", expand=True, padx=6)
+        scroll.pack(side="right", fill="y")
+        job_tree = tv
+        return tv
+
+    def _do_search():
+        res = ctrl.search_jobs_now(
+            search_role.get(), search_loc.get(),
+            greenhouse_companies="stripe,figma,ashbygames,cohere,"
+                                 "vercel,linear,posthog,superhuman",
+            lever_companies="gitlab,posthog",
+            ashby_companies="vercel,linear,posthog")
+        if not res:
+            return show_error(res)
+        tv = _ensure_tree()
+        tv.delete(*tv.get_children())
+        job_results_var.clear()
+        for row in res.payload:
+            job_results_var.append(row)
+            tv.insert("", "end", values=(
+                row.get("company", ""), row.get("title", ""),
+                row.get("location", ""), row.get("source", ""),
+                row.get("score", 0)))
+        search_status.set(f"{len(res.payload)} matching listings")
+        career_status.set(f"Job search: {len(res.payload)} matches.")
+
+    ttk.Button(search_row, text="Search now",
+               command=_do_search).pack(side="left", padx=6)
+
+    search_btns = ttk.Frame(search_frame); search_btns.pack(fill="x", padx=6, pady=2)
+    search_status_label = tk.Label(search_btns, textvariable=search_status,
+                                   fg="gray")
+    search_status_label.pack(side="left")
+
+    def _do_prepare_application():
+        if not current_resume:
+            return messagebox.showinfo("Career",
+                                       "Generate or upload a resume first.")
+        if job_tree is None:
+            return messagebox.showinfo("Career",
+                                       "Run a job search first.")
+        sel = job_tree.selection()
+        if not sel:
+            return messagebox.showinfo("Career",
+                                       "Select a listing in the results first.")
+        idx = job_tree.index(sel[0])
+        if idx >= len(job_results_var):
+            return
+        listing = job_results_var[idx]
+        res = ctrl.prepare_application(listing, current_resume[0])
+        if not res:
+            return show_error(res)
+        pkg = res.payload
+        search_status.set(f"Package ready -> {pkg['dir']}")
+        career_status.set(
+            f"Application package ready for {listing.get('company')}.\n"
+            f"Files: {', '.join(pkg['files'])}\n"
+            f"Apply URL: {pkg['apply_url']}\n"
+            f"Open folder and submit manually — bots get banned.")
+
+    ttk.Button(search_btns, text="Prepare application",
+               command=_do_prepare_application).pack(side="left", padx=4)
+
+    ttk.Label(search_btns, text="  |  ").pack(side="left")
+    ttk.Label(search_btns, text="Greenhouse").pack(side="left")
+    ttk.Label(search_btns, text="  |  ").pack(side="left")
+    ttk.Label(search_btns, text="Lever").pack(side="left")
+    ttk.Label(search_btns, text="  |  ").pack(side="left")
+    ttk.Label(search_btns, text="RemoteOK").pack(side="left")
+
+    # -- watchlist (auto-check) ---------------------------------------------
+    watch_frame = ttk.Frame(search_frame); watch_frame.pack(fill="x", padx=6, pady=4)
+    watch_status = tk.StringVar(value="")
+    auto_check_var = tk.BooleanVar(value=False)
+    _auto_check_id = None
+
+    def _do_save_watchlist():
+        res = ctrl.save_job_watchlist(
+            search_role.get(), search_loc.get(),
+            greenhouse_companies="stripe,figma,ashbygames,cohere,"
+                                 "vercel,linear,posthog,superhuman",
+            lever_companies="gitlab,posthog",
+            ashby_companies="vercel,linear,posthog")
+        if not res:
+            return show_error(res)
+        watch_status.set(f"Watchlist armed: {search_role.get()}")
+
+    def _do_check_watchlist():
+        res = ctrl.check_job_watchlist()
+        if not res:
+            return show_error(res)
+        n = len(res.payload["new"])
+        total = res.payload["total"]
+        if n:
+            watch_status.set(f"{n} NEW listings (of {total})!")
+            messagebox.showinfo("Watchlist",
+                                f"{n} new listings found.\n"
+                                f"Review results in the search tab.")
+        else:
+            watch_status.set(f"No new listings (checked {total})")
+
+    def _auto_tick():
+        nonlocal _auto_check_id
+        if not auto_check_var.get():
+            _auto_check_id = None
+            return
+        _do_check_watchlist()
+        _auto_check_id = root.after(600000, _auto_tick)  # 10 min
+
+    def _toggle_auto_check():
+        nonlocal _auto_check_id
+        if auto_check_var.get():
+            watch_status.set("Auto-check: every 10 min")
+            _auto_tick()
+        else:
+            if _auto_check_id:
+                root.after_cancel(_auto_check_id)
+                _auto_check_id = None
+            watch_status.set("Auto-check disabled")
+
+    ttk.Button(watch_frame, text="Save as watchlist",
+               command=_do_save_watchlist).pack(side="left")
+    ttk.Button(watch_frame, text="Check watchlist now",
+               command=_do_check_watchlist).pack(side="left", padx=6)
+    ttk.Checkbutton(watch_frame, text="Auto-check every 10 min",
+                     variable=auto_check_var,
+                     command=_toggle_auto_check).pack(side="left", padx=4)
+    tk.Label(watch_frame, textvariable=watch_status,
+             fg="gray").pack(side="left", padx=4)
+
     def _render_resume_view(resume: dict, changes=None):
         out.delete("1.0", "end")
         c = resume.get("contact", {})

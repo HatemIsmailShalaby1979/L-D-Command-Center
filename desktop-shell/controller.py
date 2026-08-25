@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -275,6 +276,217 @@ class ShellController:
         return FlowResult(True, payload=payload)
 
     # -- career -------------------------------------------------------------
+
+    _JOB_WATCH_KEY = "job_watch"
+
+    def _job_watch(self) -> dict[str, Any]:
+        return self.storage.get_preference(self._JOB_WATCH_KEY, {}) or {}
+
+    def _save_job_watch(self, config: dict[str, Any]) -> None:
+        self.storage.set_preference(self._JOB_WATCH_KEY, config)
+
+    @_flow
+    def search_jobs_now(self, role: str, location: str = "",
+                        remote_only: bool = True,
+                        greenhouse_companies: str = "stripe,figma,ashbygames",
+                        lever_companies: str = "",
+                        ashby_companies: str = "") -> FlowResult:
+        """Hunt across keyless boards NOW; rank by role-keyword hits."""
+        from engines.career_engine.job_boards import (
+            match_listings,
+            search_all,
+        )
+        role = (role or "").strip()
+        if not role:
+            raise ValueError("Role keywords must be non-empty")
+        merged = search_all(
+            greenhouse_companies=[c.strip() for c in
+                                  greenhouse_companies.split(",") if c.strip()],
+            lever_companies=[c.strip() for c in
+                             lever_companies.split(",") if c.strip()],
+            ashby_companies=[c.strip() for c in
+                             ashby_companies.split(",") if c.strip()],
+            title_query=role,
+            location_query=location.strip(),
+            include_remote=not location.strip(),
+        )
+        listings = [l for src in merged.values() for l in src]
+        scored = match_listings(listings, role.split())
+        payload = [dict(l.to_dict(), score=score)
+                   for l, score in scored[:30]]
+        logger.info("Job search %r: %d matches", role, len(payload))
+        return FlowResult(True, payload=payload)
+
+    @_flow
+    def check_job_watchlist(self) -> FlowResult:
+        """Run the SAVED search and report only NEW listings (diffed by
+        URL against the stored seen-set). The polling agent's tick."""
+        from engines.career_engine.job_boards import (
+            match_listings,
+            search_all,
+        )
+        cfg = self._job_watch()
+        if not cfg.get("role"):
+            return FlowResult(True, payload={"new": [], "total": 0,
+                                             "configured": False})
+        merged = search_all(
+            greenhouse_companies=cfg.get("greenhouse_companies", []),
+            lever_companies=cfg.get("lever_companies", []),
+            ashby_companies=cfg.get("ashby_companies", []),
+            title_query=cfg["role"],
+            location_query=cfg.get("location", ""),
+            include_remote=not cfg.get("location"),
+        )
+        listings = [l for src in merged.values() for l in src]
+        scored = match_listings(listings, cfg["role"].split())
+        seen: set[str] = set(cfg.get("seen_urls", []))
+        fresh = [dict(l.to_dict(), score=score) for l, score in scored
+                 if l.url not in seen]
+        for l, _ in scored:
+            seen.add(l.url)
+        cfg["seen_urls"] = sorted(seen)[-500:]  # cap growth
+        cfg["last_checked"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_job_watch(cfg)
+        logger.info("Watchlist %r: %d new of %d",
+                    cfg["role"], len(fresh), len(scored))
+        return FlowResult(True, payload={"new": fresh[:20],
+                                         "total": len(scored),
+                                         "configured": True})
+
+    @_flow
+    def save_job_watchlist(self, role: str, location: str = "",
+                           greenhouse_companies: str = "",
+                           lever_companies: str = "",
+                           ashby_companies: str = "") -> FlowResult:
+        cfg = self._job_watch()
+        cfg.update({
+            "role": (role or "").strip(),
+            "location": location.strip(),
+            "greenhouse_companies": [c.strip() for c in
+                                     greenhouse_companies.split(",") if c.strip()],
+            "lever_companies": [c.strip() for c in
+                                lever_companies.split(",") if c.strip()],
+            "ashby_companies": [c.strip() for c in
+                                ashby_companies.split(",") if c.strip()],
+        })
+        if not cfg["role"]:
+            raise ValueError("Role must be non-empty to arm a watchlist")
+        self._save_job_watch(cfg)
+        return FlowResult(True, payload=True)
+
+    @_flow
+    def prepare_application(self, listing: dict[str, Any],
+                            resume: dict[str, Any]) -> FlowResult:
+        """Package one application automatically: tailored resume variant,
+        grounded cover letter, PDF + DOCX exports, listing reference file.
+        SUBMITTING stays a human click on the board's own page."""
+        from engines.export_engine.export import export as run_export
+        from engines.career_engine.resume.generator import (
+            enhance as run_enhance,
+            generate_cover_letter,
+        )
+
+        company = str(listing.get("company") or "unknown")
+        title = str(listing.get("title") or "role")
+        url = str(listing.get("url") or "")
+        base_dir = Path(self.storage.root) / "exports" / "applications" / (
+            re.sub(r"[^A-Za-z0-9]+", "-", f"{company}-{title}").strip("-").lower()
+        )[:60]
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        enhanced = run_enhance(resume, title, client=self.client,
+                               model=self.model)["enhanced_resume"]
+        letter = generate_cover_letter(enhanced, role=title, company=company,
+                                       snippet=str(listing.get("snippet") or ""),
+                                       client=self.client, model=self.model)
+
+        pdf_bytes = run_export(enhanced, format="pdf")
+        docx_bytes = run_export(enhanced, format="docx")
+        (base_dir / "resume.pdf").write_bytes(pdf_bytes)
+        (base_dir / "resume.docx").write_bytes(docx_bytes)
+        (base_dir / "cover_letter.txt").write_text(letter, encoding="utf-8")
+        (base_dir / "listing.txt").write_text(
+            f"{title} @ {company}\n{url}\n\n{listing.get('snippet', '')}",
+            encoding="utf-8")
+        logger.info("Application package ready: %s", base_dir)
+        return FlowResult(True, payload={
+            "dir": str(base_dir),
+            "apply_url": url,
+            "files": ["resume.pdf", "resume.docx", "cover_letter.txt",
+                      "listing.txt"],
+        })
+
+    @_flow
+    def upload_resume(self, path: str) -> FlowResult:
+        """Parse an existing PDF/DOCX/TXT resume; confidence flags surface
+        exactly which fields the parser was unsure about."""
+        try:
+            from engines.career_engine.resume.parser import (
+                parse_resume_file,
+                parse_text,
+            )
+            suffix = Path(path).suffix.lower()
+            if suffix == ".txt":
+                resume, flags = parse_text(Path(path).read_text("utf-8",
+                                                                errors="replace"))
+            else:
+                resume, flags = parse_resume_file(Path(path))
+        except Exception as exc:  # noqa: BLE001 — surfaced as input error
+            return FlowResult(False, error_kind="input",
+                              detail=f"Could not parse that file: {exc}")
+        name = unique_artifact_name(
+            set(self.storage.list_artifacts("resumes")),
+            f"uploaded-{Path(path).stem}.json")
+        self.storage.save_artifact("resumes", name, resume)
+        flag_lines = [f"{f.field}: {f.confidence}" for f in flags]
+        logger.info("Resume uploaded (%d confidence flags)", len(flags))
+        return FlowResult(True, payload={"resume": resume,
+                                         "saved_as": name,
+                                         "flags": flag_lines})
+
+    @_flow
+    def import_github_projects(self, username: str,
+                               resume: dict[str, Any]) -> FlowResult:
+        """Pull public repos into the resume's projects list."""
+        from storage.secrets import load_secret
+        from engines.career_engine.integrations.github_client import (
+            GitHubClient,
+        )
+        username = (username or "").strip()
+        if not username:
+            raise ValueError("GitHub username must be non-empty")
+        client = GitHubClient(token=load_secret("GITHUB_TOKEN"))
+        repos = client.get_user_repos(username, limit=10)
+        projects = [{
+            "name": repo.name,
+            "description": repo.description or repo.full_name,
+            "tech": ([repo.language] if repo.language else [])
+                    + list(repo.topics)[:5],
+        } for repo in repos]
+        updated = {**resume, "projects":
+                   resume.get("projects", []) + projects}
+        return FlowResult(True, payload={"resume": updated,
+                                         "imported": len(projects)})
+
+    @_flow
+    def fetch_linkedin_profile(self, resume: dict[str, Any]) -> FlowResult:
+        from storage.secrets import load_secret
+        from engines.career_engine.integrations.linkedin_client import (
+            LinkedInClient,
+        )
+        profile = LinkedInClient(
+            token=load_secret("LINKEDIN_TOKEN")).get_profile()
+        contact = {**resume.get("contact", {})}
+        if profile.name and not contact.get("name"):
+            contact["name"] = profile.name
+        if profile.email and not contact.get("email"):
+            contact["email"] = profile.email
+        updated = {**resume, "contact": contact}
+        who = profile.name or "(LinkedIn account)"
+        return FlowResult(True, payload={"resume": updated,
+                                         "who": who})
+
+    # -- journeys -----------------------------------------------------------
 
     @_flow
     def generate_resume(self, profile: str) -> FlowResult:
