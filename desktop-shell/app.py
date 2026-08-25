@@ -357,8 +357,7 @@ def run() -> None:  # pragma: no cover — needs a display
     ab_text.grid(row=1, column=0, columnspan=4, padx=4, sticky="we")
     ab_lang = tk.StringVar(value="en")
     ab_speed = tk.StringVar(value="1.0")
-    voices_res = ctrl.available_voices()
-    installed = voices_res.payload if voices_res.ok else []
+    installed = ctrl.available_voices()
     ttk.Label(ab_frame, text="Voice language").grid(row=2, column=0, sticky="w")
     ttk.Combobox(ab_frame, textvariable=ab_lang, width=5, state="readonly",
                  values=LANG_CODES).grid(row=2, column=1, sticky="w")
