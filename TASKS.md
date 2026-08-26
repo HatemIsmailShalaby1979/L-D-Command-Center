@@ -80,4 +80,5 @@ DONE:claude-code: P8.7c — [HIGH] Make bilingual verification mandatory — con
 DONE:claude-code: P8.8 — loading indicators: buttons disabled during generation, status text updated
 DONE:claude-code: P8.9 — user-friendly errors: added ERROR_ACTIONS mapping with actionable guidance for each error kind
 DONE:claude-code: P8.12 — document watchlist format: added detailed docstring to storage/persistence.py set_preference explaining job_watch schema
-TODO:claude-code: P8.13/P8.14 — spacing and clear buttons (after confirming HTML rendering method)
+TODO:claude-code: P8.13 — spacing and layout consistency across tabs
+DONE:claude-code: P8.14 — clear/reset buttons added to Journey (Topic), Language Lab (Topic), and Career (profile text) tabs

@@ -154,6 +154,8 @@ def run() -> None:  # pragma: no cover — needs a display
 
     ttk.Label(form, text="Topic").grid(row=0, column=0, sticky="w")
     ttk.Entry(form, textvariable=topic_var, width=42).grid(row=0, column=1, padx=4)
+    ttk.Button(form, text="Clear",
+               command=lambda: topic_var.set("")).grid(row=0, column=6, padx=4)
     ttk.Label(form, text="Level").grid(row=0, column=2)
     ttk.Combobox(form, textvariable=level_var, width=12, state="readonly",
                  values=["beginner", "intermediate", "advanced"]).grid(row=0, column=3, padx=4)
@@ -224,8 +226,10 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Label(lab_form, text="Topic").grid(row=0, column=0, sticky="w")
     ttk.Entry(lab_form, textvariable=lab_topic, width=30).grid(row=0, column=1,
                                                                padx=4)
+    ttk.Button(lab_form, text="Clear",
+               command=lambda: lab_topic.set("")).grid(row=0, column=2, padx=4)
     for i, (label, var) in enumerate((("Target", lab_target),
-                                      ("Known", lab_known)), start=2):
+                                      ("Known", lab_known)), start=3):
         ttk.Label(lab_form, text=label).grid(row=0, column=i)
         ttk.Combobox(lab_form, textvariable=var, width=5, state="readonly",
                      values=["en", "es", "fr", "de", "it", "pt", "ru",
@@ -443,6 +447,8 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Label(pod_row1, text="Topic").pack(side="left")
     pod_topic = tk.StringVar()
     ttk.Entry(pod_row1, textvariable=pod_topic, width=34).pack(side="left", padx=4)
+    ttk.Button(pod_row1, text="Clear",
+               command=lambda: pod_topic.set("")).pack(side="left", padx=4)
     ttk.Label(pod_row1, text="Language").pack(side="left")
     pod_lang = tk.StringVar(value="en")
     ttk.Combobox(pod_row1, textvariable=pod_lang, width=5, state="readonly",
@@ -561,6 +567,8 @@ def run() -> None:  # pragma: no cover — needs a display
               font=("", 10, "bold")).pack(anchor="w")
     profile_text = tk.Text(career_top, height=5, width=90)
     profile_text.pack(fill="x", pady=2)
+    ttk.Button(career_top, text="Clear profile",
+               command=lambda: profile_text.delete("1.0", "end")).pack(anchor="e")
 
     career_row = ttk.Frame(career_top)
     career_row.pack(fill="x", pady=2)
