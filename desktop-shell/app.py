@@ -162,7 +162,6 @@ def run() -> None:  # pragma: no cover — needs a display
 
     output = tk.Text(journey_tab, height=20)
     output.pack(fill="both", expand=True, pady=6)
-    generate_btn = ttk.Button(actions, text="Generate", command=do_generate_journey)
 
     def do_generate_journey():
         generate_btn.config(state="disabled", text="Generating…")
@@ -180,9 +179,13 @@ def run() -> None:  # pragma: no cover — needs a display
         if saved:
             output.insert("end", f"\nSaved interactive HTML -> {saved.payload}")
             import subprocess
-            subprocess.Popen(["xdg-open", str(saved.payload)],
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL)
+            import sys as _sys
+            if _sys.platform == "win32":
+                subprocess.Popen(["start", str(saved.payload)], shell=True)
+            else:
+                subprocess.Popen(["xdg-open", str(saved.payload)],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
         generate_btn.config(state="normal", text="Generate")
 
     def do_export(fmt: str):
@@ -233,13 +236,6 @@ def run() -> None:  # pragma: no cover — needs a display
                  values=["beginner", "intermediate", "advanced"]).grid(
         row=0, column=7, padx=4)
 
-    lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
-    lab_btn = ttk.Button(lab_actions, text="Generate lesson pack",
-                       command=do_lesson_pack)
-    lab_btn.pack(side="left")
-    tk.Label(lab_tab, textvariable=lab_status, fg="gray",
-             wraplength=760, justify="left").pack(anchor="w", pady=8)
-
     def do_lesson_pack():
         topic = lab_topic.get().strip()
         if not topic:
@@ -259,9 +255,20 @@ def run() -> None:  # pragma: no cover — needs a display
         lab_status.set(f"Saved -> {res.payload}  (opening…)")
         lab_btn.config(state="normal", text="Generate lesson pack")
         root.update_idletasks()
-        subprocess.Popen(["xdg-open", str(res.payload)],
-                         stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL)
+        import sys as _sys2
+        if _sys2.platform == "win32":
+            subprocess.Popen(["start", str(res.payload)], shell=True)
+        else:
+            subprocess.Popen(["xdg-open", str(res.payload)],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+
+    lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
+    lab_btn = ttk.Button(lab_actions, text="Generate lesson pack",
+                       command=do_lesson_pack)
+    lab_btn.pack(side="left")
+    tk.Label(lab_tab, textvariable=lab_status, fg="gray",
+             wraplength=760, justify="left").pack(anchor="w", pady=8)
 
     # == Playground ==========================================================
     playground_tab = ttk.Frame(tab); tab.add(playground_tab, text="Playground")
@@ -371,9 +378,13 @@ def run() -> None:  # pragma: no cover — needs a display
 
     def _open_path(path: str):
         import subprocess
-        subprocess.Popen(["xdg-open", path],
-                         stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL)
+        import sys as _sys
+        if _sys.platform == "win32":
+            subprocess.Popen(["start", path], shell=True)
+        else:
+            subprocess.Popen(["xdg-open", path],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
 
     # --- audiobooks ---
     ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook — text to narrated audio")

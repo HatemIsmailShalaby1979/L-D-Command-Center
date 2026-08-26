@@ -521,3 +521,12 @@ Touched: desktop-shell/app.py (+ERROR_ACTIONS mapping, button disable during gen
 Why: P8.8 adds button.disabled + text changes during async generation (Journey "Generate" button, Language Lab "Generate lesson pack" button). P8.9 maps error_kind to human-readable titles + next-step actions (no_model: "Start LM Studio", bad_output: "Try rephrasing topic", etc.). P8.12 documents job_watch preference schema in persistence.py set_preference docstring so future agents know the format.
 Suite state: **730 passed / 1 deselected** offline; all tests green.
 
+
+## [2026-08-26 17:30] — claude-code (Windows verification)
+Task: Windows first-run verification — test suite, app launch, PyInstaller build.
+Touched: AGENT_LOG.md (this entry), TASKS.md (+Windows verification), dist/ldcc.exe (built), desktop-shell/app.py (Windows path fix)
+Why: User requested full Windows verification from source. Environment: WSL2 (MINGW64_NT-10.0-26200), Python 3.10.11, LM Studio running with 5 models. Tests: 730 passed / 1 deselected (same as Linux). Live tests: 7/7 passed (E2E). App launch: successful (exit 124 = timeout, expected for GUI). PyInstaller build: SUCCESS — dist/ldcc.exe (243MB) built and launches cleanly.
+Windows-specific fixes: Added sys.platform == "win32" check for subprocess.Popen (xdg-open → start command). Button state management fixed (generate_btn defined before do_generate_journey).
+No path separator issues found (Python pathlib handles cross-platform).
+Suite state: **730 passed / 1 deselected** offline; **7 passed** live (E2E).
+
