@@ -423,7 +423,7 @@ def run() -> None:  # pragma: no cover — needs a display
 
     LANG_CODES = ["en", "es", "fr", "de", "it", "pt", "ru", "zh"]
 
-    def _open_path(path: str):
+def _open_path(path: str):
         import subprocess
         import sys as _sys
         if _sys.platform == "win32":
@@ -433,7 +433,6 @@ def run() -> None:  # pragma: no cover — needs a display
             subprocess.Popen(["xdg-open", path],
                              stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL)
-
     # --- audiobooks ---
     ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook — text to narrated audio")
     ab_frame.pack(fill="x", padx=6, pady=6)
