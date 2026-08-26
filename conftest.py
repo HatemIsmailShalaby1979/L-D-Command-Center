@@ -36,6 +36,11 @@ def _alias(dotted_name: str, real_dir: Path) -> None:
         module.__path__ = [str(real_dir)]
     module.__package__ = dotted_name
     sys.modules[dotted_name] = module
+    # Also register as attribute on parent so unittest.mock.patch can find it.
+    if "." in dotted_name:
+        parent_name, child_name = dotted_name.rsplit(".", 1)
+        if parent_name in sys.modules:
+            setattr(sys.modules[parent_name], child_name, module)
 
 
 _alias("engines", ROOT / "engines")

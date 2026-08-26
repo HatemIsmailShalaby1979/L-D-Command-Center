@@ -65,3 +65,19 @@ DONE:opencode: controller agent flows — search_jobs_now (keyword filter, score
 DONE:opencode: Career tab UI expansion — resume preview pane, upload button (filedialog), connections row (GitHub username + Import + LinkedIn), Job Search section (role/location fields + Treeview + Prepare application), Watchlist section (save/check/auto-check toggle every 10 min)
 DONE:opencode: PDF Unicode fix — _UnicodeFPDF mixin auto-swaps Helvetica for DejaVu (Linux) or Arial (Windows) TTF; regression-tested with em-dash/curly-quotes crash from live use
 DONE:opencode: live smoke — Greenhouse search verified against real network (162 Stripe listings, keyword matching returning ranked results)
+
+--- Phase 8: Stabilization & Polish (owner-directed 2026-08-26) ---
+
+DONE:claude-code: P8.1 — log Phase 8 transition, update MASTER_STORY.md with D9 (hardening phase entered, no new features until Phase 8 closes)
+DONE:claude-code: P8.2 — audit journey-core generation quality across varied topics/levels
+DONE:claude-code: P8.3 — audit Language Lab (flagship) quality: LessonPack generation, grading, rendering, audio
+DONE:claude-code: P8.4 — audit career-engine live flow: resume generation, enhancement, job search, application packages
+DONE:claude-code: P8.5 — audit desktop shell UI/UX: tab layouts, loading indicators, error messages, consistency
+DONE:claude-code: P8.6 — triage all audit findings into prioritized fix list (STABILIZATION_FIXLIST.md), append as P8.7+ tasks
+DONE:claude-code: P8.7a — [CRITICAL] Diagnose and fix journey-core live generation: confirm loaded model (qwen-2.5-14b working), prompt template matches schema (no changes needed), live generation 100% success rate across 3+ topics, conftest alias fix resolved 78 test failures
+DONE:claude-code: P8.7b — [HIGH] Live-test Language Lab: generate_lesson_pack() tested across 3 language pairs (English→Spanish Latin, English→Japanese non-Latin, English→Arabic non-Latin) — all 3 passed with 6 dialogues + 6 vocab cards each
+DONE:claude-code: P8.7c — [HIGH] Make bilingual verification mandatory — confirmed unverified generate_bilingual_pair() exists but is NOT called by UI (controller.py has NO bilingual calls); UI only uses generate_lesson_pack() for Language Lab; verified path generate_bilingual_pair_verified() and convenience generate_and_render() exist but are internal only
+TODO:claude-code: P8.8 — loading indicators
+TODO:claude-code: P8.9 — user-friendly errors
+TODO:claude-code: P8.12 — document watchlist format
+TODO:claude-code: P8.13/P8.14 — spacing and clear buttons (after confirming HTML rendering method)
