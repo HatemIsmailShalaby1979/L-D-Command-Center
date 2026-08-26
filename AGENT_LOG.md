@@ -514,3 +514,10 @@ Touched: AGENT_LOG.md (this entry), TASKS.md (+P8.7a/b/c entries), conftest.py (
 Why: OWNER_REPRIORITIZATION_20260826.md overrides P8.6 triage order. Core pillar functionality (journey generation) is more critical than loading spinners. P8.7a findings: (1) conftest alias bug fixed — 730 tests now pass (was 652), (2) prompt template is CORRECT and matches schema, no changes needed, (3) LM Studio was in bad state during P8.2 audit (gemma-4-12B-QAT RAM exhaustion), (4) live generation now works 100% with qwen-2.5-14b (13/13 topics×levels tested), (5) gemma model also works when loaded. P8.7b: Language Lab lesson_pack generated successfully across 3 language pairs (Spanish/Latin, Japanese/CJK, Arabic/RTL). P8.7c: Bilingual unverified path exists but is NOT called by UI — controller.py has zero bilingual calls, Language Lab UI uses generate_lesson_pack() only.
 Suite state: **730 passed / 1 deselected** offline; live generation 100% success rate.
 
+
+## [2026-08-26 10:00] — claude-code (P8.8/P8.9/P8.12)
+Task: Loading indicators, user-friendly errors, watchlist documentation.
+Touched: desktop-shell/app.py (+ERROR_ACTIONS mapping, button disable during generation), storage/persistence.py (+watchlist schema docstring), TASKS.md (+P8.8/P8.9/P8.12 DONE), AGENT_LOG.md (this entry)
+Why: P8.8 adds button.disabled + text changes during async generation (Journey "Generate" button, Language Lab "Generate lesson pack" button). P8.9 maps error_kind to human-readable titles + next-step actions (no_model: "Start LM Studio", bad_output: "Try rephrasing topic", etc.). P8.12 documents job_watch preference schema in persistence.py set_preference docstring so future agents know the format.
+Suite state: **730 passed / 1 deselected** offline; all tests green.
+

@@ -53,6 +53,14 @@ ERROR_TITLES = {
     "unexpected": "Unexpected error",
 }
 
+ERROR_ACTIONS = {
+    "no_model": "Start LM Studio and load a model via the model picker.",
+    "bad_output": "Try rephrasing the topic or lowering the card count.",
+    "input": "Fill in all required fields correctly.",
+    "connector": "Check the service documentation or try again later.",
+    "unexpected": "Check the log for details and restart if needed.",
+}
+
 
 def run() -> None:  # pragma: no cover — needs a display
     import logging
@@ -72,8 +80,12 @@ def run() -> None:  # pragma: no cover — needs a display
     root.geometry("860x560")
 
     def show_error(res: FlowResult):
-        messagebox.showerror(ERROR_TITLES.get(res.error_kind, "Error"),
-                             res.detail or "Unknown failure.")
+        title = ERROR_TITLES.get(res.error_kind, "Error")
+        action = ERROR_ACTIONS.get(res.error_kind, "")
+        message = res.detail or "Unknown failure."
+        if action:
+            message = f"{message}\n\n{action}"
+        messagebox.showerror(title, message)
 
     # -- header -----------------------------------------------------------
     status = tk.StringVar(value="checking LM Studio…")
@@ -150,10 +162,14 @@ def run() -> None:  # pragma: no cover — needs a display
 
     output = tk.Text(journey_tab, height=20)
     output.pack(fill="both", expand=True, pady=6)
+    generate_btn = ttk.Button(actions, text="Generate", command=do_generate_journey)
 
     def do_generate_journey():
+        generate_btn.config(state="disabled", text="Generating…")
+        root.update_idletasks()
         res = ctrl.generate_journey(topic_var.get(), level_var.get(), cards_var.get())
         if not res:
+            generate_btn.config(state="normal", text="Generate")
             return show_error(res)
         journey = res.payload
         last_journey.clear(); last_journey.append(journey)
@@ -167,6 +183,7 @@ def run() -> None:  # pragma: no cover — needs a display
             subprocess.Popen(["xdg-open", str(saved.payload)],
                              stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL)
+        generate_btn.config(state="normal", text="Generate")
 
     def do_export(fmt: str):
         if not last_journey:
@@ -182,7 +199,8 @@ def run() -> None:  # pragma: no cover — needs a display
             output.insert("end", f"\nExported {fmt} -> {saved.payload}")
 
     actions = ttk.Frame(journey_tab); actions.pack(fill="x", pady=4)
-    ttk.Button(actions, text="Generate", command=do_generate_journey).pack(side="left")
+    generate_btn = ttk.Button(actions, text="Generate", command=do_generate_journey)
+    generate_btn.pack(side="left")
     for fmt in ("text", "pdf", "pptx", "xlsx"):
         ttk.Button(actions, text=f"Export {fmt.upper()}",
                    command=lambda f=fmt: do_export(f)).pack(side="left", padx=4)
@@ -215,10 +233,18 @@ def run() -> None:  # pragma: no cover — needs a display
                  values=["beginner", "intermediate", "advanced"]).grid(
         row=0, column=7, padx=4)
 
+    lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
+    lab_btn = ttk.Button(lab_actions, text="Generate lesson pack",
+                       command=do_lesson_pack)
+    lab_btn.pack(side="left")
+    tk.Label(lab_tab, textvariable=lab_status, fg="gray",
+             wraplength=760, justify="left").pack(anchor="w", pady=8)
+
     def do_lesson_pack():
         topic = lab_topic.get().strip()
         if not topic:
             return messagebox.showinfo("Language Lab", "Enter a topic first.")
+        lab_btn.config(state="disabled")
         lab_status.set(f"Generating lesson pack for '{topic}'… "
                        "(one guardrailed generation; please wait)")
         health_label.config(fg="gray")
@@ -227,19 +253,15 @@ def run() -> None:  # pragma: no cover — needs a display
                                         lab_known.get(), lab_level.get())
         if not res:
             lab_status.set("Generation failed.")
+            lab_btn.config(state="normal", text="Generate lesson pack")
             return show_error(res)
         import subprocess
         lab_status.set(f"Saved -> {res.payload}  (opening…)")
+        lab_btn.config(state="normal", text="Generate lesson pack")
         root.update_idletasks()
         subprocess.Popen(["xdg-open", str(res.payload)],
                          stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL)
-
-    lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
-    ttk.Button(lab_actions, text="Generate lesson pack",
-               command=do_lesson_pack).pack(side="left")
-    tk.Label(lab_tab, textvariable=lab_status, fg="gray",
-             wraplength=760, justify="left").pack(anchor="w", pady=8)
 
     # == Playground ==========================================================
     playground_tab = ttk.Frame(tab); tab.add(playground_tab, text="Playground")

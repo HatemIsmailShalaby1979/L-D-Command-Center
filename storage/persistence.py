@@ -147,6 +147,25 @@ class Storage:
         return self._kind_dir("preferences") / "preferences.json"
 
     def set_preference(self, key: str, value: Any) -> None:
+        """Persist a single preference key to disk.
+
+        Known preference schemas:
+
+        * ``"job_watch"`` — Career agent watchlist config (dict).
+          Schema::
+
+              {
+                "role": str,                  # e.g. "Python developer"
+                "location": str,              # e.g. "remote" or ""
+                "greenhouse_companies": [str],# e.g. ["stripe", "figma"]
+                "lever_companies": [str],
+                "ashby_companies": [str],
+              }
+
+          Accessed via controller._job_watch() / _save_job_watch().
+          The auto-check timer (every 10 min) reads this key to decide
+          whether to run search_jobs_now().
+        """
         prefs = {}
         prefs_file = self._prefs_file()
         if prefs_file.exists():
@@ -156,6 +175,7 @@ class Storage:
                               encoding="utf-8")
 
     def get_preference(self, key: str, default: Any = None) -> Any:
+        """Read a single preference key from disk, returning default when absent."""
         prefs_file = self._prefs_file()
         if not prefs_file.exists():
             return default

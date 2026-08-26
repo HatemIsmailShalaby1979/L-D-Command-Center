@@ -77,7 +77,7 @@ DONE:claude-code: P8.6 — triage all audit findings into prioritized fix list (
 DONE:claude-code: P8.7a — [CRITICAL] Diagnose and fix journey-core live generation: confirm loaded model (qwen-2.5-14b working), prompt template matches schema (no changes needed), live generation 100% success rate across 3+ topics, conftest alias fix resolved 78 test failures
 DONE:claude-code: P8.7b — [HIGH] Live-test Language Lab: generate_lesson_pack() tested across 3 language pairs (English→Spanish Latin, English→Japanese non-Latin, English→Arabic non-Latin) — all 3 passed with 6 dialogues + 6 vocab cards each
 DONE:claude-code: P8.7c — [HIGH] Make bilingual verification mandatory — confirmed unverified generate_bilingual_pair() exists but is NOT called by UI (controller.py has NO bilingual calls); UI only uses generate_lesson_pack() for Language Lab; verified path generate_bilingual_pair_verified() and convenience generate_and_render() exist but are internal only
-TODO:claude-code: P8.8 — loading indicators
-TODO:claude-code: P8.9 — user-friendly errors
-TODO:claude-code: P8.12 — document watchlist format
+DONE:claude-code: P8.8 — loading indicators: buttons disabled during generation, status text updated
+DONE:claude-code: P8.9 — user-friendly errors: added ERROR_ACTIONS mapping with actionable guidance for each error kind
+DONE:claude-code: P8.12 — document watchlist format: added detailed docstring to storage/persistence.py set_preference explaining job_watch schema
 TODO:claude-code: P8.13/P8.14 — spacing and clear buttons (after confirming HTML rendering method)
