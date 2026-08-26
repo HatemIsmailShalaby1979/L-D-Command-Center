@@ -64,9 +64,9 @@ ERROR_ACTIONS = {
 
 def run() -> None:  # pragma: no cover — needs a display
     import logging
-
     import tkinter as tk
     from tkinter import messagebox, ttk
+    from tkinter import filedialog
 
     from desktop_shell.controller import FlowResult, ShellController
 
@@ -74,10 +74,28 @@ def run() -> None:  # pragma: no cover — needs a display
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    # -- Dark theme setup -------------------------------------------------
+    style = ttk.Style()
+    style.theme_use("clam")  # Clam works on Windows without Ttk themes
+    style.configure("TFrame", background="#1e1e1e")
+    style.configure("TLabel", background="#1e1e1e", foreground="#ffffff")
+    style.configure("TButton", background="#3a3a3a", foreground="#ffffff")
+    style.configure("TEntry", fieldbackground="#2e2e2e", foreground="#ffffff")
+    style.configure("TCombobox", fieldbackground="#2e2e2e", foreground="#ffffff")
+    style.configure("TSpinbox", fieldbackground="#2e2e2e", foreground="#ffffff")
+    style.configure("TText", background="#2e2e2e", foreground="#ffffff")
+    style.configure("TLabelframe", background="#1e1e1e")
+    style.configure("TLabelframe.Label", background="#1e1e1e", foreground="#ffffff")
+    style.configure("Notebook", background="#1e1e1e")
+    style.configure("Notebook.Tab", background="#2e2e2e", foreground="#ffffff")
+    style.map("TButton", background=[("active", "#4a4a4a"), ("pressed", "#5a5a5a")])
+
     ctrl = ShellController()
     root = tk.Tk()
     root.title("L&D Command Center")
     root.geometry("860x560")
+    root.configure(background="#1e1e1e")
 
     def show_error(res: FlowResult):
         title = ERROR_TITLES.get(res.error_kind, "Error")
@@ -183,12 +201,32 @@ def run() -> None:  # pragma: no cover — needs a display
             import subprocess
             import sys as _sys
             if _sys.platform == "win32":
-                subprocess.Popen(["start", str(saved.payload)], shell=True)
+                subprocess.Popen(["start", str(saved.payload)], shell=True,
+                                 creationflags=subprocess.CREATE_NO_WINDOW)
             else:
                 subprocess.Popen(["xdg-open", str(saved.payload)],
                                  stdout=subprocess.DEVNULL,
                                  stderr=subprocess.DEVNULL)
         generate_btn.config(state="normal", text="Generate")
+
+    def do_save_journey():
+        """Save the current journey HTML to a user-selected location."""
+        if not last_journey:
+            messagebox.showinfo("Nothing to save", "Generate a journey first.")
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".html",
+            filetypes=[("HTML files", "*.html"), ("All files", "*.*")],
+            title="Save Journey HTML",
+        )
+        if not path:
+            return
+        journey = last_journey[0]
+        from engines.journey_core.renderer import JourneyRenderer
+        html = JourneyRenderer().render(journey)
+        Path(path).write_text(html, encoding="utf-8")
+        output.insert("end", f"\nSaved to -> {path}")
+        messagebox.showinfo("Saved", f"Journey saved to:\n{path}")
 
     def do_export(fmt: str):
         if not last_journey:
@@ -206,6 +244,8 @@ def run() -> None:  # pragma: no cover — needs a display
     actions = ttk.Frame(journey_tab); actions.pack(fill="x", pady=4)
     generate_btn = ttk.Button(actions, text="Generate", command=do_generate_journey)
     generate_btn.pack(side="left")
+    ttk.Button(actions, text="Save as…",
+               command=do_save_journey).pack(side="left", padx=4)
     for fmt in ("text", "pdf", "pptx", "xlsx"):
         ttk.Button(actions, text=f"Export {fmt.upper()}",
                    command=lambda f=fmt: do_export(f)).pack(side="left", padx=4)
@@ -261,7 +301,8 @@ def run() -> None:  # pragma: no cover — needs a display
         root.update_idletasks()
         import sys as _sys2
         if _sys2.platform == "win32":
-            subprocess.Popen(["start", str(res.payload)], shell=True)
+            subprocess.Popen(["start", str(res.payload)], shell=True,
+                             creationflags=subprocess.CREATE_NO_WINDOW)
         else:
             subprocess.Popen(["xdg-open", str(res.payload)],
                              stdout=subprocess.DEVNULL,
@@ -271,6 +312,8 @@ def run() -> None:  # pragma: no cover — needs a display
     lab_btn = ttk.Button(lab_actions, text="Generate lesson pack",
                        command=do_lesson_pack)
     lab_btn.pack(side="left")
+    ttk.Button(lab_actions, text="Save as…",
+               command=do_save_journey).pack(side="left", padx=4)
     tk.Label(lab_tab, textvariable=lab_status, fg="gray",
              wraplength=760, justify="left").pack(anchor="w", pady=8)
 
@@ -384,7 +427,8 @@ def run() -> None:  # pragma: no cover — needs a display
         import subprocess
         import sys as _sys
         if _sys.platform == "win32":
-            subprocess.Popen(["start", path], shell=True)
+            subprocess.Popen(["start", path], shell=True,
+                             creationflags=subprocess.CREATE_NO_WINDOW)
         else:
             subprocess.Popen(["xdg-open", path],
                              stdout=subprocess.DEVNULL,
@@ -393,6 +437,8 @@ def run() -> None:  # pragma: no cover — needs a display
     # --- audiobooks ---
     ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook — text to narrated audio")
     ab_frame.pack(fill="x", padx=6, pady=6)
+    last_audiobook: Optional[bytes] = None
+    last_podcast: Optional[bytes] = None
     ttk.Label(ab_frame, text="Text").grid(row=0, column=0, sticky="nw")
     ab_text = tk.Text(ab_frame, height=5, width=70)
     ab_text.grid(row=1, column=0, columnspan=4, padx=4, sticky="we")
@@ -435,10 +481,45 @@ def run() -> None:  # pragma: no cover — needs a display
             return show_error(res)
         ab_status.set(f"Done ({res.payload['duration_seconds']}s, "
                       f"{res.payload['voice']}). Opening player…")
+        nonlocal last_audiobook
+        last_audiobook = res.payload["mp3"] or res.payload["wav"]
+        if last_audiobook:
+            last_audiobook = Path(last_audiobook).read_bytes()
         _open_path(res.payload["mp3"] or res.payload["wav"])
+
+    def _save_as(data_bytes: bytes, default_ext: str, title: str) -> None:
+        """Show a save-dialog and write data_bytes to the chosen path."""
+        path = filedialog.asksaveasfilename(
+            defaultextension=default_ext,
+            filetypes=[
+                (default_ext[1:].upper() + " files", "*" + default_ext),
+                ("All files", "*.*"),
+            ],
+            title=title,
+        )
+        if not path:
+            return
+        Path(path).write_bytes(data_bytes)
+        messagebox.showinfo("Saved", f"File saved to:\n{path}")
+
+    def do_save_audiobook():
+        """Save the generated audiobook to a user-selected location."""
+        if not last_audiobook:
+            messagebox.showinfo("Nothing to save", "Generate an audiobook first.")
+            return
+        _save_as(last_audiobook, ".mp3", "Save Audiobook")
+
+    def do_save_podcast():
+        """Save the generated podcast to a user-selected location."""
+        if not last_podcast:
+            messagebox.showinfo("Nothing to save", "Generate a podcast first.")
+            return
+        _save_as(last_podcast, ".mp3", "Save Podcast")
 
     ttk.Button(ab_frame, text="Generate audiobook",
                command=do_audiobook).grid(row=4, column=0, sticky="w", pady=4)
+    ttk.Button(ab_frame, text="Save as…",
+               command=do_save_audiobook).grid(row=4, column=1, sticky="w", padx=4)
 
     # --- podcasts ---
     pod_frame = ttk.LabelFrame(studio_tab, text="Podcast — topic to two-voice episode")
@@ -514,10 +595,16 @@ def run() -> None:  # pragma: no cover — needs a display
                        f"{res.payload['segments']} segments, "
                        f"voices: {', '.join(res.payload['speakers'])}, "
                        f"{res.payload['duration_seconds']}s. Opening player…")
+        nonlocal last_podcast
+        last_podcast = res.payload["mp3"] or res.payload["wav"]
+        if last_podcast:
+            last_podcast = Path(last_podcast).read_bytes()
         _open_path(res.payload["mp3"] or res.payload["wav"])
 
     ttk.Button(pod_frame, text="Generate podcast",
                command=do_podcast).pack(anchor="w", pady=4)
+    ttk.Button(pod_frame, text="Save as…",
+               command=do_save_podcast).pack(anchor="w", padx=4, pady=4)
 
     # --- voice manager ---
     vm_frame = ttk.LabelFrame(studio_tab, text="Voices (Piper)")

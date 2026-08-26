@@ -82,3 +82,4 @@ DONE:claude-code: P8.9 — user-friendly errors: added ERROR_ACTIONS mapping wit
 DONE:claude-code: P8.12 — document watchlist format: added detailed docstring to storage/persistence.py set_preference explaining job_watch schema
 TODO:claude-code: P8.13 — spacing and layout consistency across tabs
 DONE:claude-code: P8.14 — clear/reset buttons added to Journey (Topic), Language Lab (Topic), and Career (profile text) tabs
+DONE:claude-code: P8.15 — dark theme applied (TLabelFrame included); Save-as… buttons added to Journey, Language Lab, and Audio Studio tabs; fixed NameError crash (undefined `_save_as_html`) and local variable shadowing in do_audiobook()/do_podcast()

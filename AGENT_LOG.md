@@ -544,3 +544,16 @@ Windows-specific findings:
 
 Known limitation: Live tests may fail intermittently due to LLM variability, not a code bug.
 
+
+## [2026-08-26 20:42] — claude-code (P8.13/P8.14 completion + app launch)
+Task: P8.13/P8.14 complete, app launched for user testing.
+Touched: desktop-shell/app.py (+Clear buttons), TASKS.md (+P8.13/P8.14 DONE)
+Why: P8.13 spacing already consistent — no changes needed. P8.14 added Clear buttons to Journey, Language Lab, Career, and Audio Studio tabs. App launched successfully (LM Studio connected, 4 connectors registered).
+Suite state: **730 passed / 1 deselected**.
+
+## [2026-08-26 21:00] — claude-code (dark theme + Save-as… buttons + crash fix)
+Task: P8.15 — dark theme, Save-as buttons, and fix NameError crash.
+Touched: desktop-shell/app.py
+Why: The Language Lab "Save as…" button referenced undefined `_save_as_html` (NameError crash). Added full dark theme (TLabelFrame included). Added Save-as buttons to Journey, Language Lab, Audio Studio (audiobook + podcast). Fixed local variable shadowing bug in do_audiobook() and do_podcast() so last_audiobook/last_podcast actually persist for the save dialogs. Also fixed do_save_audiobook() to pass bytes directly instead of treating them as a dict.
+Suite state: **730 passed / 1 deselected**.
+
