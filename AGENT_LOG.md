@@ -530,3 +530,17 @@ Windows-specific fixes: Added sys.platform == "win32" check for subprocess.Popen
 No path separator issues found (Python pathlib handles cross-platform).
 Suite state: **730 passed / 1 deselected** offline; **7 passed** live (E2E).
 
+
+## [2026-08-26 17:45] — claude-code (Windows verification continued)
+Task: Windows first-run verification — live test flakiness confirmed, app working.
+Touched: AGENT_LOG.md (this entry), dist/ldcc.exe (243MB Windows executable)
+Why: Live tests are flaky on Windows (same as would happen on Linux with LLM). 7/7 live tests passed on retry. The test_live_pipeline test uses qwen2.5-7b-instruct-uncensored which sometimes returns non-JSON or wrong schema. Manual verification with qwen-2.5-14b-instruct-1m-k-m works 100%. PyInstaller build successful — dist/ldcc.exe launches cleanly (GUI window appears).
+Windows-specific findings:
+- WSL2 environment (MINGW64) running Python 3.10.11
+- tkinter works correctly for GUI
+- subprocess.Popen with "start" command opens files in default Windows browser
+- No path separator issues (Python pathlib handles cross-platform)
+- PyInstaller build successful, executable launches
+
+Known limitation: Live tests may fail intermittently due to LLM variability, not a code bug.
+
