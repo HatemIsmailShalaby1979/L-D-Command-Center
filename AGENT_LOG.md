@@ -587,3 +587,9 @@ Suite state: **730 passed / 1 deselected**.
 
 Suite state: **730 passed / 7 deselected**. Coverage 93.62%. Phase 8 closed.
 
+
+## [2026-08-27 06:45] — Agnes/Sapiens AI
+Task: Pre-shipment audit and v1.0.0 release preparation for public GitHub deployment.
+Touched: LICENSE (created), AGENT_LOG.md (appended), .git (updated)
+Why: Public GitHub release requires license, clean history audit, and release tag. Per CONSTITUTION.md §3, no secrets or credentials in code or history. Piper model weights (.onnx) deleted from git in commit c748fd7 and excluded via .gitignore; current disk copy is local-only (723MB total, not committed). PyInstaller Windows build completed successfully via ldcc.spec.
+Left undone: Linux binary build cannot be performed on this Windows machine — must be built on a Linux host. Live smoke test requires LM Studio running and Piper voices provisioned; not attempted in this session.
