@@ -62,6 +62,20 @@ ERROR_ACTIONS = {
 }
 
 
+def _open_path(path: str) -> None:
+    """Open a file/path in the default application without a terminal window.
+    Uses os.startfile on Windows (native, no console flash) and xdg-open elsewhere."""
+    import os
+    import sys as _sys
+    if _sys.platform == "win32":
+        os.startfile(path)
+    else:
+        import subprocess
+        subprocess.Popen(["xdg-open", path],
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+
+
 def run() -> None:  # pragma: no cover — needs a display
     import logging
     import tkinter as tk
@@ -75,27 +89,10 @@ def run() -> None:  # pragma: no cover — needs a display
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    # -- Dark theme setup -------------------------------------------------
-    style = ttk.Style()
-    style.theme_use("clam")  # Clam works on Windows without Ttk themes
-    style.configure("TFrame", background="#1e1e1e")
-    style.configure("TLabel", background="#1e1e1e", foreground="#ffffff")
-    style.configure("TButton", background="#3a3a3a", foreground="#ffffff")
-    style.configure("TEntry", fieldbackground="#2e2e2e", foreground="#ffffff")
-    style.configure("TCombobox", fieldbackground="#2e2e2e", foreground="#ffffff")
-    style.configure("TSpinbox", fieldbackground="#2e2e2e", foreground="#ffffff")
-    style.configure("TText", background="#2e2e2e", foreground="#ffffff")
-    style.configure("TLabelframe", background="#1e1e1e")
-    style.configure("TLabelframe.Label", background="#1e1e1e", foreground="#ffffff")
-    style.configure("Notebook", background="#1e1e1e")
-    style.configure("Notebook.Tab", background="#2e2e2e", foreground="#ffffff")
-    style.map("TButton", background=[("active", "#4a4a4a"), ("pressed", "#5a5a5a")])
-
     ctrl = ShellController()
     root = tk.Tk()
     root.title("L&D Command Center")
     root.geometry("860x560")
-    root.configure(background="#1e1e1e")
 
     def show_error(res: FlowResult):
         title = ERROR_TITLES.get(res.error_kind, "Error")
@@ -198,15 +195,7 @@ def run() -> None:  # pragma: no cover — needs a display
             output.insert("end", f"[{i}] {card.get('title','')}\n{card.get('content','')}\n\n")
         if saved:
             output.insert("end", f"\nSaved interactive HTML -> {saved.payload}")
-            import subprocess
-            import sys as _sys
-            if _sys.platform == "win32":
-                subprocess.Popen(["start", str(saved.payload)], shell=True,
-                                 creationflags=subprocess.CREATE_NO_WINDOW)
-            else:
-                subprocess.Popen(["xdg-open", str(saved.payload)],
-                                 stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.DEVNULL)
+            _open_path(str(saved.payload))
         generate_btn.config(state="normal", text="Generate")
 
     def do_save_journey():
@@ -299,14 +288,7 @@ def run() -> None:  # pragma: no cover — needs a display
         lab_status.set(f"Saved -> {res.payload}  (opening…)")
         lab_btn.config(state="normal", text="Generate lesson pack")
         root.update_idletasks()
-        import sys as _sys2
-        if _sys2.platform == "win32":
-            subprocess.Popen(["start", str(res.payload)], shell=True,
-                             creationflags=subprocess.CREATE_NO_WINDOW)
-        else:
-            subprocess.Popen(["xdg-open", str(res.payload)],
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL)
+        _open_path(str(res.payload))
 
     lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
     lab_btn = ttk.Button(lab_actions, text="Generate lesson pack",
@@ -423,16 +405,6 @@ def run() -> None:  # pragma: no cover — needs a display
 
     LANG_CODES = ["en", "es", "fr", "de", "it", "pt", "ru", "zh"]
 
-def _open_path(path: str):
-        import subprocess
-        import sys as _sys
-        if _sys.platform == "win32":
-            subprocess.Popen(["start", path], shell=True,
-                             creationflags=subprocess.CREATE_NO_WINDOW)
-        else:
-            subprocess.Popen(["xdg-open", path],
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL)
     # --- audiobooks ---
     ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook — text to narrated audio")
     ab_frame.pack(fill="x", padx=6, pady=6)

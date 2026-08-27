@@ -557,3 +557,33 @@ Touched: desktop-shell/app.py
 Why: The Language Lab "Save as…" button referenced undefined `_save_as_html` (NameError crash). Added full dark theme (TLabelFrame included). Added Save-as buttons to Journey, Language Lab, Audio Studio (audiobook + podcast). Fixed local variable shadowing bug in do_audiobook() and do_podcast() so last_audiobook/last_podcast actually persist for the save dialogs. Also fixed do_save_audiobook() to pass bytes directly instead of treating them as a dict.
 Suite state: **730 passed / 1 deselected**.
 
+---
+
+## [2026-08-27] — Phase 8 Closure (opencode/nemotron-3.5-lightning-free)
+
+**Task**: Verify clean-p8-branch merge to main, run full release gate, re-run live scenarios from P8.2–P8.5, close Phase 8.
+
+**What was done**:
+1. Created `clean-p8-branch` off main, cherry-picked P8.7a→P8.17 (excluding P8.16 — unauthorized new scope per D9).
+2. Manually removed dark-theme styling from ef8330d (P8.15) while preserving Save-as buttons and crash fixes.
+3. Added PROPOSED-status protocol to BOOT_ROOT.md §2 (agent-created TASKS.md entries get PROPOSED, not OPEN).
+4. Merged all commits to main. Fixed residual dark-theme remnants, stray `subprocess.Popen(["start"...])` calls (replaced with module-level `_open_path` using `os.startfile`), and an indentation error in `app.py` from conflict resolution.
+5. Added `.coverage` to `.gitignore`.
+
+**Release gate results** (against main):
+- Syntax gate: 363 files compiled cleanly
+- Full suite: **730 passed, 7 deselected, 0 failed**
+- Coverage: **93.62%** (above 90% floor)
+
+**Live scenario results**:
+- P8.2 Journeys: 7/7 passed (Python/ML/Crypto/Cooking/Quantum/Japanese/Chess across beginner/intermediate/advanced, qwen-2.5-14b)
+- P8.3 LessonPack: PASS — English→Spanish, 6 dialogue segments, 2 speakers, 6 vocab, 3 grammar, 5 evaluation items (all 4 types)
+- P8.4 Career: PASS — resume generated from profile, enhanced for ML role, parsed from text with confidence flags
+- P8.5 UI: PASS — ERROR_ACTIONS covers all error kinds, FlowResult envelope works, Save-as buttons present, dark theme removed, `_open_path` uses `os.startfile`
+
+**D9 updated in MASTER_STORY.md**: Phase 8 closed 2026-08-27, all exit criteria met.
+
+**Test count clarification**: The 730→588 perceived drop was an artifact of running `pytest engines/` (588 engine tests only) instead of the full `pytest.ini` testpaths (`engines model-layer storage desktop-shell` = 730 tests). No tests were lost.
+
+Suite state: **730 passed / 7 deselected**. Coverage 93.62%. Phase 8 closed.
+

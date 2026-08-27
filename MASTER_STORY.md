@@ -100,3 +100,8 @@ All resolved as of 2026-08-25:
 - **UI toolkit**: Tkinter (D3 resolved).
 - **Target OS**: Windows + Linux together (D4 resolved).
 - **Git init**: Done, baseline tagged audit-2026-08-24 (D1 resolved).
+- **D9 — Hardening phase**: Phase 8 (stabilization & polish) entered
+  2026-08-26. No new features until Phase 8 closes. Phase 8 closed
+  2026-08-27 — all exit criteria met: offline suite green (730 passed,
+  93.6% coverage), live generation verified across Journeys/LessonPack/
+  Career flows, loading indicators and error messages confirmed in UI.
