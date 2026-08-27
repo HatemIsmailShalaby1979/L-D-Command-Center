@@ -1,0 +1,54 @@
+J{
+  "contact": {
+    "name": "Hatem Shalaby",
+    "email": "hatem.shalaby@gmail.com",
+    "phone": "+201068475931",
+    "location": "Cairo, Egypt",
+    "linkedin": "https://www.linkedin.com/in/hatem-shalaby-202902127/",
+    "github": "https://github.com/HatemShelby?tab=repositories"
+  },
+  "summary": "Customer Success Engineer with a strong background in developing and maintaining web applications. Skilled in Python, JavaScript, and React. Proven ability to collaborate with cross-functional teams to deliver high-quality software solutions while ensuring customer satisfaction and success.",
+  "experience": [
+    {
+      "title": "Software Engineer",
+      "company": "ABC Tech Solutions",
+      "dates": "2018 - Present",
+      "description": "Developed and maintained web applications using Python, Django, and React. Collaborated with cross-functional teams to deliver high-quality software solutions. Actively engaged in customer support, ensuring smooth onboarding and continuous improvement of the product based on user feedback."
+    },
+    {
+      "title": "Junior Developer",
+      "company": "XYZ Innovations",
+      "dates": "2016 - 2018",
+      "description": "Assisted senior developers in the development of web applications. Participated in code reviews and contributed to the overall quality of the product. Provided initial customer support, ensuring a positive user experience."
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bachelor's Degree in Computer Science",
+      "school": "Cairo University",
+      "dates": "2012 - 2016"
+    }
+  ],
+  "skills": [
+    "Python",
+    "Django",
+    "JavaScript",
+    "React",
+    "Git",
+    "Customer Support",
+    "Onboarding Processes",
+    "User Feedback Analysis"
+  ],
+  "projects": [
+    {
+      "name": "E-commerce Website",
+      "description": "Developed an e-commerce website using Django and React. Implemented features such as user authentication, product listings, and shopping cart functionality. Collaborated with customers to gather feedback and enhance the site's usability.",
+      "tech": [
+        "Python",
+        "Django",
+        "JavaScript",
+        "React"
+      ]
+    }
+  ]
+}
