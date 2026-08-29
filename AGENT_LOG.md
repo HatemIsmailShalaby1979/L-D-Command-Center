@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # AGENT_LOG.md
 
 Append-only session ledger. See `CONSTITUTION.md` §2 and `BOOT_ROOT.md`.

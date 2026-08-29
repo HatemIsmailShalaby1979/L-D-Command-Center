@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # FILE_MANIFEST.md
 
 Every file in this workspace and its one-line reason for existing. See `CONSTITUTION.md` §1 and `BOOT_ROOT.md`.

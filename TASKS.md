@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # TASKS.md
 
 Shared task queue for multi-agent coordination. Status values: OPEN, CLAIMED:<agent>, DONE:<agent>, BLOCKED:<reason>.

@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # BOOT_ROOT — Workspace Bootstrap Protocol
 
 Read this before creating the first file. This defines the physical

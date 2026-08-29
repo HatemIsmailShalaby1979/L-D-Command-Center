@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # CONTEXT.md — L&D Command Center Domain Glossary
 
 Canonical names for the things this product talks about. Use these terms in

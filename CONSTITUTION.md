@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # L&D Command Center — Engineering Constitution
 
 This file outranks convenience, speed, and any single session's judgment.

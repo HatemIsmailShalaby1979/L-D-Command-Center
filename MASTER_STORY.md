@@ -1,3 +1,5 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
 # L&D Command Center — Master Story
 
 This is the canonical description of what this project is. Any agent
