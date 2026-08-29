@@ -3,13 +3,14 @@
 # WHAT: Deterministic XLSX renderer for Journeys — one worksheet with a
 #       metadata header and one row per Card.
 # WHY:  MASTER_STORY promises XLSX among the export formats (P4.3).
-#       Workbook properties are pinned so identical input yields
-#       byte-identical output (exit criterion E4).
+#       Workbook properties and ZIP entry metadata are pinned so identical
+#       input yields byte-identical output (exit criterion E4).
 # BREAKS IF DELETED: Journeys can no longer be exported to spreadsheets.
 
 from __future__ import annotations
 
 import logging
+import zipfile
 from datetime import datetime
 from io import BytesIO
 from typing import Any
@@ -17,6 +18,27 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _EPOCH = datetime(2000, 1, 1)
+
+
+def _stabilize_xlsx_zip(payload: bytes) -> bytes:
+    """Normalize ZIP metadata so the same workbook always has the same bytes."""
+    source_buffer = BytesIO(payload)
+    stable_buffer = BytesIO()
+    with zipfile.ZipFile(source_buffer, "r") as source, zipfile.ZipFile(
+        stable_buffer, "w", compression=zipfile.ZIP_DEFLATED
+    ) as stable:
+        for entry in source.infolist():
+            normalized = zipfile.ZipInfo(
+                entry.filename,
+                date_time=(2000, 1, 1, 0, 0, 0),
+            )
+            normalized.compress_type = entry.compress_type
+            normalized.create_system = entry.create_system
+            normalized.external_attr = entry.external_attr
+            normalized.flag_bits = entry.flag_bits
+            normalized.comment = entry.comment
+            stable.writestr(normalized, source.read(entry.filename))
+    return stable_buffer.getvalue()
 
 
 def export_journey_to_xlsx(journey: dict[str, Any]) -> bytes:
@@ -75,5 +97,6 @@ def export_journey_to_xlsx(journey: dict[str, Any]) -> bytes:
 
     buf = BytesIO()
     wb.save(buf)
+    stable_payload = _stabilize_xlsx_zip(buf.getvalue())
     logger.info("Rendered XLSX export for %r (%d cards)", topic, len(cards))
-    return buf.getvalue()
+    return stable_payload
