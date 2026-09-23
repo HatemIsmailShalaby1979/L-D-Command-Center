@@ -1772,6 +1772,7 @@ def run() -> None:  # pragma: no cover â€” needs a display
     refresh_canvas()
     if names_res.ok and names_res.payload:
         connector_var.set(names_res.payload[0])  # fires capability render
+    refresh_health()  # Startup: detect providers, populate dropdown, show status
     root.mainloop()
 
 
