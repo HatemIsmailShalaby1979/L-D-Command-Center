@@ -1,0 +1,233 @@
+> **Internal development artifact** — documents the AI-assisted build process for this project.
+
+# FILE_MANIFEST.md
+
+Every file in this workspace and its one-line reason for existing. See `CONSTITUTION.md` §1 and `BOOT_ROOT.md`.
+
+## Governance Files (pre-existing)
+
+| Path | Reason |
+|------|--------|
+| `/index.html` | Project landing page — self-contained HTML overview of all four pillars, architecture, tech stack, job-board agent, ship-gate status, and development timeline |
+| `/CONSTITUTION.md` | Engineering constitution — governs all agent behavior; read first, always |
+| `/MASTER_STORY.md` | Canonical product vision and Four Pillars; read second |
+| `/BOOT_ROOT.md` | Workspace bootstrap protocol — defines folder skeleton and coordination rules |
+| `/CONTEXT.md` | Domain glossary — canonical names for Journey, Card, Bilingual Pair, Immersion Podcast, etc.; gives seams their names |
+
+## Infrastructure Files
+
+| Path | Reason |
+|------|--------|
+| `/AGENT_LOG.md` | Append-only session ledger per CONSTITUTION.md §2 and BOOT_ROOT.md |
+| `/FILE_MANIFEST.md` | This file — canonical registry of every file and its one-line purpose |
+| `/TASKS.md` | Shared task queue for multi-agent coordination per BOOT_ROOT.md |
+| `/.gitignore` | Excludes /tmp, secrets files (CONSTITUTION.md §3), and standard OS/editor cruft |
+
+## Engine Directories (skeleton — no implementation code)
+
+| Path | Engine Responsibility |
+|------|----------------------|
+| `/engines/journey-core/README.md` | Topic → interactive HTML learning experience (cards, quizzes, evaluations). Foundational output format all other engines build upon. |
+| `/engines/export-engine/README.md` | Converts journey content to downloadable formats: DOCX, PDF, TXT, PPTX, XLSX, and audio (WAV/MP3). |
+| `/engines/audio-engine/README.md` | Text → audiobook and podcast audio via TTS orchestration. Serves the export-engine and language-lab. |
+| `/engines/language-lab/README.md` | Bilingual and immersion podcast generation for the "Speak Like an Alien" language-learning pillar. |
+| `/engines/career-engine/README.md` | Resume generation, upload, enhancement, LinkedIn/GitHub/portfolio connections, YouTube research, and optional LinkedIn posting. |
+| `/engines/playground-bridge/README.md` | Bidirectional import-export with external creative AI tools (Figma, Suno, Gemma, etc.). |
+
+## Layer Directories
+
+| Path | Responsibility |
+|------|---------------|
+| `/model-layer/README.md` | LM Studio client, prompt templates, schema validation, retry logic — the guardrail layer ensuring correctness independent of model size. |
+| `/storage/README.md` | Local persistence for journeys, exports, preferences, cached outputs; Notion SOP sync. |
+| `/storage/persistence.py` | Storage engine v1 — file-backed artifact store (journeys/resumes/scripts/audio/exports) + preferences; LDCC_DATA_DIR override (P5.1); set_preference() docs P8.12 (job_watch schema) |
+| `/storage/secrets.py` | The one secrets-file adapter — parse_secrets_file/load_secret with deterministic scan order; integrations keep only their validity policies (P5.1) |
+| `/storage/test_persistence.py` | 14 tests: roundtrips, kind isolation, name validation, preference defaults/cross-instance persistence |
+| `/storage/test_secrets.py` | 9 tests: comment/first-'=' parsing, explicit-path precedence, sorted scan fallback, empty-value policy |
+| `/desktop-shell/README.md` | Packaging and installer pipeline for the desktop-native, offline-first executable. |
+| `/desktop-shell/controller.py` | Shell controller — the entire engine surface behind typed FlowResults; all UI behavior, headless-tested (P5.2/P5.3); career agent: search_jobs_now/check_job_watchlist/save_job_watchlist (keyless board hunting with seen-URL diff; company rosters resolve explicit-arg > job_sources preference > engine contact-center/CX defaults), save_job_sources (persist per-board company rosters), prepare_application (enhance+cover letter+PDF/DOCX+listing.txt), upload_resume (PDF/DOCX/TXT), import_github_projects + fetch_linkedin_profile (career_identity memory: cached projects/profile served offline, actionable 404/rate-limit/token guidance), draft_linkedin_post (validated human-style draft, saved locally) + publish_linkedin_post (explicit confirm gate), get/clear_career_identity; playground seam: connector roster (keyless-first: pollinations, HF image/music, figma) with quota-note payloads, run_connector_job storing into media/generated, import_files/scan_import_inbox/list+load media, "connector" error kind |
+| `/desktop-shell/app.py` | Tkinter UI — tab order per 2026-09-05 focus directive (Language Lab flagship first, Career, Playground, then frozen Journey + Audio Studio with Study-Studio pointer banners and disabled generate buttons); async runner (worker thread + queue-marshalled callbacks, window never freezes during generation); Language Lab: 15 languages, saved-pack reopen list; Career: identity restore on boot, cached/offline badges, LinkedIn post studio (draft → edit → explicit-confirm publish); exit_nocontinue |
+| `/desktop-shell/test_controller.py` | 73 controller tests: health, journey flow, typed-error mapping (no_model/bad_output/input/unexpected/connector), render+persist, export routing, library roundtrip, capabilities probe, playground import/inbox/connectors, career agent flows (search_jobs_now incl. saved-roster and engine-default fallback, watchlist diff + legacy-shape fallback, save_job_sources explicit-skip semantics, prepare_application, upload_resume, import_github incl. identity persistence/offline cache/404/rate-limit guidance, fetch_linkedin incl. identity persistence/no-token guidance/offline cache, enhance target-role memory, draft+publish LinkedIn post incl. confirm gate), PDF unicode regression |
+| `/desktop-shell/ldcc.spec` | PyInstaller spec for the single-file `ldcc` executable (P5.4); secrets/voices deliberately not bundled |
+| `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
+| `/docs/PRODUCTION_PLAN.md` | Phased v1 production-readiness plan: task IDs (P0–P6) used by TASKS.md, exit criteria, decision log, defect register |
+| `/docs/PROFIT_PLAN.md` | Monetization strategy (owner-directed 2026-09-05): zero-marginal-cost moat, Free/Pro/Campaign tier ladder, offline license keys, distribution funnel (shareable packs, open-core, local-AI story, niche communities), revenue lines ranked by stability, 90-day ladder, non-goals, risk register, single success metric (MRR per active installer) |
+| `/docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md` | Phase-7 plan: capability profiles (small-model driving), Media Workspace + Connector Hub roster, LessonPack/interactive renderer/spaced-repetition for Language Lab |
+| `/requirements.txt` | Pinned dependency versions for reproducible offline installs (exit criterion E8) |
+| `/conftest.py` | Root pytest bootstrap — registers underscore alias packages for hyphenated engine dirs so dotted imports resolve; the single import convention |
+| `/pytest.ini` | Runner config — testpaths, importlib mode, `live` marker registration |
+
+## Model-Layer Implementation
+
+| Path | Reason |
+|------|--------|
+| `/model-layer/client.py` | Real LM Studio HTTP client (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check; 300s timeout (CPU inference of 8K-token outputs on 7B-14B models takes minutes) |
+| `/model-layer/schema.py` | Journey JSON schema + validate_journey() + SchemaValidator retry loop + hardened extract_json_from_text (noise/BOM strip, MMdd blocks, fences, Python-literal fix, string-aware balanced-span scan) + repair_truncated_json (finish_reason=length salvage) |
+| `/model-layer/policy.py` | Model-aware generation policy (2026-09-05): JSON_DISCIPLINE_ADDENDUM injected into every system prompt, size-aware attempt budget (<7B gets 5 attempts), JSON-mode flag, estimate_model_size canonical home |
+| `/model-layer/test_extraction.py` | 22 tests: fences/think-blocks/prose/literals/braces-in-strings extraction, truncation repair salvage rules |
+| `/model-layer/prompts.py` | PromptRegistry with journey_generate, journey_retry, cover_letter_generate, and lesson_verify templates, {placeholder} rendering, schema_key wiring |
+| `/model-layer/pipeline.py` | Generation Pipeline — the single Guardrail Loop (render→call→extract→validate→retry→typed error) every engine generates through; owns model-id defaults, transient-error policy, 8192-token budget, truncation repair on finish_reason=length, response_format JSON mode with runtime-rejection fallback, policy addendum injection |
+| `/model-layer/test_pipeline.py` | 24 contract tests for the Pipeline via a ScriptedClient matching the real LmStudioClient interface (retry counts, feedback formatting, error taxonomy, truncation repair, JSON-mode fallback, discipline addendum, size-aware budgets) |
+
+## Journey-Core Engine (implementation)
+
+| Path | Reason |
+|------|--------|
+| `/engines/journey-core/__init__.py` | Package init for journey-core (hyphenated dir requires explicit init) |
+| `/engines/journey-core/generator.py` | generate_journey(topic, level) — wires prompts→client→validate→retry; the single entry point for journey generation |
+| `/engines/journey-core/test_generator.py` | 10 tests covering valid output, retry on schema failure, malformed output, invalid level, default client, custom num_cards, and schema validation |
+| `/engines/journey-core/renderer.py` | JourneyRenderer — converts validated Journey dict to interactive HTML with cards, quizzes, evaluation panels, and JS interactivity; never calls the model |
+| `/engines/journey-core/test_renderer.py` | 12 tests covering HTML structure, content inclusion, escaping, error cases, and convenience function |
+
+## Export-Engine Implementation
+
+| Path | Reason |
+|------|--------|
+| `/engines/export-engine/__init__.py` | Package init for export-engine |
+| `/engines/export-engine/export.py` | Thin public surface: honest `export()` dispatcher (journey/resume/narration; rejects generation-requiring kinds per P4.2) + re-exports from format adapters |
+| `/engines/export-engine/detect.py` | Content-type detection (`_detect_type`) extracted from the former god-module (P4.1) |
+| `/engines/export-engine/text_format.py` | Deterministic plain-text renderers/writers (Journey + Resume) |
+| `/engines/export-engine/pdf_format.py` | Deterministic PDF renderers/writers with `_UnicodeFPDF` mixin that auto-swaps Helvetica for DejaVu/Arial for full Unicode support (em-dashes, accents, curly quotes); creation date pinned for byte-stability |
+| `/engines/export-engine/docx_format.py` | Deterministic DOCX renderer/writer; core properties pinned |
+| `/engines/export-engine/pptx_format.py` | Journey -> PowerPoint deck (title slide + one slide per Card); properties pinned (P4.3) |
+| `/engines/export-engine/xlsx_format.py` | Journey -> spreadsheet (metadata header + card rows); properties pinned (P4.3) |
+| `/engines/export-engine/test_byte_stability.py` | E4 gate: same artifact exported twice must be byte-identical across all binary formats |
+| `/engines/export-engine/test_export.py` | 50 tests: journey text/PDF, resume text/PDF/DOCX, type detection, unified dispatcher, file writing |
+
+## Career-Engine Implementation
+
+| Path | Reason |
+|------|--------|
+| `/engines/career-engine/resume/schema.py` | Resume JSON schema (contact, summary, experience[], education[], skills[], projects[]) + validate_resume() |
+| `/engines/career-engine/resume/generator.py` | generate(), enhance(), generate_cover_letter(), generate_linkedin_post() entry points — all wired prompts→client→validate→retry via the Generation Pipeline; enhance() returns human-inspectable changes list; linkedin_post validates word count + banned AI-tell phrases deterministically |
+| `/engines/career-engine/resume/test_generator.py` | 11 tests: 3 for generate() (mocked), 4 for validate_resume(), 4 for enhance() (mocked, including retry and persistent failure) |
+| `/engines/career-engine/resume/parser.py` | PDF/DOCX resume parser — extracts fields via pattern matching, returns (resume_dict, confidence_flags) with unknown/missing fields flagged |
+| `/engines/career-engine/resume/test_parser.py` | 16 tests: text parsing patterns, PDF/DOCX extraction, confidence flagging, file dispatch |
+| `/engines/career-engine/job_boards.py` | Keyless job-board search (Greenhouse, Lever, Ashby, RemoteOK): unified `JobListing` dataclass, per-source connectors with injectable transports, keyword matching, cross-source dedupe; default company rosters — verified-live contact-center/CX tokens (dialpad, five9, nextiva, intercom, qualtrics, hubspot, cresta, observeai, maestroqa, vonage / aircall / helpscout, gorgias, kustomer, glia), 2026-09-05 HEAD-probe verified after the legacy stripe/figma/vercel roster 404'd on every board |
+| `/engines/career-engine/test_job_boards.py` | 10 tests: per-source shape parsing (Greenhouse/Ashby/Lever/RemoteOK), dead-source isolation, cross-source URL dedupe, keyword-matching scoring, default contact-center roster hunting |
+| `/engines/career-engine/campaign.py` | Career Campaign mode v0 (PROFIT_PLAN §2/§6, Campaign tier): status ladder (prepared→…→withdrawn), CampaignStore persisted via Storage preferences (URL-keyed dedupe, re-prepare keeps history, timestamped notes, dashboard summary), generate_interview_prep grounded in the real resume (company/role echo + exact counts validated) |
+| `/engines/career-engine/test_campaign.py` | 18 tests: ladder order, key rules, note append, persistence across restart, re-track history, advance-before-track rejection, summary counts, prep generation + grounding retry + persistent-garbage, input guards, template registration |
+
+## Career-Engine Integrations
+
+| Path | Reason |
+|------|--------|
+| `/engines/career-engine/integrations/github_client.py` | Read-only GitHub client — fetches public repos and READMEs, seeds Resume.projects proposals (never writes) |
+| `/engines/career-engine/integrations/test_github_client.py` | 16 tests: token loading, repo fetching, README parsing, project proposal logic |
+| `/secrets/github.secrets` | GitHub personal access token (git-ignored per CONSTITUTION.md §3) |
+| `/engines/career-engine/integrations/linkedin_client.py` | LinkedIn OAuth client (self-serve tier) — reads own profile via /v2/userinfo (openid+profile), posts via w_member_social, rate-limited, require confirm=True for write ops |
+| `/engines/career-engine/integrations/test_linkedin_client.py` | 19 tests: scopes, rate limiter, token loading, profile fetch, post safety gate, rate limit enforcement |
+| `/secrets/linkedin.secrets` | LinkedIn OAuth token/credentials (git-ignored per CONSTITUTION.md §3) |
+| `/engines/career-engine/integrations/youtube_summary.py` | YouTube video search + AI summarization — requires YOUTUBE_API_KEY, every summary includes traceable source URL, uses model layer via PromptRegistry |
+| `/engines/career-engine/integrations/test_youtube_summary.py` | 19 tests: API key loading, video search, summary generation, URL tracing invariant |
+| `/secrets/youtube.secrets` | YouTube Data API key (git-ignored per CONSTITUTION.md §3) |
+
+## Career-Engine Integration Tests
+
+| Path | Reason |
+|------|--------|
+| `/engines/career-engine/test_integration.py` | 8 tests: full pipeline generate→enhance→export PDF/DOCX→GitHub→LinkedIn→YouTube (all mocked), drift status report |
+
+## Integration Tests
+
+| Path | Reason |
+|------|--------|
+| `/engines/test_integration.py` | Full pipeline test: generate→render→export using same Journey; mocked and live variants |
+| `/engines/export-engine/test_export_integration.py` | Honest dispatcher suite: routing per kind/format, file writing incl. nested dirs, narration-via-seam WAV, and the no-generation ValueErrors (P4.2) |
+
+## TTS Client (model-layer)
+
+| Path | Reason |
+|------|--------|
+| `/model-layer/tts.py` | Text-to-speech client with Piper (default, CPU-only) and Kokoro-82M (optional) backends; backend-agnostic `synthesize(text, voice, language) -> audio bytes` interface |
+| `/model-layer/test_tts.py` | 25 tests covering config, error handling, backend dispatch, voice discovery, and audio generation |
+
+## Audio-Engine Implementation
+
+| Path | Reason |
+|------|--------|
+| `/engines/audio-engine/__init__.py` | Package init for audio-engine |
+| `/engines/audio-engine/narration.py` | Text narration function — auto-selects Kokoro for supported languages, falls back to Piper; outputs WAV + MP3 via ffmpeg |
+| `/engines/audio-engine/test_narration.py` | 33 tests: language detection, backend selection, error handling, Journey card/Resume summary narration, MP3 conversion |
+| `/engines/audio-engine/podcast_script.py` | Podcast script generation — topic/Journey → structured script with schema validation and retry logic |
+| `/engines/audio-engine/test_podcast_script.py` | 30 tests: dataclass validation, schema validation, generation, retry logic, error cases, convenience functions |
+| `/engines/audio-engine/podcast_audio.py` | Podcast audio renderer — maps each speaker to a distinct Piper voice, synthesizes and concatenates segments with brief pauses; outputs WAV (+ optional MP3 via ffmpeg) |
+| `/engines/audio-engine/assembly.py` | Public audio assembly seam — render_segments(speech|silence) -> AudioResult; owns WAV parse/silence/concat/MP3 so no engine imports another's privates |
+| `/engines/audio-engine/voice_catalog.py` | Voice Catalog — single (language, role) -> voice table (Piper + future Kokoro); English fallback warns |
+| `/engines/audio-engine/provisioning.py` | Offline voice provisioning — catalog id -> HF URLs, missing-voices report, downloader |
+| `/engines/audio-engine/test_podcast_audio.py` | 22 tests: silence/WAV generation, speaker→voice mapping, segment synthesis, duration calculation, error handling, MP3 toggle |
+| `/engines/language-lab/bilingual.py` | Bilingual lesson generation — topic+target/known language → BilingualPair with schema validation and retry; renders to audio using audio-engine TTS with alternating target/translation voices |
+| `/engines/language-lab/test_bilingual.py` | 37 tests: dataclass validation, schema validation, generation with retry, audio rendering with voice mapping, error handling, convenience function |
+| `/engines/language-lab/immersion.py` | Immersion podcast generation — topic+target language → PodcastScript in target language via audio-engine, rendered with two distinct target-language voices; no new TTS logic, just configuration wiring |
+| `/engines/language-lab/test_immersion.py` | 17 tests: ImmersionResult properties, script generation delegation, audio rendering delegation, parameter passing, error handling |
+| `/engines/language-lab/test_bilingual_verification.py` | 10 tests for the P3.2 translation-fidelity pass — verdict schema, review rendering, generate-verify-regenerate audit trail |
+| `/engines/language-lab/lesson_pack.py` | P7.2 whole-lesson generation — topic+languages+level → one validated LessonPack dict (two-voice dialogue, vocab cards, grammar cards with drills, mixed evaluation items); LESSON_PACK_SCHEMA via _validate_object + semantic pass (exactly 2 speakers; per-type eval shapes) |
+| `/engines/language-lab/test_lesson_pack.py` | 28 tests: pipeline generation with feedback retry, typed failure, input guards, schema+semantic rejection branches, template registration |
+| `/engines/language-lab/graders.py` | P7.3 grading — deterministic first (normalize/accent-fold/slash alternatives; MC index checks), model-judge fallback for free-form translations (inspectable GradeResult, single pipeline attempt), pack fidelity audit of vocab translations + grammar explanations returning claim-level verdict artifact |
+| `/engines/language-lab/test_graders.py` | 44 tests: normalization table, all grader rules and rejection branches, judge verdict validation/prompt content, dispatch guarantees (deterministic hits never call the model), audit consistency |
+| `/engines/language-lab/renderer.py` | P7.4 LanguageLabRenderer — validated LessonPack dict → deterministic self-contained interactive HTML: flip/self-grade flashcards, grammar drills checked by JS mirroring graders.py normalization (edge-punct incl ¿¡, accent fold, slash alternatives), MC + fill-in-blank + translation evaluation with honest self-grade fallback for free-form answers, listening items wired to per-segment audio artifact names, score breakdown screen; all model content escaped |
+| `/engines/language-lab/test_renderer.py` | 16 tests: section/content presence, determinism, rejection of incomplete packs, injection escaping incl. quote-safe answer attributes, JS/Python grading-rule parity markers, audio wiring contract (dialogue-N / listening-N keys with fallback) |
+| `/engines/language-lab/pack_audio.py` | P7.5 per-segment lesson-pack audio — each dialogue turn rendered through assembly.render_segments into its own WAV artifact named exactly per the renderer contract (<stem>-dialogue-<i>.wav); speaker→voice assignment via Voice Catalog language-scoped pool (distinct speakers = distinct voices); optional output_path persistence; MP3 off by default |
+| `/engines/language-lab/test_pack_audio.py` | 12 tests: renderer-contract naming, slug safety, distinct/stable voice mapping (language-scoped), speed forwarding, empty-dialogue rejection, output_path byte-identical writes |
+| `/engines/language-lab/flagship_packs.py` | Curated flagship-pack catalog (PROFIT_PLAN §6 Days 31-60): 10 stable-keyed topics per focus language (es/ja/de) chosen for conversion — renting, interview, first week, support call, doctor, groceries, transport, bureaucracy, friends, salary; localized notes (Anmeldung/keigo/Castilian); flagship_topics_index() for UI/storefront |
+| `/engines/language-lab/test_flagship_packs.py` | 7 tests: language coverage, 10-per-language, key uniqueness/stability, generation-ready prompts, localized overrides, unknown-language tolerance, index shape |
+| `/engines/language-lab/flagship_batch.py` | Idempotent batch generator + CLI producing the 30 footered marketing artifacts (stable keys so shared links never drift; --limit smoke mode; per-topic failure isolation; honest skip report) |
+| `/engines/language-lab/test_flagship_batch.py` | 5 tests: full-batch render+footer, idempotent rerun, limit cap, failure isolation, human report |
+| `/engines/audio-engine/mic.py` | Microphone capture seam (Project E.T.): sounddevice InputStream with device autodetect, push-to-stop via should_stop flag, sample-count silence autostop (machine-speed independent), live RMS level callback for the UI pulse, typed NoMicrophoneError/DeviceBusyError with typing-mode copy; 16 kHz mono PCM16 WAV output |
+| `/engines/audio-engine/test_mic.py` | 12 tests: enumeration (fake sounddevice), default resolution, silence autostop, push-stop, level callbacks (incl. callback failure never kills capture), busy-device + no-mic + unknown-device errors, WAV output format |
+| `/engines/audio-engine/test_stt.py` | 15 tests: model choice by RAM, transcription math (clarity/WPM/no-speech filtering), empty/silence/garbage inputs, engine failure typing, missing-install path, resampling, disk guard |
+| `/engines/audio-engine/test_et_voices.py` | 10 tests: per-language voice-pair contracts, unpaired-language fallback honesty, pitch-shift shape/clamping/up-shift/length-round-trip |
+| `/engines/audio-engine/stt.py` | Speech-to-text seam: faster-whisper lazy singleton, RAM-aware tiny/small int8 choice, one-time model download with disk-space guard, TranscriptResult (text/clarity/WPM/segments), empty-and-garbage audio kindness, typed SttUnavailableError with typing-mode copy |
+| `/engines/audio-engine/test_stt.py` | 15 tests: model choice by RAM, transcription math (clarity/WPM/no-speech filtering), empty/silence/garbage inputs, engine failure typing, missing-install path, resampling, disk guard |
+| `/engines/language-lab/et_persona.py` | Mr./Mrs. E.T. personas (voice role, tone rules, banned AI-tells, system_persona paragraph), curated encouragement bank (en master + es/de/ja localized), localized STATUS_LINES ladder, ET_FACE_ASSET pointer |
+| `/engines/language-lab/et_scenarios.py` | 33-scenario conversation bank: 30 everyday scenarios across the 10 curriculum domains + mock-interview/support-call/free-talk specials; short/medium/long turn ranges; language-neutral situations |
+| `/engines/language-lab/et_conversation.py` | The conversation state machine: submit_voice/submit_text per-turn pipeline (transcribe → evaluate → reply → speak → persist), clarity-floor kind re-ask (turn never consumed), turn limits, session persistence + restore, fallback opening when the model is down |
+| `/engines/language-lab/test_et_core.py` | 26 tests: personas (roles, unknown-key fallback, system persona, encouragement/localization, status ladder), scenario bank (33 count, uniqueness, specials, turn ranges), full session lifecycle (opening, typed/voice turns, re-ask paths, turn limits, eval-failure survival, speaker failure survival, persistence round-trip, corrections+praise) |
+| `/engines/language-lab/test_cefr.py` | 19 tests: skeleton (5 levels + locked C2, 6 slots/level, stable keys, full domain breadth, concrete titles, prompt shape, instant index), store lifecycle (generated→done, no-downgrade, progress math, next-lesson pointer, restart persistence, reset) |
+| `/engines/language-lab/test_level_exam.py` | 23 tests: exam validation (counts, grammar mix, 2-speaker scripts, speaking order, passage floor, generation retry), objective grading (perfect/empty/typo-forgiveness), judge validation + neutral fallback, repeat similarity, result assembly (weights/pass/recommendations/warm verdicts), placement validation/grading |
+| `/engines/language-lab/cefr.py` | The curriculum skeleton: A1..C1 (+ locked C2 badge), 10 everyday domains, 6 deterministic lesson slots per level with concrete curated titles, per-level grammar spine, catalog_index rendering for all 15 languages with zero LLM |
+| `/engines/language-lab/catalog_store.py` | "My Library" progress store: todo/generated/done per slot (done never downgrades), level progress %, next-lesson pointer, stats; persisted via Storage preferences |
+| `/engines/language-lab/level_exam.py` | The inclusive level exam: 6-section schema validation (exact counts, 2-speaker listening script, speaking repeat/describe/respond), deterministic objective grading with tiny-typo forgiveness, exam-judge rubric with neutral-3 graceful fallback, STT-similarity repeat scoring, result assembly with skill bands + slot-pointing recommendations + warm verdict lines; weights 15/20/15/20/15/15, pass 70 |
+| `/engines/language-lab/placement.py` | 12-item escalating A1→B1 placement quiz (generation + honest banding rules + recommended first slot); grading needs no LLM |
+| `/engines/language-lab/skills.py` | Skills Arena engine: document text extraction (txt/PDF/DOCX, never raises), reading packs (glossary 5-8 + exactly 4 questions), writing evaluation (rubric + corrected version + 2-5 highlights, preserve-their-voice rules) |
+| `/engines/language-lab/test_skills.py` | 9 tests: extraction (txt round-trip, unreadable/unsupported graceful), reading-pack generation/counts/retry, writing evaluation correction-count enforcement |
+| `/desktop-shell/test_controller_et.py` | 13 tests: scenario bank, device degradation, session lifecycle, transcript persistence, quota gating (11th turn, Pro removal, gate-before-record), fake-transcriber voice turn, no-mic device error, repeat kind |
+| `/desktop-shell/test_controller_curriculum.py` | 9 tests: instant ungated browsing, ladder pointer, slot generation + registration + audio path, friendly unknown-slot error, gate-before-LLM, mark-done progress, Pro past-cap |
+| `/desktop-shell/test_controller_exams.py` | 11 tests: start/metering, retake gating per level, multi-level shots, Pro retakes, submit grading + persistence + curriculum bookkeeping, neutral empty writing, placement flow |
+| `/desktop-shell/et_ui.py` | The E.T. panel: persona/scenario/length/mic pickers, record button with live RMS pulse + push-stop, typing fallback always visible, chat bubbles with scores/corrections/praise, status ladder, replay-last, quota badge |
+| `/desktop-shell/lab_ui.py` | The curriculum library panel: level cards grid with progress, slot list (status/score), generate/open/share actions, continue-learning card wired to the next-lesson pointer |
+| `/desktop-shell/exams_ui.py` | The exams panel: placement card + quiz runner, tabbed exam notebook (six sections), speaking via E.T. mic capture or typing, full result render (score, bands, recommendations) |
+| `/desktop-shell/skills_ui.py` | The Skills Arena panel in the Playground: reading import, writing prompt bank + evaluation, listening import, speaking door to E.T.; legacy media canvas + connectors untouched |
+| `/engines/language-lab/srs.py` | P7.6 spaced-repetition-lite — pure SM-2 core (interval ladder 1→6→ease-multiplied, quality ease-adjustment floored at 1.3, lapse reset + lapse counter) over a frozen CardState; SrsStore persists all card schedules as one Storage preference blob; today injectable everywhere |
+| `/engines/language-lab/test_srs.py` | 22 tests: SM-2 table (first/second/nth recalls, ease deltas q=5/4/3, floor after repeated hard cycles, lapse reset+restart), invalid-quality rejections, state roundtrip with unknown-key tolerance, persistence across instances, due-card filtering/sorting, forget |
+| `/engines/playground-bridge/media_workspace.py` | P7.7 Media Workspace core — pure ffmpeg plan functions (convert/trim/scale/pad/volume/mix amix/concat demuxer w/ side-file listing/overlay) returning frozen MediaSpec argv data + one thin executor with injectable runner; ffprobe→typed ProbeResult; ingest copies collision-safe then probes; missing binary → install-hint MediaToolError |
+| `/engines/playground-bridge/test_media_workspace.py` | 18 tests: verbatim argv contracts per planner, spec purity/determinism, concat side-file materialization, failure stderr-tail mapping, parent-dir creation, canned ffprobe JSON parsing, collision-safe ingest |
+| `/engines/playground-bridge/import_inbox.py` | P7.8 Import Inbox watch-folder — one-shot scan_inbox() moves dropped files into storage media/<subkind> with collision-safe names, case-insensitive extension filter (rejected files stay), delete-after-import semantics, per-failure isolation; storage/persistence.py gains namespaced media/<subkind> kinds |
+| `/engines/playground-bridge/test_import_inbox.py` | 19 tests: media subkind roundtrip + invalid-subkind rejection, unique-name suffixing, import+delete, filter leave-in-place, case-insensitivity, collision rename, delete_after=false, dir/absent-inbox handling, custom subkind |
+| `/engines/playground-bridge/connectors_hub.py` | P7.9 Connector Hub seam — Connector ABC (capabilities/send/poll; failures are data, never exceptions past poll), Capability/Capabilities/Job/Result dataclasses with quota notes, ConnectorHub registry |
+| `/engines/playground-bridge/connectors_gradio.py` | P7.9 keyless HF Spaces adapter — pinned Space ids (FLUX.1-schnell image, ACE-Step music), lazy gradio_client via injectable factory, synchronous send→terminal Job→poll Result, output-shape normalization (str/Path/dict/tuple), every failure mode becomes a readable failed Job |
+| `/engines/playground-bridge/test_connectors.py` | 15 tests: registry rules (dup/nameless/unknown), sorted capabilities with quota notes, bytes roundtrip, param+api_name forwarding, unexpected output shapes → failed jobs, missing-library soft failure, empty-prompt fast-fail, double-poll reporting, hidden capability for unpinned spaces |
+| `/engines/playground-bridge/connectors_figma.py` | P7.10 Figma REST adapter — free-account token via secrets seam (FIGMA_TOKEN), two-leg export (images URL → asset bytes) for one node per job, PNG/SVG with png-only scale, list_frames() page→frame discovery, injectable httpx transport; all failures → actionable failed Jobs |
+| `/engines/playground-bridge/test_connectors_figma.py` | 12 tests: exact request shape (token header/params/scale omission for svg), two-leg bytes roundtrip, missing-token setup hint, fast-fail before calls, API/node errors, frame walking filters RECTANGLEs, capabilities auth+quota note, default provider reads secrets seam |
+| `/engines/playground-bridge/connectors_pollinations.py` | P7.11 Pollinations keyless image adapter — single GET with urlencoded prompt path + width/height/model/seed/nologo query; content-type guard rejects in-band error pages; injectable transport; failures are data |
+| `/engines/playground-bridge/test_connectors_pollinations.py` | 10 tests: URL shape incl. defaults and encoding, optional param flow, empty-prompt no-network fast-fail, non-200, empty body, text/html rejection, transport exception mapping, none-auth capability note |
+
+## Notes
+
+- 2026-08-24: owner amended vision (Phase 7). TASKS.md carries P7.1–P7.12; plan in docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md.
+- 2026-08-25 (review): models/tts/*.onnx untracked from git (~483 MB) — voices are runtime-provisioned via engines/audio-engine/provisioning.py and stay local-only; .gitignore now excludes models/tts/. CONTEXT.md gained LessonPack/Connector Hub/Media Workspace/Import Inbox/Capability Verdict terms; storage gains lesson_packs kind (packs no longer filed under journeys); transformation evaluation type added across lesson_pack/graders/renderer per spec C2/C3; Connector.send signature conforms to spec B3 send(artifact, op) with Capabilities.file_types/ops declared.
+- 2026-09-05: owner focus directive — Journey topic generation + Audio Studio frozen (Study Studio owns those), Language Lab/Career/Playground are the money pillars; 7B-14B format wall removed (hardened extractor + truncation repair + 8192 budget + JSON mode + discipline addendum in model-layer); career_identity memory (GitHub/LinkedIn/target-role persistence with offline cache + actionable setup guidance); LinkedIn post studio (draft locally, publish only on explicit confirm); UI moved to async worker threads (window never freezes).
+- 2026-09-06: PROFIT_PLAN execution — F7 follow-up (licensing, quickstart, share footer, storefront) reviewed and boot regression fixed; flagship catalog + idempotent batch generator (marketing artifacts); Campaign mode v0 (status-ladder store, grounded interview prep, tier gating with free tracking/history).
+- 2026-09-06/07: Project E.T. — L1 voice stack (mic.py + stt.py, PIPER voice pairs, assembly.pitch_shift, sounddevice==0.5.6 + faster-whisper==1.2.1 pinned after live verify); L2 E.T. core (et_persona + curated encouragements, 33-scenario bank, conversation state machine with clarity-floor kindness); L3 et_ui.py panel + _open_audio; L4 cefr.py catalog + catalog_store.py + lab_ui.py library; L5 level_exam.py + placement.py + exams_ui.py; L6 skills.py + skills_ui.py arena; PROFIT_PLAN §10 (E.T. as Pro headline). Career engine: zero diffs. Suite 885 → 1032.
+
+| `/desktop-shell/verify_build.ps1` | POST-E5 deployment smoke gate � launches the built exe, polls visible top-level windows (EnumWindows P/Invoke via LdccWinEnum) across every process whose image name matches the exe, PASSES only when a window titled "L&D Command Center" appears and no modal error dialogs exist; exit 0/1/2; LDCC_SKIP_SMOKE escape hatch;
+| `/desktop-shell/check_deployment_policy.py` | Deployment policy gate � scans the staged PyInstaller tree for forbidden artifacts (secrets/, models/, .env, *.secrets, .onnx/.gguf/.bin) plus a spec baseline (datas=[]/binaries=[] and no forbidden-path references); POLICY PASS/FAIL, exit 0/1/2
+| `/desktop-shell/write_build_manifest.py` | Versioning/observability � emits dist/ldcc-build.json (sha256, bytes, built UTC, python/pyinstaller versions, spec sha256, upstream commit) and the human one-liner dist/ldcc-build.txt
+| `/desktop-shell/build_release.bat` | The release pipeline driver � six fail-fast stages (offline suite -> policy gate -> archive previous dist\ldcc.exe to dist\archive\ldcc-<ts>.exe -> PyInstaller windowed build -> build manifest -> windowed-launch smoke gate); auto-selects CPython 3.10 w/ PyInstaller; --no-gate/--no-policy/--no-verify; leaves dist\ldcc.exe verified + manifest next to it
+| `/desktop-shell/rollback_release.bat` | Rollback runbook � restores the NEWEST dist\archive\ldcc-*.exe over dist\ldcc.exe (first-match-by-newest; optional fragment filter); nothing is ever deleted, only superseded
+| `/docs/DEPLOYMENT_PIPELINE.md` | The pipeline spec: stages table, local usage, rollback, verification protocol (hash vs ldcc-build.json), monitoring, secrets policy, CI behavior (windows-build.yml mirror, release.yml approval gate), runbook
+| `/dist/ldcc-build.json` | The current build's manifest record (sha256, toolchain, spec fingerprint, upstream=no-git-tree while the workspace is not a git repo)
+| `/dist/archive/` | Release history � every superseded dist\ldcc.exe kept by build_release.bat, named ldcc-<yyyymmdd-hhmmss>.exe
+
+---
+UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.

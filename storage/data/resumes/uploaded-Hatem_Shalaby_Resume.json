@@ -1,0 +1,70 @@
+J{
+  "contact": {
+    "name": "HATEM ISMAIL SHALABY",
+    "email": "hatemismail2011@gmail.com",
+    "phone": "+20 100 337 2510",
+    "location": "",
+    "linkedin": "linkedin.com/in/hatem-shalaby-202902127",
+    "github": "github.com/HatemShelby"
+  },
+  "summary": "HATEM ISMAIL SHALABY Operations Leader → AI Systems Builder | Workforce Automation & Process Design Al Obour City, Cairo, Egypt • +20 100 337 2510 • hatemismail2011@gmail.com • linkedin.com/in/hatem-shalaby-202902127 • github.com/HatemShelby 28 years in frontline and workforce operations — aviation ground control, telecom technical support, contact-center onboarding, and workforce management — followed by a self-directed transition into building AI-assisted automation tools. Spent the last two years of a workforce management role studying forecasting and scheduling from the inside, then independently designed and built a private AI-assisted support tool at a global tech employer, proving a measurable throughput gain in a real, live pilot. Now building Helix Prime, a personally-directed multi-engine operations automation system, combining decades of floor-level process knowledge with hands-on Python/AI development.",
+  "experience": [
+    {
+      "title": "Global Customer Service Representative, Arabic Speaking",
+      "company": "TikTok LIVE (ByteDance)   Sep 2025 – 2026",
+      "dates": "",
+      "description": "Handled escalations for Arabic-speaking customers across CRM, email, phone, and chat channels, with documentation responsibilities feeding the global knowledge base.\nIndependently designed and built a private AI-assisted ticket-support tool: matched incoming tickets to the correct SOP, generated a ready-to-send reply auto-translated into the customer's language, and flagged escalation needs.\nRan a private one-month pilot with one colleague: daily ticket resolution increased from 15–25 to 45+ per day while holding quality and handle time steady.\nRequested formal IT approval to pilot the tool at team level; request was declined in favor of headcount-based throughput targets — the catalyst for an independent career transition into AI-assisted systems building."
+    },
+    {
+      "title": "Process Optimization Specialist",
+      "company": "TTEC   Nov 2023 – Sep 2025",
+      "dates": "",
+      "description": "Redesigned core operational workflows, replacing inefficient processes with structured, data-driven systems.\nReduced average resolution time by 18% by eliminating workflow bottlenecks.\nIncreased First-Contact Resolution (FCR) by 22% through process redesign.\nSustained above 95% CSAT and 92% AQA through standardized, scalable SOPs.\nWorkforce Management Team — Dashboards & Scheduling Analytics  |  Vodafone UK Account   2022 – 2023\nSupported forecasting and scheduling operations using Excel, Power BI, and dynamic dashboards.\nSpent this period studying how forecasting, scheduling, and floor execution actually interacted in practice — the direct precursor to later building automation for these processes independently.\nNew-Hire Onboarding SME (Floor-Walker)  |  Vodafone UK Account   2020 – 2022\nPersonally ran live, solo onboarding for up to 21 concurrent new-agent waves (15+ agents each), from Day 0 through graduation into live operations, including sole onboarding responsibility for the India site during live shifts.\nRecognized directly by both the India team and Vodafone UK leadership for onboarding quality and consistency at this scale."
+    },
+    {
+      "title": "Solo-built, self-directed AI operations system in active development since April 2026 (github.com/HatemShelby):",
+      "company": "",
+      "dates": "",
+      "description": "Designed and directed the build of six business automation engines (staffing forecasting via Erlang C, real-time adherence monitoring, churn-risk scoring, client onboarding automation, personnel pipeline analytics, and CRM/sales pipeline analytics).\nDirected the build of four role-specific AI agents (strategy, operations, personnel, learning & development) connected to a local language model, coordinated through a custom routing layer.\nBuilt a personal operations cockpit to test, monitor, and use the full system directly — verifying real functionality at each stage rather than presentation polish.\nSeparately built and deployed Study Studio, a live AI-assisted personal learning tool (Next.js, OpenRouter) generating structured lessons, quizzes, and audio content — in daily personal use."
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bachelor's in Managerial Sciences (Computer Section) — Sadat Academy for Management Sciences",
+      "school": "",
+      "dates": ""
+    },
+    {
+      "degree": "",
+      "school": "Business Analytics Nanodegree — Udacity, 2022 (Complex Formulas & Functions, Data Summarization, Data Visualization, Data Cleaning)",
+      "dates": "2022"
+    },
+    {
+      "degree": "Programming Diploma — YAT, 2001 (VB.NET, SQL, Access, Systems Analysis & Design, Crystal Reports)",
+      "school": "",
+      "dates": "2001"
+    }
+  ],
+  "skills": [
+    "Operations: Workforce Management",
+    "Erlang C Forecasting",
+    "Real-Time Adherence",
+    "Process Redesign",
+    "SOP Automation",
+    "Onboarding at Scale",
+    "Technical: Python (pandas",
+    "scikit-learn",
+    "Streamlit)",
+    "SQL",
+    "Local/Cloud LLM Integration (Ollama",
+    "OpenRouter)",
+    "Next.js",
+    "Git",
+    "Analytics: Excel",
+    "Power BI",
+    "Data Cleaning & Visualization",
+    "CRM Systems (Zendesk",
+    "Salesforce)"
+  ],
+  "projects": []
+}

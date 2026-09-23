@@ -1,0 +1,51 @@
+J{
+  "contact": {
+    "name": "Hatem Shalaby",
+    "email": "hatem.shalaby@gmail.com",
+    "phone": "+201068475931",
+    "location": "Cairo, Egypt",
+    "linkedin": "https://www.linkedin.com/in/hatem-shalaby-202902127/",
+    "github": "https://github.com/HatemShelby?tab=repositories"
+  },
+  "summary": "Experienced software engineer with a strong background in developing and maintaining web applications. Skilled in Python, JavaScript, and React.",
+  "experience": [
+    {
+      "title": "Software Engineer",
+      "company": "ABC Tech Solutions",
+      "dates": "2018 - Present",
+      "description": "Developing and maintaining web applications using Python, Django, and React. Collaborating with cross-functional teams to deliver high-quality software solutions."
+    },
+    {
+      "title": "Junior Developer",
+      "company": "XYZ Innovations",
+      "dates": "2016 - 2018",
+      "description": "Assisting senior developers in the development of web applications. Participating in code reviews and contributing to the overall quality of the product."
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bachelor's Degree in Computer Science",
+      "school": "Cairo University",
+      "dates": "2012 - 2016"
+    }
+  ],
+  "skills": [
+    "Python",
+    "Django",
+    "JavaScript",
+    "React",
+    "Git"
+  ],
+  "projects": [
+    {
+      "name": "E-commerce Website",
+      "description": "Developed an e-commerce website using Django and React. Implemented features such as user authentication, product listings, and shopping cart functionality.",
+      "tech": [
+        "Python",
+        "Django",
+        "JavaScript",
+        "React"
+      ]
+    }
+  ]
+}

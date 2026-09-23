@@ -1,0 +1,32 @@
+J{
+  "model_id": "google/gemma-4-12b-qat",
+  "estimated_params_b": 12.0,
+  "probed_at": "2026-09-13T09:58:48",
+  "overall": "failed",
+  "tasks": {
+    "journey_cards": {
+      "status": "ready",
+      "detail": ""
+    },
+    "resume_generation": {
+      "status": "failed",
+      "detail": "output was cut off by the token limit before the JSON completed — make every field much shorter and finish the JSON within the budget"
+    },
+    "bilingual_translation": {
+      "status": "ready",
+      "detail": "mandatory verification pass will run automatically"
+    },
+    "grammar_explanations": {
+      "status": "ready",
+      "detail": ""
+    },
+    "podcast_dialogue": {
+      "status": "ready",
+      "detail": ""
+    },
+    "summarization": {
+      "status": "ready",
+      "detail": ""
+    }
+  }
+}

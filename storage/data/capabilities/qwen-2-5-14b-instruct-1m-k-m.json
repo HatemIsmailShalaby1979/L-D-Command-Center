@@ -1,0 +1,32 @@
+J{
+  "model_id": "qwen-2.5-14b-instruct-1m-k-m",
+  "estimated_params_b": 14.0,
+  "probed_at": "2026-09-05T15:59:49",
+  "overall": "ready",
+  "tasks": {
+    "journey_cards": {
+      "status": "ready",
+      "detail": ""
+    },
+    "resume_generation": {
+      "status": "ready",
+      "detail": ""
+    },
+    "bilingual_translation": {
+      "status": "ready",
+      "detail": ""
+    },
+    "grammar_explanations": {
+      "status": "ready",
+      "detail": ""
+    },
+    "podcast_dialogue": {
+      "status": "ready",
+      "detail": ""
+    },
+    "summarization": {
+      "status": "ready",
+      "detail": ""
+    }
+  }
+}
