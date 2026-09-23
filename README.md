@@ -60,9 +60,9 @@ cd /d E:\LD_Command_Center
 python -c "import sys; sys.path.insert(0, r'E:\LD_Command_Center'); import desktop_shell.app as app; app.run()"
 ```
 
-### IMPORTANT: Do NOT run from PowerShell
+### Launch
 
-PowerShell injects null bytes into command-line arguments, causing `ValueError: source code string cannot contain null bytes` when Python tries to import modules. Always run from `cmd.exe` or double-click the `.bat` launcher.
+Use `RUN_LDCC.bat` (double-click or `cmd.exe`) for the correct interpreter selection. The batch probes `.venv`, Python 3.12/3.13/3.11/3.10, and requires `tkinter` + `httpx` to boot cleanly.
 
 ### Features
 
