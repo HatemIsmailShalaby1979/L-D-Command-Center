@@ -817,10 +817,7 @@ def run() -> None:  # pragma: no cover â€” needs a display
     )
 
     # == Audio Studio (ACTIVE — unfrozen 2026-09-24) =============================
-    studio_tab = ttk.Frame(tab); tab.add(studio_tab, text="Audio Studio (frozen)")
-    tk.Label(studio_tab, text=f"ًں”’ {FROZEN_NOTE}", fg="#9a6d00",
-             anchor="w", wraplength=880, justify="left").pack(
-        fill="x", padx=6, pady=(6, 0))
+    studio_tab = ttk.Frame(tab); tab.add(studio_tab, text="Audio Studio")
 
     LANG_CODES = list(LANG_NAMES)
 
@@ -906,8 +903,8 @@ def run() -> None:  # pragma: no cover â€” needs a display
             return
         _save_as(last_podcast, ".mp3", "Save Podcast")
 
-    ttk.Button(ab_frame, text="Generate audiobook (frozen)",
-               state="disabled",
+    ttk.Button(ab_frame, text="Generate audiobook",
+               state="normal",
                command=do_audiobook).grid(row=4, column=0, sticky="w", pady=4)
     ttk.Button(ab_frame, text="Save asâ€¦",
                command=do_save_audiobook).grid(row=4, column=1, sticky="w", padx=4)
@@ -992,8 +989,8 @@ def run() -> None:  # pragma: no cover â€” needs a display
             last_podcast = Path(last_podcast).read_bytes()
         _open_path(res.payload["mp3"] or res.payload["wav"])
 
-    ttk.Button(pod_frame, text="Generate podcast (frozen)",
-               state="disabled",
+    ttk.Button(pod_frame, text="Generate podcast",
+               state="normal",
                command=do_podcast).pack(anchor="w", pady=4)
     ttk.Button(pod_frame, text="Save asâ€¦",
                command=do_save_podcast).pack(anchor="w", padx=4, pady=4)
