@@ -1,6 +1,6 @@
-# desktop-shell/app.py
+﻿# desktop-shell/app.py
 #
-# WHAT: The Tkinter desktop window — a THIN layer over ShellController.
+# WHAT: The Tkinter desktop window â€” a THIN layer over ShellController.
 # WHY:  P5.2. All behavior lives in controller.py so this file only maps
 #       FlowResults to widgets/dialogs. Import of tkinter is deferred to
 #       main() so headless test runs never need a display.
@@ -18,7 +18,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 # PyInstaller ships every packaged module under its importable name inside
-# the PYZ archive — the hyphenated source dirs do not exist on disk there.
+# the PYZ archive â€” the hyphenated source dirs do not exist on disk there.
 # In a frozen build the source aliases below would clobber the real
 # `desktop_shell`/`model_layer`/`engines` packages with paths pointing at
 # loose files that PyInstaller never extracts, breaking every lazy import
@@ -69,25 +69,25 @@ ERROR_TITLES = {
 ERROR_ACTIONS = {
     "no_model": "Start LM Studio and load a model via the model picker.",
     "bad_output": "The pipeline now repairs truncated/malformed JSON "
-                   "automatically — if this still happens, rephrase or "
+                   "automatically â€” if this still happens, rephrase or "
                    "lower the size and run Probe model once.",
     "input": "Fill in all required fields correctly.",
     "connector": "Check the service documentation or try again later.",
     "license": "Activate a Pro key to remove all limits, or wait for "
                "the weekly reset.",
     "device": "Connect a microphone or pick another input in E.T.'s "
-              "mic menu — typing to E.T. always works.",
-    "et_repeat": "No pressure and no turn lost — just say it once "
+              "mic menu â€” typing to E.T. always works.",
+    "et_repeat": "No pressure and no turn lost â€” just say it once "
                  "more, a little louder.",
     "unexpected": "Check the log for details and restart if needed.",
 }
 
 # 2026-09-05 owner directive: Journey topic generation and Audio Studio
-# are FROZEN — Study Studio already ships those. The app's focus is the
+# are FROZEN â€” Study Studio already ships those. The app's focus is the
 # Language Lab, Career Development, and Paradise Playground. Frozen
 # sections stay visible (their artifacts still open/export) but their
 # GENERATION buttons are disabled with a pointer to Study Studio.
-FROZEN_NOTE = ("Frozen for now — topic + audio generation live in the "
+FROZEN_NOTE = ("Frozen for now â€” topic + audio generation live in the "
                "Study Studio app. This tab keeps browsing/exporting your "
                "existing artifacts.")
 
@@ -108,7 +108,7 @@ def _open_path(path: str) -> None:
 
 def _open_audio(wav_bytes: bytes) -> None:
     """Play E.T.'s voice (WAV bytes) on a daemon thread via
-    sounddevice — the UI never blocks, and audio failure is silent
+    sounddevice â€” the UI never blocks, and audio failure is silent
     (the text reply is already on screen; voice is a bonus)."""
     if not wav_bytes:
         return
@@ -124,14 +124,14 @@ def _open_audio(wav_bytes: bytes) -> None:
                 data = data[:, 0]
             sd.play(data, rate)
             sd.wait()
-        except Exception:  # noqa: BLE001 — audio is best-effort
+        except Exception:  # noqa: BLE001 â€” audio is best-effort
             pass
 
     import threading
     threading.Thread(target=_play, daemon=True).start()
 
 
-def run() -> None:  # pragma: no cover — needs a display
+def run() -> None:  # pragma: no cover â€” needs a display
     import logging
     import queue
     import threading
@@ -148,7 +148,7 @@ def run() -> None:  # pragma: no cover — needs a display
 
     ctrl = ShellController()
     root = tk.Tk()
-    root.title("L&D Command Center — Dark Mode")
+    root.title("L&D Command Center â€” Dark Mode")
     root.geometry("1200x800")
     root.configure(bg="#0d1b2e")
     style = ttk.Style(root)
@@ -176,7 +176,7 @@ def run() -> None:  # pragma: no cover — needs a display
             pass
         root.after(100, _poll_results)
 
-    def run_async(work, on_done, *, busy=None, busy_text="Working…"):
+    def run_async(work, on_done, *, busy=None, busy_text="Workingâ€¦"):
         """Run `work()` on a worker thread; deliver its return value to
         `on_done(result)` on the Tk thread. `busy` is a Button-like
         widget disabled for the duration (restored after)."""
@@ -202,7 +202,7 @@ def run() -> None:  # pragma: no cover — needs a display
         messagebox.showerror(title, message)
 
     # -- header -----------------------------------------------------------
-    status = tk.StringVar(value="checking LM Studio…")
+    status = tk.StringVar(value="checking LM Studioâ€¦")
     header = ttk.Frame(root); header.pack(fill="x", padx=8, pady=6)
     health_label = tk.Label(header, textvariable=status, fg="gray")
     health_label.pack(side="left")
@@ -211,7 +211,7 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Button(header, text="Probe model",
                command=lambda: run_probe()).pack(side="left")
 
-    # model picker — the user always sees and chooses what is running
+    # model picker â€” the user always sees and chooses what is running
     model_var = tk.StringVar()
     models_res = ctrl.list_available_models()
     model_frame = ttk.Frame(header); model_frame.pack(side="right")
@@ -248,7 +248,7 @@ def run() -> None:  # pragma: no cover — needs a display
         _refresh_license()
 
     def run_probe():
-        status.set("probing model capabilities…")
+        status.set("probing model capabilitiesâ€¦")
         health_label.config(fg="gray")
         root.update_idletasks()
 
@@ -262,7 +262,7 @@ def run() -> None:  # pragma: no cover — needs a display
 
         run_async(work, done)
 
-    # -- quickstart hint (PROFIT_PLAN §8 risk #1: model dependency) --------
+    # -- quickstart hint (PROFIT_PLAN آ§8 risk #1: model dependency) --------
     # When LM Studio is not reachable or no model is loaded, show the
     # curated model quick-start text so the user knows exactly what to
     # install.  The hint lives in a collapsible label under the header.
@@ -286,7 +286,7 @@ def run() -> None:  # pragma: no cover — needs a display
         quickstart_var.set(hint)
         quickstart_label.pack(side="bottom", fill="x", pady=(2, 0))
 
-    # -- license panel (PROFIT_PLAN §2: Free / Pro $9 / Campaign $29) ------
+    # -- license panel (PROFIT_PLAN آ§2: Free / Pro $9 / Campaign $29) ------
     # A compact entitlement bar: tier badge, quota summary, activate-key
     # field, and the upgrade link.  Everything reads offline through the
     # controller's license_status() -> LicenseStore.summary().
@@ -294,7 +294,7 @@ def run() -> None:  # pragma: no cover — needs a display
     license_detail = tk.StringVar(value="")
 
     def _refresh_license():
-        """One offline read — fills the badge + quota line."""
+        """One offline read â€” fills the badge + quota line."""
         res = ctrl.license_status()
         if not res.ok:
             license_var.set("Free tier")
@@ -331,7 +331,7 @@ def run() -> None:  # pragma: no cover — needs a display
              ).pack(side="left")
     tk.Label(license_bar, textvariable=license_detail,
              fg="gray").pack(side="left", padx=8)
-    ttk.Button(license_bar, text="Activate key…",
+    ttk.Button(license_bar, text="Activate keyâ€¦",
                command=lambda: _activate_dialog()).pack(side="right")
     ttk.Button(license_bar, text="Upgrade",
                command=lambda: _open_upgrade_page()).pack(side="right",
@@ -342,7 +342,7 @@ def run() -> None:  # pragma: no cover — needs a display
         token = simpledialog.askstring(
             "Activate License Key",
             "Paste your L&D Command Center license key\n"
-            "(looks like LDCC1.….…):",
+            "(looks like LDCC1.â€¦.â€¦):",
             parent=root)
         if not token:
             return
@@ -354,7 +354,7 @@ def run() -> None:  # pragma: no cover — needs a display
             "License Activated",
             f"Tier: {res.payload.get('label', 'Pro')}\n"
             f"Licensee: {res.payload.get('licensee', '')}\n"
-            "All limits removed — enjoy unlimited generation.")
+            "All limits removed â€” enjoy unlimited generation.")
 
     def _open_upgrade_page():
         _open_path("https://github.com/HatemIsmailShalaby1979/"
@@ -378,9 +378,9 @@ def run() -> None:  # pragma: no cover — needs a display
 
     tab = ttk.Notebook(scroll_frame); tab.pack(fill="both", expand=True, padx=8, pady=6)
 
-    # == Learning Journey (FROZEN — see FROZEN_NOTE) ========================
+    # == Learning Journey (ACTIVE — unfrozen 2026-09-24) ========================
     journey_tab = ttk.Frame(tab); tab.add(journey_tab, text="Learning Journey")
-    frozen_banner = tk.Label(journey_tab, text=f"🔒 {FROZEN_NOTE}",
+    frozen_banner = tk.Label(journey_tab, text=f"ًں”’ {FROZEN_NOTE}",
                              fg="#9a6d00", anchor="w", wraplength=880,
                              justify="left")
     frozen_banner.pack(fill="x", padx=6, pady=(6, 0))
@@ -426,7 +426,7 @@ def run() -> None:  # pragma: no cover — needs a display
         if not last_journey and generate_btn.instate(["disabled"]):
             return  # frozen: no generation, exports still work
         run_async(work, done, busy=generate_btn,
-                  busy_text="Generating…")
+                  busy_text="Generatingâ€¦")
 
     def do_save_journey():
         """Save the current journey HTML to a user-selected location."""
@@ -465,13 +465,13 @@ def run() -> None:  # pragma: no cover — needs a display
                               command=do_generate_journey,
                               state="disabled")
     generate_btn.pack(side="left")
-    ttk.Button(actions, text="Save as…",
+    ttk.Button(actions, text="Save asâ€¦",
                command=do_save_journey).pack(side="left", padx=4)
     for fmt in ("text", "pdf", "pptx", "xlsx"):
         ttk.Button(actions, text=f"Export {fmt.upper()}",
                    command=lambda f=fmt: do_export(f)).pack(side="left", padx=4)
 
-    # == Language Lab (FLAGSHIP — always the first tab) ======================
+    # == Language Lab (FLAGSHIP â€” always the first tab) ======================
     lab_tab = ttk.Frame(tab); tab.add(lab_tab, text="Language Lab")
 
     LANG_NAMES = {
@@ -490,7 +490,7 @@ def run() -> None:  # pragma: no cover — needs a display
     lab_status = tk.StringVar(
         value="The flagship: ONE validated lesson pack (two-voice dialogue "
               "with per-line audio, vocab flashcards, grammar drills, "
-              "evaluation) opens in your browser. Runs in the background — "
+              "evaluation) opens in your browser. Runs in the background â€” "
               "the window stays responsive. CPU models may take a few "
               "minutes; the health bar above tells you what to expect.")
     ttk.Label(lab_form, text="Topic").grid(row=0, column=0, sticky="w")
@@ -541,7 +541,7 @@ def run() -> None:  # pragma: no cover — needs a display
                 _open_path(str(Path(ctrl.storage.root) / "exports" / name))
                 return
         messagebox.showinfo("Language Lab",
-                            "Pack data found but no HTML export — "
+                            "Pack data found but no HTML export â€” "
                             "generate it again to re-render.")
 
     def do_lesson_pack():
@@ -551,7 +551,7 @@ def run() -> None:  # pragma: no cover — needs a display
         target = _lang_code(lab_target.get())
         known = _lang_code(lab_known.get())
         level = lab_level.get()
-        lab_status.set(f"Generating lesson pack for '{topic}' ({target})… "
+        lab_status.set(f"Generating lesson pack for '{topic}' ({target})â€¦ "
                        "running in the background; keep using the app.")
         health_label.config(fg="gray")
 
@@ -561,16 +561,16 @@ def run() -> None:  # pragma: no cover — needs a display
         def done(res):
             lab_btn.config(state="normal", text="Generate lesson pack")
             if not res:
-                lab_status.set("Generation failed — see the error dialog.")
+                lab_status.set("Generation failed â€” see the error dialog.")
                 return show_error(res)
-            lab_status.set(f"Saved -> {res.payload}  (opening…)")
+            lab_status.set(f"Saved -> {res.payload}  (openingâ€¦)")
             _refresh_lab_history()
             _refresh_lab_quota()
             _refresh_license()
             _open_path(str(res.payload))
 
         run_async(work, done, busy=lab_btn,
-                  busy_text="Generating…")
+                  busy_text="Generatingâ€¦")
 
     # Generate row: frame FIRST so the quota badge can pack into it.
     lab_actions = ttk.Frame(lab_tab); lab_actions.pack(fill="x", pady=4)
@@ -578,7 +578,7 @@ def run() -> None:  # pragma: no cover — needs a display
                          command=do_lesson_pack)
     lab_btn.pack(side="left")
 
-    # quota badge — shows remaining packs (free tier: 3/week)
+    # quota badge â€” shows remaining packs (free tier: 3/week)
     lab_quota_label = tk.Label(lab_actions, text="", fg="gray")
     lab_quota_label.pack(side="left", padx=8)
 
@@ -593,7 +593,7 @@ def run() -> None:  # pragma: no cover — needs a display
     tk.Label(lab_tab, textvariable=lab_status, fg="gray",
              wraplength=900, justify="left").pack(anchor="w", pady=4)
 
-    # Share button (PROFIT_PLAN §3.1 growth loop — free on every tier)
+    # Share button (PROFIT_PLAN آ§3.1 growth loop â€” free on every tier)
     def _do_share_pack():
         sel = history_box.curselection()
         if not sel:
@@ -612,7 +612,7 @@ def run() -> None:  # pragma: no cover — needs a display
             return show_error(res)
         lab_status.set(
             f"Shareable pack saved -> {res.payload['path']} "
-            f"({res.payload['bytes']} bytes). Send it to anyone — "
+            f"({res.payload['bytes']} bytes). Send it to anyone â€” "
             "it opens in any browser, offline.")
         _open_path(str(res.payload["path"]))
 
@@ -624,7 +624,7 @@ def run() -> None:  # pragma: no cover — needs a display
     history_box.bind("<Double-Button-1>", lambda _e: _reopen_pack())
     ttk.Button(history_frame, text="Reopen",
                command=_reopen_pack).pack(side="left", padx=4)
-    ttk.Button(history_frame, text="Share pack…",
+    ttk.Button(history_frame, text="Share packâ€¦",
                command=_do_share_pack).pack(side="left", padx=4)
     _refresh_lab_history()
     _refresh_lab_quota()
@@ -672,7 +672,7 @@ def run() -> None:  # pragma: no cover — needs a display
         try:
             capture = capture_speech(max_seconds=60.0)
             return capture.wav_bytes
-        except Exception:  # noqa: BLE001 — typed errors handled by UI
+        except Exception:  # noqa: BLE001 â€” typed errors handled by UI
             return None
 
     exams_state = build_exams_panel(
@@ -741,7 +741,7 @@ def run() -> None:  # pragma: no cover — needs a display
     # -- connector generate flow (defined after conn_frame widgets) --------
 
     canvas_bar = ttk.Frame(playground_tab); canvas_bar.pack(fill="x", pady=4)
-    ttk.Button(canvas_bar, text="Import files…",
+    ttk.Button(canvas_bar, text="Import filesâ€¦",
                command=do_import_files).pack(side="left")
     ttk.Button(canvas_bar, text="Scan inbox",
                command=do_scan_inbox).pack(side="left", padx=6)
@@ -788,8 +788,8 @@ def run() -> None:  # pragma: no cover — needs a display
                 f"Saved -> media/generated/"
                 f"{res.payload['artifact_name']}")
 
-        output_note.set("working…")
-        run_async(work, done, busy=gen_conn_btn, busy_text="Working…")
+        output_note.set("workingâ€¦")
+        run_async(work, done, busy=gen_conn_btn, busy_text="Workingâ€¦")
 
     gen_conn_btn = ttk.Button(conn_frame, text="Generate",
                               command=do_connector_generate)
@@ -803,7 +803,7 @@ def run() -> None:  # pragma: no cover — needs a display
     # -- Skills Arena (L6: practice the four skills with your files) ------
     # The Playground is now the four-skills practice area per the
     # 2026-09-06 owner directive; the media canvas + connectors above
-    # stay exactly where they were — the Arena adds, never removes.
+    # stay exactly where they were â€” the Arena adds, never removes.
     from desktop_shell.skills_ui import build_skills_arena
 
     def _jump_to_et():
@@ -820,16 +820,16 @@ def run() -> None:  # pragma: no cover — needs a display
         jump_to_et=_jump_to_et,
     )
 
-    # == Audio Studio (FROZEN — see FROZEN_NOTE) =============================
+    # == Audio Studio (ACTIVE — unfrozen 2026-09-24) =============================
     studio_tab = ttk.Frame(tab); tab.add(studio_tab, text="Audio Studio (frozen)")
-    tk.Label(studio_tab, text=f"🔒 {FROZEN_NOTE}", fg="#9a6d00",
+    tk.Label(studio_tab, text=f"ًں”’ {FROZEN_NOTE}", fg="#9a6d00",
              anchor="w", wraplength=880, justify="left").pack(
         fill="x", padx=6, pady=(6, 0))
 
     LANG_CODES = list(LANG_NAMES)
 
     # --- audiobooks ---
-    ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook — text to narrated audio")
+    ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook â€” text to narrated audio")
     ab_frame.pack(fill="x", padx=6, pady=6)
     last_audiobook: Optional[bytes] = None
     last_podcast: Optional[bytes] = None
@@ -855,7 +855,7 @@ def run() -> None:  # pragma: no cover — needs a display
                                   values=["(auto by language)"] + known_marked)
     ab_voice_combo.grid(row=2, column=5, sticky="w")
     ab_voice.set("(auto by language)")
-    ab_status = tk.StringVar(value="Paste any text — narrated WAV + MP3 land in exports.")
+    ab_status = tk.StringVar(value="Paste any text â€” narrated WAV + MP3 land in exports.")
     tk.Label(ab_frame, textvariable=ab_status, fg="gray",
              wraplength=700, justify="left").grid(row=3, column=0,
                                                   columnspan=4, sticky="w")
@@ -864,7 +864,7 @@ def run() -> None:  # pragma: no cover — needs a display
         text = ab_text.get("1.0", "end").strip()
         if not text:
             return messagebox.showinfo("Audio Studio", "Paste some text first.")
-        ab_status.set(f"Narrating {len(text)} characters…")
+        ab_status.set(f"Narrating {len(text)} charactersâ€¦")
         root.update_idletasks()
         voice = None if ab_voice.get().startswith("(") \
             else ab_voice.get().split("   ")[0]
@@ -874,7 +874,7 @@ def run() -> None:  # pragma: no cover — needs a display
             ab_status.set("Audiobook failed.")
             return show_error(res)
         ab_status.set(f"Done ({res.payload['duration_seconds']}s, "
-                      f"{res.payload['voice']}). Opening player…")
+                      f"{res.payload['voice']}). Opening playerâ€¦")
         nonlocal last_audiobook
         last_audiobook = res.payload["mp3"] or res.payload["wav"]
         if last_audiobook:
@@ -913,11 +913,11 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Button(ab_frame, text="Generate audiobook (frozen)",
                state="disabled",
                command=do_audiobook).grid(row=4, column=0, sticky="w", pady=4)
-    ttk.Button(ab_frame, text="Save as…",
+    ttk.Button(ab_frame, text="Save asâ€¦",
                command=do_save_audiobook).grid(row=4, column=1, sticky="w", padx=4)
 
     # --- podcasts ---
-    pod_frame = ttk.LabelFrame(studio_tab, text="Podcast — topic to two-voice episode")
+    pod_frame = ttk.LabelFrame(studio_tab, text="Podcast â€” topic to two-voice episode")
     pod_frame.pack(fill="x", padx=6, pady=6)
     pod_row1 = ttk.Frame(pod_frame); pod_row1.pack(fill="x", pady=2)
     ttk.Label(pod_row1, text="Topic").pack(side="left")
@@ -972,7 +972,7 @@ def run() -> None:  # pragma: no cover — needs a display
         if not topic:
             return messagebox.showinfo("Audio Studio", "Enter a topic first.")
         pod_status.set(f"Writing script for '{topic}' then recording two "
-                       "voices… (a few minutes)")
+                       "voicesâ€¦ (a few minutes)")
         root.update_idletasks()
         res = ctrl.generate_podcast(topic, pod_lang.get(), pod_level.get(),
                                      num_segments=6,
@@ -986,10 +986,10 @@ def run() -> None:  # pragma: no cover — needs a display
         if not res:
             pod_status.set("Podcast failed.")
             return show_error(res)
-        pod_status.set(f"'{res.payload['title']}' ready — "
+        pod_status.set(f"'{res.payload['title']}' ready â€” "
                        f"{res.payload['segments']} segments, "
                        f"voices: {', '.join(res.payload['speakers'])}, "
-                       f"{res.payload['duration_seconds']}s. Opening player…")
+                       f"{res.payload['duration_seconds']}s. Opening playerâ€¦")
         nonlocal last_podcast
         last_podcast = res.payload["mp3"] or res.payload["wav"]
         if last_podcast:
@@ -999,7 +999,7 @@ def run() -> None:  # pragma: no cover — needs a display
     ttk.Button(pod_frame, text="Generate podcast (frozen)",
                state="disabled",
                command=do_podcast).pack(anchor="w", pady=4)
-    ttk.Button(pod_frame, text="Save as…",
+    ttk.Button(pod_frame, text="Save asâ€¦",
                command=do_save_podcast).pack(anchor="w", padx=4, pady=4)
 
     # --- voice manager ---
@@ -1022,13 +1022,13 @@ def run() -> None:  # pragma: no cover — needs a display
         vid = vm_var.get().strip()
         if not vid or vid.startswith("("):
             return messagebox.showinfo("Voices", "Nothing left to download.")
-        vm_status.set(f"Downloading {vid}… (~70 MB, one time)")
+        vm_status.set(f"Downloading {vid}â€¦ (~70 MB, one time)")
         root.update_idletasks()
         res = ctrl.download_voice(vid.split("   ")[0])
         if not res:
             vm_status.set("Download failed.")
             return show_error(res)
-        global installed  # noqa — refresh local lists via closure recompute
+        global installed  # noqa â€” refresh local lists via closure recompute
         installed = ctrl.available_voices()
         vm_status.set(f"Installed {vid}. It now appears in every voice "
                       "dropdown.")
@@ -1104,7 +1104,7 @@ def run() -> None:  # pragma: no cover — needs a display
 
     # Career memory: restore everything the app already knows about
     # this user (GitHub username, cached projects, LinkedIn basics,
-    # last target role) — connections survive restarts offline.
+    # last target role) â€” connections survive restarts offline.
     _identity_res = ctrl.get_career_identity()
     if _identity_res.ok and _identity_res.payload:
         _id = _identity_res.payload
@@ -1219,8 +1219,8 @@ def run() -> None:  # pragma: no cover — needs a display
             search_status.set(f"{len(res.payload)} matching listings")
             career_status.set(f"Job search: {len(res.payload)} matches.")
 
-        search_status.set("Searching boards…")
-        run_async(work, done, busy=search_btn, busy_text="Searching…")
+        search_status.set("Searching boardsâ€¦")
+        run_async(work, done, busy=search_btn, busy_text="Searchingâ€¦")
 
     search_btns = ttk.Frame(search_frame)
     search_btns.pack(fill="x", padx=6, pady=2)
@@ -1261,14 +1261,14 @@ def run() -> None:  # pragma: no cover — needs a display
                 f"{listing.get('company')}.\n"
                 f"Files: {', '.join(pkg['files'])}\n"
                 f"Apply URL: {pkg['apply_url']}\n"
-                f"Open folder and submit manually — bots get banned.")
+                f"Open folder and submit manually â€” bots get banned.")
             _refresh_license()
 
-        prep_btn.config(state="disabled", text="Preparing…")
+        prep_btn.config(state="disabled", text="Preparingâ€¦")
         career_status.set(
-            f"Preparing package for {listing.get('company')} — "
+            f"Preparing package for {listing.get('company')} â€” "
             "tailored resume, cover letter, exports. Runs in background.")
-        run_async(work, done, busy=prep_btn, busy_text="Preparing…")
+        run_async(work, done, busy=prep_btn, busy_text="Preparingâ€¦")
 
     prep_btn = ttk.Button(search_btns, text="Prepare application",
                           command=_do_prepare_application)
@@ -1343,7 +1343,7 @@ def run() -> None:  # pragma: no cover — needs a display
 
     # -- LinkedIn posts (draft locally, publish only on confirm) -----------
     post_frame = ttk.LabelFrame(
-        career_tab, text="LinkedIn posts — human-sounding, no AI tells")
+        career_tab, text="LinkedIn posts â€” human-sounding, no AI tells")
     post_frame.pack(fill="x", padx=8, pady=4)
 
     post_goal_var = tk.StringVar(
@@ -1360,7 +1360,7 @@ def run() -> None:  # pragma: no cover — needs a display
     post_btn = ttk.Button(post_row, text="Draft post",
                           command=lambda: None)
     post_btn.pack(side="left", padx=4)
-    publish_btn = ttk.Button(post_row, text="Publish…",
+    publish_btn = ttk.Button(post_row, text="Publishâ€¦",
                               state="disabled",
                               command=lambda: None)
     publish_btn.pack(side="left", padx=4)
@@ -1374,7 +1374,7 @@ def run() -> None:  # pragma: no cover — needs a display
     def _do_draft_post():
         if not current_resume:
             return messagebox.showinfo(
-                "Career", "Generate or upload a resume first — the "
+                "Career", "Generate or upload a resume first â€” the "
                 "post is grounded in your real experience.")
 
         def work():
@@ -1384,7 +1384,7 @@ def run() -> None:  # pragma: no cover — needs a display
         def done(res):
             post_btn.config(state="normal", text="Draft post")
             if not res:
-                post_status.set("Draft failed — see dialog.")
+                post_status.set("Draft failed â€” see dialog.")
                 return show_error(res)
             draft = res.payload["draft"]
             last_post_text["text"] = draft["post_text"]
@@ -1392,15 +1392,15 @@ def run() -> None:  # pragma: no cover — needs a display
             post_preview.insert("1.0", draft["post_text"])
             if draft.get("style_notes"):
                 post_preview.insert("end",
-                                    f"\n\n— style: {draft['style_notes']}")
+                                    f"\n\nâ€” style: {draft['style_notes']}")
             post_status.set(
                 f"Draft saved (linkedin_posts/{res.payload['saved_as']}). "
-                "Edit freely, then Publish… — nothing posts without "
+                "Edit freely, then Publishâ€¦ â€” nothing posts without "
                 "your explicit confirm.")
             publish_btn.config(state="normal")
             _refresh_license()
 
-        run_async(work, done, busy=post_btn, busy_text="Drafting…")
+        run_async(work, done, busy=post_btn, busy_text="Draftingâ€¦")
 
     def _do_publish_post():
         text = post_preview.get("1.0", "end").strip()
@@ -1410,30 +1410,30 @@ def run() -> None:  # pragma: no cover — needs a display
         confirm = messagebox.askyesno(
             "Publish to LinkedIn",
             "Post this text to YOUR LinkedIn profile?\n\n"
-            f"{text[:400]}\n\nThis is the only confirmation — "
+            f"{text[:400]}\n\nThis is the only confirmation â€” "
             "Cancel aborts.")
         if not confirm:
-            post_status.set("Publish cancelled — draft stays saved.")
+            post_status.set("Publish cancelled â€” draft stays saved.")
             return
 
         def work():
             return ctrl.publish_linkedin_post(text, confirm=True)
 
         def done(res):
-            publish_btn.config(state="normal", text="Publish…")
+            publish_btn.config(state="normal", text="Publishâ€¦")
             if not res:
-                post_status.set("Publish failed — draft still saved.")
+                post_status.set("Publish failed â€” draft still saved.")
                 return show_error(res)
             post_status.set(f"Published (post {res.payload['post_id']}).")
 
-        run_async(work, done, busy=publish_btn, busy_text="Publishing…")
+        run_async(work, done, busy=publish_btn, busy_text="Publishingâ€¦")
 
     post_btn.configure(command=_do_draft_post)
     publish_btn.configure(command=_do_publish_post)
 
     # -- Career Campaign (Campaign tier: apply tracking + interview prep) ---
     campaign_frame = ttk.LabelFrame(
-        career_tab, text="Career Campaign — tracked applications")
+        career_tab, text="Career Campaign â€” tracked applications")
     campaign_frame.pack(fill="x", padx=8, pady=4)
 
     campaign_status_var = tk.StringVar(value="")
@@ -1452,7 +1452,7 @@ def run() -> None:  # pragma: no cover — needs a display
                                      "rejected", "withdrawn"])
     adv_combo.set("submitted")
     adv_combo.pack(side="left", padx=(10, 2))
-    ttk.Button(camp_btns, text="Advance →",
+    ttk.Button(camp_btns, text="Advance â†’",
                command=lambda: _advance_selected()).pack(side="left",
                                                           padx=2)
     ttk.Button(camp_btns, text="Interview prep",
@@ -1491,7 +1491,7 @@ def run() -> None:  # pragma: no cover — needs a display
                   f"{counts.get('interviewing', 0)} interviewing, "
                   f"{counts.get('offer', 0)} offers")
         campaign_status_var.set(
-            f"{data.get('open', 0)} open — {active}")
+            f"{data.get('open', 0)} open â€” {active}")
 
     def _selected_campaign_listing() -> Optional[dict]:
         sel = camp_tree.selection()
@@ -1514,7 +1514,7 @@ def run() -> None:  # pragma: no cover — needs a display
             res = ctrl.campaign_track(listing)
             if not res:
                 return show_error(res)
-            search_status.set(f"Tracking {listing.get('company')} — "
+            search_status.set(f"Tracking {listing.get('company')} â€” "
                               f"{res.payload.get('status')}")
             _refresh_campaign()
             return
@@ -1534,7 +1534,7 @@ def run() -> None:  # pragma: no cover — needs a display
             if not res:
                 return show_error(res)
             campaign_status_var.set(
-                f"Moved to {res.payload.get('status')} — "
+                f"Moved to {res.payload.get('status')} â€” "
                 f"{res.payload.get('listing', {}).get('company', '?')}")
             _refresh_campaign()
 
@@ -1547,7 +1547,7 @@ def run() -> None:  # pragma: no cover — needs a display
         if not current_resume:
             return messagebox.showinfo(
                 "Career Campaign",
-                "Generate or upload a resume first — interview prep "
+                "Generate or upload a resume first â€” interview prep "
                 "is grounded in your real experience.")
 
         def work():
@@ -1559,7 +1559,7 @@ def run() -> None:  # pragma: no cover — needs a display
                 return show_error(res)
             prep = res.payload["prep"]
             out.delete("1.0", "end")
-            out.insert("end", f"INTERVIEW PREP — "
+            out.insert("end", f"INTERVIEW PREP â€” "
                         f"{prep.get('company')}: "
                         f"{prep.get('role')}\n{'=' * 60}\n\n")
             out.insert("end", "LIKELY QUESTIONS:\n")
@@ -1621,7 +1621,7 @@ def run() -> None:  # pragma: no cover — needs a display
             _refresh_license()
 
         run_async(work, done, busy=gen_resume_btn,
-                  busy_text="Generating…")
+                  busy_text="Generatingâ€¦")
 
     def do_enhance_resume():
         if not current_resume:
@@ -1644,7 +1644,7 @@ def run() -> None:  # pragma: no cover — needs a display
             _render_resume_view(res.payload["resume"],
                                 res.payload["changes"])
 
-        run_async(work, done, busy=enhance_btn, busy_text="Enhancing…")
+        run_async(work, done, busy=enhance_btn, busy_text="Enhancingâ€¦")
 
     def do_export_resume(fmt: str):
         if not current_resume:
@@ -1700,11 +1700,11 @@ def run() -> None:  # pragma: no cover — needs a display
         def done(res):
             gh_btn.config(state="normal", text="Import GitHub")
             if not res:
-                gh_status.set("import failed — see dialog")
+                gh_status.set("import failed â€” see dialog")
                 return show_error(res)
             current_resume.clear()
             current_resume.append(res.payload["resume"])
-            cached = " (from memory — offline)" if res.payload.get("cached") \
+            cached = " (from memory â€” offline)" if res.payload.get("cached") \
                 else ""
             gh_status.set(f"Imported {res.payload['imported']} "
                           f"repos{cached}")
@@ -1713,8 +1713,8 @@ def run() -> None:  # pragma: no cover — needs a display
                 f"{cached}. Username and projects are remembered.")
             _render_resume_view(res.payload["resume"])
 
-        gh_status.set("Importing from GitHub…")
-        run_async(work, done, busy=gh_btn, busy_text="Importing…")
+        gh_status.set("Importing from GitHubâ€¦")
+        run_async(work, done, busy=gh_btn, busy_text="Importingâ€¦")
 
     def _do_linkedin():
         if not current_resume:
@@ -1738,8 +1738,8 @@ def run() -> None:  # pragma: no cover — needs a display
                 f"LinkedIn profile connected: {res.payload['who']}{cached}")
             _render_resume_view(res.payload["resume"])
 
-        li_status.set("Connecting…")
-        run_async(work, done, busy=li_btn, busy_text="Connecting…")
+        li_status.set("Connectingâ€¦")
+        run_async(work, done, busy=li_btn, busy_text="Connectingâ€¦")
 
     # -- wire the action buttons (functions now exist) ----------------------
     career_btns = ttk.Frame(career_top)
@@ -1772,7 +1772,7 @@ def run() -> None:  # pragma: no cover — needs a display
                                         playground_tab, journey_tab,
                                         studio_tab)):
         tab.insert(index, tab_widget)
-    tab.select(0)  # Language Lab — the app's flagship opens first
+    tab.select(0)  # Language Lab â€” the app's flagship opens first
     root.after(100, _poll_results)
     refresh_health()
     inbox_note.config(text=f"inbox: {ctrl.default_inbox_path()}")
@@ -1784,3 +1784,5 @@ def run() -> None:  # pragma: no cover — needs a display
 
 if __name__ == "__main__":
     run()
+
+
