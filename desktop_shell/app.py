@@ -380,10 +380,6 @@ def run() -> None:  # pragma: no cover â€” needs a display
 
     # == Learning Journey (ACTIVE — unfrozen 2026-09-24) ========================
     journey_tab = ttk.Frame(tab); tab.add(journey_tab, text="Learning Journey")
-    frozen_banner = tk.Label(journey_tab, text=f"ًں”’ {FROZEN_NOTE}",
-                             fg="#9a6d00", anchor="w", wraplength=880,
-                             justify="left")
-    frozen_banner.pack(fill="x", padx=6, pady=(6, 0))
 
     form = ttk.Frame(journey_tab); form.pack(fill="x", pady=4)
     topic_var = tk.StringVar()
@@ -1784,5 +1780,6 @@ def run() -> None:  # pragma: no cover â€” needs a display
 
 if __name__ == "__main__":
     run()
+
 
 
