@@ -1,0 +1,42 @@
+# requirements.txt — pinned toolchain for L&D Command Center
+#
+# WHAT: Tested dependency versions for running the full offline test suite
+#       and every implemented engine feature.
+# WHY:  P0.4 of docs/PRODUCTION_PLAN.md — reproducible installs across
+#       machines; E8 of the exit criteria. Versions verified 2026-08-24
+#       against CPython 3.14 / Linux with the complete suite green
+#       (354 passed, 5 skipped-live).
+# BREAKS IF DELETED: Fresh machines cannot reproduce a working environment;
+#       dependency drift reopens class-R1 failures. Current Windows baseline:
+#       1041 passed, 7 live tests deselected (includes the 121 desktop_shell
+#       controller tests once pytest.ini testpaths was corrected).
+
+# --- generation core ---
+httpx==0.28.1            # model-layer LM Studio HTTP client
+
+# --- exports ---
+fpdf2==2.8.8             # Journey/Resume PDF export
+python-docx==1.2.0       # Resume DOCX export
+python-pptx==1.0.2       # Journey PPTX export (P4.3)
+openpyxl==3.1.5          # Journey XLSX export (P4.3)
+
+# --- career-engine parsing & integrations ---
+pdfplumber==0.11.10      # resume upload (PDF text extraction)
+requests==2.32.5         # GitHub/LinkedIn/YouTube HTTP integrations
+
+# --- E.T. voice stack (Project E.T., 2026-09-06; verified live on
+#     CPython 3.10.11/Windows: model tiny downloaded+loaded 25.7s,
+#     5s audio transcribed in 0.4s) ---
+sounddevice==0.5.6        # microphone capture (PortAudio wheel)
+soundfile==0.14.0         # WAV read/write used by STT capture and tests
+faster-whisper==1.2.1     # offline speech-to-text (ctranslate2 int8)
+# numpy ships via faster-whisper
+
+# --- test toolchain ---
+pytest==9.1.1            # runner; suite: python -m pytest -m "not live"
+pytest-cov==7.0.0       # coverage gate used by run_checks.sh
+reportlab==5.0.1         # test-only: generates sample PDFs for parser tests
+
+# --- optional audio backends (not required for the mocked suite) ---
+# piper-tts==1.7.0       # default TTS backend (pulls onnxruntime); install for real narration
+# kokoro==not-implemented  # placeholder backend; see PRODUCTION_PLAN P2.1

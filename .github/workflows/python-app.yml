@@ -1,0 +1,40 @@
+name: Python application
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile Python sources
+        run: python -m compileall -q desktop_shell engines model-layer storage
+
+      - name: Run offline test suite
+        run: python -m pytest -q
+
+      - name: Generate Flake8 report (advisory)
+        continue-on-error: true
+        run: |
+          python -m pip install flake8
+          flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
