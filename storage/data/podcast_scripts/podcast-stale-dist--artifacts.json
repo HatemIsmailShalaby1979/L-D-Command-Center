@@ -1,0 +1,55 @@
+J{
+  "topic": "stale dist/ artifacts",
+  "title": "Cleaning Up Your Project with Stale Dist/ Artifacts",
+  "host_name": "Alex",
+  "co_host_name": "Maya",
+  "duration_minutes": 10,
+  "segments": [
+    {
+      "type": "intro",
+      "speaker": "Alex",
+      "content": "Hello everyone, and welcome to the podcast. Today we're going to talk about something that can really slow down your development workflow - stale dist/ artifacts. Joining me is Maya.",
+      "duration_seconds": 60
+    },
+    {
+      "type": "dialogue",
+      "speaker": "Maya",
+      "content": "Hi Alex, I'm excited to learn about this. Can you explain what exactly are these 'stale dist/ artifacts'?",
+      "duration_seconds": 85
+    },
+    {
+      "type": "monologue",
+      "speaker": "Alex",
+      "content": "Sure, Maya. When we compile our code or packages, it often creates a 'dist/' directory with compiled files. Sometimes these get outdated and can cause errors if not cleaned up properly.",
+      "duration_seconds": 86
+    },
+    {
+      "type": "dialogue",
+      "speaker": "Maya",
+      "content": "Oh, I see. So how do we avoid or fix this problem?",
+      "duration_seconds": 85
+    },
+    {
+      "type": "monologue",
+      "speaker": "Alex",
+      "content": "One way is to use a clean command that removes these old files. Many build tools have such commands built-in, like 'npm run clean' for Node.js projects.",
+      "duration_seconds": 85
+    },
+    {
+      "type": "dialogue",
+      "speaker": "Maya",
+      "content": "That's helpful. What if the project doesn't provide a clean command?",
+      "duration_seconds": 86
+    },
+    {
+      "type": "conclusion",
+      "speaker": "Alex",
+      "content": "Thanks for your questions, Maya. In that case, you can manually delete the 'dist/' directory or use scripts to automate this process. Remember, keeping your dist/ artifacts up-to-date is key to a smooth development experience.",
+      "duration_seconds": 60
+    }
+  ],
+  "speakers": [
+    "Alex",
+    "Maya"
+  ]
+}

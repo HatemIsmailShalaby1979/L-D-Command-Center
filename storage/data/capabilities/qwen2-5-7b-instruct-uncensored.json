@@ -1,0 +1,32 @@
+J{
+  "model_id": "qwen2.5-7b-instruct-uncensored",
+  "estimated_params_b": 7.0,
+  "probed_at": "2026-09-13T09:29:43",
+  "overall": "failed",
+  "tasks": {
+    "journey_cards": {
+      "status": "failed",
+      "detail": "model API error: LM Studio returned HTTP 400: {\n    \"error\": {\n        \"message\": \"Failed to load model \\\"qwen2.5-7b-instruct-uncensored\\\". Error: llama-server Vulkan runtime supports UUID device selection, but the Vulkan survey did not provide device UUIDs.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": \"model\",\n        \"code\": null\n    }\n}"
+    },
+    "resume_generation": {
+      "status": "failed",
+      "detail": "model API error: LM Studio returned HTTP 400: {\n    \"error\": {\n        \"message\": \"Failed to load model \\\"qwen2.5-7b-instruct-uncensored\\\". Error: llama-server Vulkan runtime supports UUID device selection, but the Vulkan survey did not provide device UUIDs.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": \"model\",\n        \"code\": null\n    }\n}"
+    },
+    "bilingual_translation": {
+      "status": "failed",
+      "detail": "model API error: LM Studio returned HTTP 400: {\n    \"error\": {\n        \"message\": \"Failed to load model \\\"qwen2.5-7b-instruct-uncensored\\\". Error: llama-server Vulkan runtime supports UUID device selection, but the Vulkan survey did not provide device UUIDs.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": \"model\",\n        \"code\": null\n    }\n}"
+    },
+    "grammar_explanations": {
+      "status": "failed",
+      "detail": "model API error: LM Studio returned HTTP 400: {\n    \"error\": {\n        \"message\": \"Failed to load model \\\"qwen2.5-7b-instruct-uncensored\\\". Error: llama-server Vulkan runtime supports UUID device selection, but the Vulkan survey did not provide device UUIDs.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": \"model\",\n        \"code\": null\n    }\n}"
+    },
+    "podcast_dialogue": {
+      "status": "failed",
+      "detail": "model API error: LM Studio returned HTTP 400: {\n    \"error\": {\n        \"message\": \"Failed to load model \\\"qwen2.5-7b-instruct-uncensored\\\". Error: llama-server Vulkan runtime supports UUID device selection, but the Vulkan survey did not provide device UUIDs.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": \"model\",\n        \"code\": null\n    }\n}"
+    },
+    "summarization": {
+      "status": "failed",
+      "detail": "model API error: LM Studio returned HTTP 400: {\n    \"error\": {\n        \"message\": \"Failed to load model \\\"qwen2.5-7b-instruct-uncensored\\\". Error: llama-server Vulkan runtime supports UUID device selection, but the Vulkan survey did not provide device UUIDs.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": \"model\",\n        \"code\": null\n    }\n}"
+    }
+  }
+}

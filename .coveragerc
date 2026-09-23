@@ -1,0 +1,16 @@
+[run]
+omit =
+    */test_*.py
+    */tests/*.py
+    */engines/test_e2e_live.py
+    */engines/test_integration.py
+    */desktop_shell/*.py
+    */engines/career-engine/integrations/*.py
+    */engines/audio-engine/stt.py
+    */model-layer/client.py
+    */model-layer/tts.py
+
+[report]
+exclude_also =
+    pragma: no cover
+    if __name__ == .__main__.:

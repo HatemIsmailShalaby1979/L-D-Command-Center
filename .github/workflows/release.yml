@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    # Human-approval gate: this environment must have at least one reviewer
+    # configured in repository Settings -> Environments -> release.
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python (build baseline 3.10)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Install PyInstaller (pinned to local baseline)
+        run: python -m pip install pyinstaller==6.22.2
+
+      - name: Offline suite gate
+        run: python -m pytest -q
+
+      - name: Secrets/artifacts policy gate
+        run: python desktop_shell\check_deployment_policy.py
+
+      - name: PyInstaller build (windowed)
+        run: python -m PyInstaller desktop_shell\ldcc.spec --noconfirm --distpath dist --workpath build\release_work
+
+      - name: Write build manifest
+        run: python desktop_shell\write_build_manifest.py dist\ldcc.exe
+
+      - name: Windowed-launch smoke gate
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File desktop_shell\verify_build.ps1 -ExePath dist\ldcc.exe
+
+      - name: Create GitHub Release
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v$((Get-Date -Format 'yyyyMMdd-HHmmss'))"
+          gh release create $tag "dist/ldcc.exe" "dist/ldcc-build.json" "dist/ldcc-build.txt" --title "ldcc $tag" --notes "Windows desktop release built by the gated pipeline. Verify sha256 against dist/ldcc-build.json in the release assets."

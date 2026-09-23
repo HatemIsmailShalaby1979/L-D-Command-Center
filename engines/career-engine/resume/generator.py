@@ -1,0 +1,244 @@
+# engines/career-engine/resume/generator.py
+#
+# WHAT: Resume generation entry points — generate() turns a free-text
+#       profile into a validated Resume dict; enhance() rewrites a Resume
+#       toward a target role and returns it together with a
+#       human-inspectable changes list.
+# WHY:  Single point of contact between the career-engine and the
+#       Generation Pipeline (P1.4). The Guardrail Loop lives in
+#       model-layer/pipeline.py; this module contributes resume-specific
+#       templates and the envelope validator. The changes list always
+#       comes from the SAME validated response as the enhanced resume,
+#       so inspection can never drift from the artifact (CONSTITUTION §3).
+# BREAKS IF DELETED: The career-engine loses its ability to generate or
+#       enhance resumes; downstream export and integrations break.
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from engines.career_engine.resume.schema import RESUME_SCHEMA, validate_resume
+from model_layer.client import ApiError, LmStudioClient
+from model_layer.pipeline import DEFAULT_MODEL, generate as run_guardrail_loop
+from model_layer.prompts import PromptRegistry
+from model_layer.schema import SchemaValidationError, SchemaValidator
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["generate", "enhance", "generate_cover_letter",
+           "generate_linkedin_post"]
+
+# Resume prompts are tuned for shorter, more deterministic output than
+# journeys (matches the metadata registered with their templates).
+_RESUME_MAX_TOKENS = 4096
+_RESUME_TEMPERATURE = 0.3
+
+
+def generate(
+    profile: str,
+    *,
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> dict[str, Any]:
+    """
+    Contract: generate a validated Resume dict from a free-text profile
+    by running the Generation Pipeline.
+
+    Args:
+        profile: free-text description of the person's background.
+        client: optional pre-configured LmStudioClient (or test double).
+        model: model identifier passed through to LM Studio.
+
+    Returns:
+        A dict matching RESUME_SCHEMA, ready for export or enhancement.
+
+    Raises:
+        SchemaValidationError: validation failed after all attempts.
+        ConnectionError / ApiError: per the pipeline error taxonomy.
+    """
+    result = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="resume_generate",
+        retry_template="resume_retry",
+        variables={"profile": profile},
+        validator=validate_resume,
+        model=model,
+        max_tokens=_RESUME_MAX_TOKENS,
+        temperature=_RESUME_TEMPERATURE,
+    )
+    logger.info("Resume generated for profile: %s", profile[:50])
+    return result
+
+
+def enhance(
+    resume: dict[str, Any],
+    target_role: str,
+    *,
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> dict[str, Any]:
+    """
+    Contract: rewrite `resume` toward `target_role`, returning:
+
+        {
+            "enhanced_resume": <dict matching RESUME_SCHEMA>,
+            "changes": [{"field", "change", "reason"}, ...],
+        }
+
+    The model must answer in an explicit envelope
+    (`{"enhanced_resume": ..., "changes": [...]}`); the envelope is what
+    the pipeline validates, so a retried response carries its own changes
+    list instead of silently inheriting a stale one. If the validated
+    response omits `changes`, a single explanatory default entry is
+    synthesized so callers always receive an inspectable list.
+
+    Raises:
+        SchemaValidationError: envelope invalid after all attempts.
+        ConnectionError / ApiError: per the pipeline error taxonomy.
+    """
+    def envelope_validator(parsed: Any) -> tuple[bool, list[str]]:
+        if not isinstance(parsed, dict) or "enhanced_resume" not in parsed:
+            return False, ["missing 'enhanced_resume' envelope in model output"]
+        is_valid, errors = validate_resume(parsed["enhanced_resume"])
+        if not is_valid:
+            errors = [f"enhanced_resume: {e}" for e in errors]
+        return is_valid, errors
+
+    validated = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="resume_enhance",
+        retry_template="resume_enhance_retry",
+        variables={
+            "target_role": target_role,
+            "resume": json.dumps(resume, ensure_ascii=False, indent=2),
+        },
+        validator=envelope_validator,
+        model=model,
+        max_tokens=4096,
+        temperature=_RESUME_TEMPERATURE,
+    )
+
+    changes = validated.get("changes") or [{
+        "field": "summary",
+        "change": "Updated to reflect target role",
+        "reason": f"Tailored for {target_role}",
+    }]
+
+    logger.info("Resume enhanced for role: %s", target_role[:50])
+    return {
+        "enhanced_resume": validated["enhanced_resume"],
+        "changes": changes,
+    }
+
+
+def generate_cover_letter(
+    resume: dict[str, Any],
+    *,
+    role: str,
+    company: str,
+    snippet: str = "",
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> str:
+    """
+    Contract: draft a grounded cover letter for one specific listing.
+    Facts come ONLY from the resume and the listing snippet; the letter
+    is schema-validated (non-empty, mentions the company).
+    """
+    def validator(parsed: Any) -> tuple[bool, list[str]]:
+        if not isinstance(parsed, dict):
+            return False, ["expected a JSON object"]
+        letter = parsed.get("cover_letter")
+        if not isinstance(letter, str) or len(letter.strip()) < 80:
+            return False, ["cover_letter must be a substantial string"]
+        if company.lower()[:6] not in letter.lower():
+            return False, [f"cover_letter must mention the company {company!r}"]
+        return True, []
+
+    validated = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="cover_letter_generate",
+        variables={
+            "role": role,
+            "company": company,
+            "snippet": snippet or "(full listing not captured)",
+            "resume": json.dumps(resume, ensure_ascii=False, indent=2),
+        },
+        validator=validator,
+        model=model,
+        max_tokens=2048,
+        temperature=0.4,
+    )
+    logger.info("Cover letter generated for %s @ %s", role[:40], company[:40])
+    return validated["cover_letter"].strip()
+
+
+def generate_linkedin_post(
+    resume: dict[str, Any],
+    *,
+    goal: str,
+    client: LmStudioClient | None = None,
+    model: str = DEFAULT_MODEL,
+) -> dict[str, str]:
+    """
+    Contract: draft ONE human-sounding LinkedIn post as the candidate.
+    Facts come only from the resume; style rules forbid the stock
+    AI-tell phrases (announce-openers, hashtag soup, grateful/blessed).
+    Validation is deterministic: non-empty 60-200 word post_text.
+
+    Returns:
+        {"post_text": str, "style_notes": str}
+    """
+    contact = (resume or {}).get("contact", {})
+    name = contact.get("name") or "the author"
+    headline = (resume.get("summary") or "").strip() or "professional"
+
+    def validator(parsed: Any) -> tuple[bool, list[str]]:
+        if not isinstance(parsed, dict):
+            return False, ["expected a JSON object"]
+        errors: list[str] = []
+        post = parsed.get("post_text")
+        if not isinstance(post, str) or not post.strip():
+            return False, ["post_text must be a non-empty string"]
+        words = len(post.split())
+        if words < 30 or words > 260:
+            errors.append(
+                f"post_text must be 30-260 words (got {words})")
+        banned = ("thrilled to announce", "excited to share",
+                  "i am humbled", "#blessed", "#grateful", "in today's",
+                  "fast-paced world", "delve into")
+        low = post.lower()
+        errors += [f"post_text must not contain '{phrase}'"
+                   for phrase in banned if phrase in low]
+        if post.count("#") > 2:
+            errors.append("post_text may contain at most 2 hashtags")
+        if not errors:
+            return True, []
+        return False, errors
+
+    validated = run_guardrail_loop(
+        PromptRegistry(),
+        client if client is not None else LmStudioClient(),
+        template="linkedin_post_generate",
+        retry_template="linkedin_post_retry",
+        variables={
+            "name": name,
+            "headline": headline[:200],
+            "background": json.dumps(resume, ensure_ascii=False)[:3000],
+            "goal": goal,
+        },
+        validator=validator,
+        model=model,
+        max_tokens=3072,
+        temperature=0.7,
+    )
+    logger.info("LinkedIn post drafted (%d words) for goal: %s",
+                len(validated["post_text"].split()), goal[:40])
+    return {"post_text": validated["post_text"].strip(),
+            "style_notes": (validated.get("style_notes") or "").strip()}
+
