@@ -1,6 +1,4 @@
-# L&D Command Center
-
-A local-first Learning & Development command center with Language Lab, Career Development, and Skills Arena.
+# L&D Command Center`n`n> **Built solo, self-learning, while switching careers. No team. No funding. Just a local-first system that refuses to forget what it learns.**`n`nA local-first Learning & Development command center with Language Lab, Career Development, and Skills Arena � governed, not promised. Every endpoint is verified against real model outputs; every section has a freeze/unfreeze policy; every rollback points to `dist/archive`.`n`nThis is part of the Helix Codex family of solo-built systems. It does not claim to replace a corporate L&D platform. It claims to do one thing well: run locally, test honestly, and keep the evidence.
 
 ## Release Status — 2026-09-23 (App Owner)
 - Endpoint auto-detect (ollama 11434 / LM Studio 1234) active.
@@ -134,3 +132,4 @@ MIT
 UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
 --- UI REDESIGN UPDATE 2026-09-23 ---
 Dark interactive theme applied (dark background #0d1b2e, blue accent #76a9ff, scrollable canvas, interactive tabs). Humor/tips layer active (model-layer/quality_guard.py). Full experience requires running RUN_LDCC_FIXED.bat with TCLLIBRARY set.
+
