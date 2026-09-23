@@ -16,7 +16,6 @@
 - Quality guard + humor/tips layer active (`model-layer/quality_guard.py`).
 - Frozen sections correct (Journey/Audio); Language Lab, Career, Playground unfrozen.
 - E2E smoke report: `E2E_SMOKE_REPORT.md`.
-- Frozen sections: **UNFROZEN** — Journey and Audio Studio active (2026-09-24). Previous freeze was by design; removed.
 - Policy gate pass; rollback path: restore previous archive from `dist/archive`.
 - Owner: this session; changelog in `AGENT_LOG.md` / `INVESTIGATOR_NOTE_PHASE1.md`.
 
