@@ -47,6 +47,17 @@ DEFAULT_DURATION_MINUTES = 15
 DEFAULT_NUM_SEGMENTS = 5
 SEGMENT_SECONDS_PER_MINUTE = 90  # each segment ~90 seconds = 1.5 min
 
+# A full episode (intro + dialogue + conclusion) is LONG. A tight
+# max_tokens budget is what makes a 7B-12B local model "keep producing
+# bad output": it hits the wall mid-JSON, or truncates the closing
+# segments. The Generation Pipeline already honors an 8192-token budget
+# (model-layer/pipeline.py); we pin it HERE so podcast generation can
+# never silently fall back to a smaller template default.
+PODCAST_MAX_TOKENS = 8192
+# 7B-12B models need more feedback rounds to satisfy the strict
+# two-speaker conversation validator — never a failure wall.
+PODCAST_MAX_ATTEMPTS = 5
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -220,6 +231,8 @@ def generate_podcast_script(
     level: str = "beginner",
     client: LmStudioClient | None = None,
     model: str = DEFAULT_MODEL,
+    max_tokens: int = PODCAST_MAX_TOKENS,
+    max_attempts: int = PODCAST_MAX_ATTEMPTS,
 ) -> PodcastScript:
     """
     Contract: generate a validated PodcastScript for a topic or Journey
@@ -235,6 +248,10 @@ def generate_podcast_script(
         level: Audience complexity level for the content.
         client: optional pre-configured LmStudioClient (or test double).
         model: model identifier for LM Studio.
+        max_tokens: output token budget per attempt (default 8192 — a
+            full episode needs it; small budgets truncate mid-JSON).
+        max_attempts: feedback-retry budget (default 5 — enough rounds
+            for 7B-12B models to satisfy the conversation validator).
 
     Returns:
         Validated PodcastScript object.
@@ -272,6 +289,8 @@ def generate_podcast_script(
         },
         validator=validate_podcast_script,
         model=model,
+        max_tokens=max_tokens,
+        max_attempts=max_attempts,
     )
     logger.info("Podcast script generated for topic: %s", topic[:50])
     return PodcastScript.from_dict(parsed)

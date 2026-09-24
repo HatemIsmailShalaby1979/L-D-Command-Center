@@ -328,10 +328,40 @@ class PromptRegistry:
         "Your previous output had these validation errors:\n"
         "{errors}\n\n"
         "The topic is \"{topic}\".\n"
-        "Generate a corrected podcast script with {num_segments} segments.\n"
+        "Produce exactly {num_segments} segments.\n"
         "Each segment must be approximately {segment_duration_seconds} "
-        "seconds long so the total adds up to ~{duration_minutes} minutes.\n"
-        "Return valid JSON only."
+        "seconds long so the total adds up to ~{duration_minutes} minutes.\n\n"
+        "Return a SINGLE valid JSON object that follows the EXACT "
+        "structure:\n"
+        "{{\n"
+        '  "topic": "<the topic string>",\n'
+        '  "title": "<episode title>",\n'
+        '  "host_name": "{host_name}",\n'
+        '  "co_host_name": "{co_host_name}",\n'
+        '  "duration_minutes": <number>,\n'
+        "  \"segments\": [\n"
+        "    {{\n"
+        '      "type": "<intro|monologue|dialogue|conclusion>",\n'
+        '      "speaker": "<one of the two hosts>",\n'
+        '      "content": "<spoken words, ENTIRELY in {language}, '
+        'suitable for {level} learners>",\n'
+        '      "duration_seconds": <number>\n'
+        "    }}\n"
+        "  ],\n"
+        '  "speakers": ["{host_name}", "{co_host_name}"]\n'
+        "}}\n\n"
+        "Rules that fix the most common failures:\n"
+        "- EXACTLY two hosts — {host_name} and {co_host_name} — and "
+        "they really converse: they ask each other questions, react, "
+        "disagree. BOTH must speak at least twice across the whole "
+        "script.\n"
+        "- Alternate frequently; never more than two consecutive "
+        "segments from the same speaker.\n"
+        "- First segment is type 'intro' (spoken by {host_name}); last "
+        "segment is type 'conclusion'.\n"
+        "- Every 'content' field must be FULLY written in {language}, "
+        "at a {level} level — never empty, never the same text twice.\n"
+        "- Return valid JSON only — no prose, no markdown fences."
     )
 
     # ------------------------------------------------------------------

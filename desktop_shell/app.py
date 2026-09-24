@@ -69,8 +69,11 @@ ERROR_TITLES = {
 ERROR_ACTIONS = {
     "no_model": "Start LM Studio and load a model via the model picker.",
     "bad_output": "The pipeline now repairs truncated/malformed JSON "
-                   "automatically â€” if this still happens, rephrase or "
-                   "lower the size and run Probe model once.",
+                   "automatically and gives 7B-12B models extra retry "
+                   "rounds with a full 8192-token budget. If this still "
+                   "happens, pick a different 7B-12B model in the "
+                   "dropdown and run Probe model once — the verdict "
+                   "shows what it can produce.",
     "input": "Fill in all required fields correctly.",
     "connector": "Check the service documentation or try again later.",
     "license": "Activate a Pro key to remove all limits, or wait for "
@@ -148,17 +151,33 @@ def run() -> None:  # pragma: no cover â€” needs a display
 
     ctrl = ShellController()
     root = tk.Tk()
-    root.title("L&D Command Center â€” Dark Mode")
-    root.geometry("1200x800")
-    root.configure(bg="#0d1b2e")
+    root.title("L&D Command Center")
+    root.geometry("1280x840")
+    root.minsize(1080, 720)
+    # Light high-contrast theme — dark navy at small scale strains the
+    # eyes (2026-09-24 owner feedback). Room to breathe: larger window,
+    # larger font, generous spacing.
+    root.configure(bg="#eef2f7")
     style = ttk.Style(root)
     style.theme_use('clam')
-    style.configure('TFrame', background='#0d1b2e')
-    style.configure('TNotebook', background='#0d1b2e', tabmargins=[2,5,2,0])
-    style.configure('TNotebook.Tab', background='#1d3552', foreground='#edf4ff', padding=[10,4])
-    style.map('TNotebook.Tab', background=[('selected','#76a9ff')], foreground=[('selected','#07111f')])
-    root.title("L&D Command Center")
-    root.geometry("960x640")
+    style.configure('.', font=('Segoe UI', 11))
+    style.configure('TFrame', background='#eef2f7')
+    style.configure('TLabel', background='#eef2f7', foreground='#243b53')
+    style.configure('TNotebook', background='#eef2f7', tabmargins=[2, 6, 2, 0])
+    style.configure('TNotebook.Tab', background='#dbe4ee',
+                    foreground='#243b53', padding=[16, 8],
+                    font=('Segoe UI', 11, 'bold'))
+    style.map('TNotebook.Tab',
+              background=[('selected', '#ffffff')],
+              foreground=[('selected', '#0b5cad')])
+    style.configure('TLabelframe', background='#ffffff', bordercolor='#cbd5e1')
+    style.configure('TLabelframe.Label', background='#eef2f7',
+                    foreground='#0b5cad',
+                    font=('Segoe UI', 11, 'bold'))
+    style.configure('TButton', font=('Segoe UI', 11), padding=[10, 6])
+    style.configure('TCombobox', arrowsize=18, padding=[6, 4])
+    style.configure('TEntry', fieldbackground='#ffffff',
+                    foreground='#1f2933')
 
     # ------------------------------------------------------------------
     # Async runner: every slow flow (generation, search, connector jobs)
@@ -203,34 +222,56 @@ def run() -> None:  # pragma: no cover â€” needs a display
 
     # -- header -----------------------------------------------------------
     status = tk.StringVar(value="checking LM Studioâ€¦")
-    header = ttk.Frame(root); header.pack(fill="x", padx=8, pady=6)
-    health_label = tk.Label(header, textvariable=status, fg="gray")
+    header = ttk.Frame(root); header.pack(fill="x", padx=10, pady=8)
+    health_label = tk.Label(header, textvariable=status, fg="#445566",
+                            font=("Segoe UI", 11))
     health_label.pack(side="left")
     ttk.Button(header, text="Refresh",
                command=lambda: refresh_health()).pack(side="left", padx=6)
     ttk.Button(header, text="Probe model",
                command=lambda: run_probe()).pack(side="left")
 
-    # model picker â€” the user always sees and chooses what is running
+    # model picker — ALWAYS visible in the header; the user sees and
+    # chooses exactly what LM Studio is running. Reload re-queries the
+    # server so a newly-loaded 7B-12B model appears without a restart.
     model_var = tk.StringVar()
-    models_res = ctrl.list_available_models()
-    model_frame = ttk.Frame(header); model_frame.pack(side="right")
-    ttk.Label(model_frame, text="Model:").pack(side="left")
-    model_combo = ttk.Combobox(model_frame, textvariable=model_var,
-                               state="readonly", width=26,
-                               values=models_res.payload if models_res.ok else [])
-    model_combo.pack(side="left", padx=4)
-    if models_res.ok and ctrl.model in (models_res.payload or []):
-        model_var.set(ctrl.model)
-    elif models_res.ok and models_res.payload:
-        ctrl.model = models_res.payload[0]
-        model_var.set(models_res.payload[0])
+    _model_combos: list = []
+
+    def refresh_model_picker():
+        """Re-query LM Studio's model list and repopulate every model
+        dropdown (header + Audio Studio). Selection is preserved; the
+        list refreshes so newly-loaded models appear immediately."""
+        models_res = ctrl.list_available_models()
+        names = list(models_res.payload or []) if models_res.ok else []
+        current = ctrl.model
+        if current not in names and names:
+            current = names[0]
+            ctrl.model = current
+        for combo in _model_combos[:]:
+            try:
+                combo.configure(values=names)
+            except tk.TclError:
+                _model_combos.remove(combo)
+        model_var.set(current if names else "")
 
     def on_model_selected(_event=None):
-        ctrl.model = model_var.get()
+        picked = model_var.get()
+        if picked:
+            ctrl.model = picked
         refresh_health()
 
+    model_frame = ttk.Frame(header); model_frame.pack(side="right", padx=4)
+    ttk.Label(model_frame, text="Model",
+              font=("Segoe UI", 11, "bold")).pack(side="left", padx=(0, 6))
+    model_combo = ttk.Combobox(model_frame, textvariable=model_var,
+                               state="readonly", width=30)
+    model_combo.pack(side="left")
     model_combo.bind("<<ComboboxSelected>>", on_model_selected)
+    _model_combos.append(model_combo)
+    ttk.Button(model_frame, text="Reload",
+               command=refresh_model_picker,
+               width=8).pack(side="left", padx=(4, 0))
+    refresh_model_picker()
 
     def refresh_health():
         res = ctrl.check_model_health()
@@ -258,6 +299,7 @@ def run() -> None:  # pragma: no cover â€” needs a display
         def done(res):
             if not res:
                 return show_error(res)
+            refresh_model_picker()
             refresh_health()
 
         run_async(work, done)
@@ -327,7 +369,7 @@ def run() -> None:  # pragma: no cover â€” needs a display
     license_bar = ttk.Frame(root)
     license_bar.pack(fill="x", padx=8, pady=(0, 2))
     tk.Label(license_bar, textvariable=license_var,
-             fg="#0066cc", font=("TkDefaultFont", 9, "bold")
+             fg="#0b5cad", font=("TkDefaultFont", 11, "bold")
              ).pack(side="left")
     tk.Label(license_bar, textvariable=license_detail,
              fg="gray").pack(side="left", padx=8)
@@ -361,8 +403,8 @@ def run() -> None:  # pragma: no cover â€” needs a display
                    "L-D-Command-Center#pricing")
 
     # -- tabs ---------------------------------------------------------------
-    # Scrollable dark container
-    canvas = tk.Canvas(root, bg="#0d1b2e", highlightthickness=0)
+    # Scrollable light container
+    canvas = tk.Canvas(root, bg="#eef2f7", highlightthickness=0)
     scrollbar = ttk.Scrollbar(root, orient="vertical", command=canvas.yview)
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
@@ -820,6 +862,34 @@ def run() -> None:  # pragma: no cover â€” needs a display
     studio_tab = ttk.Frame(tab); tab.add(studio_tab, text="Audio Studio")
 
     LANG_CODES = list(LANG_NAMES)
+
+    # --- generation model (podcasts/audiobooks) --------------------------
+    # Same dropdown + probe as the header, right here where generation
+    # happens — 7B-12B local models all work; probe grades what the
+    # loaded model can actually produce.
+    pod_model_frame = ttk.LabelFrame(
+        studio_tab,
+        text="Generation model — pick what LM Studio runs for podcasts / audiobooks")
+    pod_model_frame.pack(fill="x", padx=6, pady=6)
+    ttk.Label(pod_model_frame, text="Model",
+              font=("Segoe UI", 11, "bold")).pack(side="left", padx=(8, 6),
+                                                  pady=8)
+    model_combo2 = ttk.Combobox(pod_model_frame, textvariable=model_var,
+                                state="readonly", width=34)
+    model_combo2.pack(side="left", pady=8)
+    model_combo2.bind("<<ComboboxSelected>>", on_model_selected)
+    _model_combos.append(model_combo2)
+    ttk.Button(pod_model_frame, text="Reload list",
+               command=refresh_model_picker).pack(side="left", padx=6,
+                                                  pady=8)
+    ttk.Button(pod_model_frame, text="Probe model",
+               command=lambda: run_probe()).pack(side="left", padx=4,
+                                                 pady=8)
+    pod_model_note = tk.Label(
+        pod_model_frame, text="(models sized 7B-12B are fully supported — "
+        "probe once to see a per-task verdict)",
+        fg="#6b7a80", font=("Segoe UI", 10))
+    pod_model_note.pack(side="left", padx=10, pady=8)
 
     # --- audiobooks ---
     ab_frame = ttk.LabelFrame(studio_tab, text="Audiobook â€” text to narrated audio")
