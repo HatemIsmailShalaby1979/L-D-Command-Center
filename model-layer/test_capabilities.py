@@ -174,9 +174,9 @@ class TestProbeGrading:
         client = FakeProbeClient()
         probe_model_capabilities(client, storage=store)
         assert len(client.requests) == len(TASK_PROFILES)
-        # 2048 (not 512): reasoning models burn hundreds of tokens
-        # thinking before answering; the probe must leave headroom
-        # (measured: ~545 tokens for one tiny probe task on gemma-4).
+        # 2048 (not 512): probe must clear the budget even when a
+        # reasoning model briefly deliberates before answering (thinking
+        # is suppressed via reasoning_effort=none, but the headroom stays).
         assert all(req.max_tokens == 2048 for req in client.requests)
         assert all(req.temperature == 0.0 for req in client.requests)
 

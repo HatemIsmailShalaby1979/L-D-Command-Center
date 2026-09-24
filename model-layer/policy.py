@@ -6,12 +6,15 @@
 #       must perform just fine with tools calling — the app injects the
 #       plugins and skills needed. Correctness comes from the Model
 #       Layer, not model size (CONSTITUTION.md §3). This module turns
-#       that into three concrete levers the pipeline applies uniformly:
+#       that into four concrete levers the pipeline applies uniformly:
 #         1. A JSON-discipline addendum appended to every system prompt
 #            (fences, MMdd blocks, Python booleans, one-line strings).
 #         2. JSON mode (response_format json_object) with automatic
 #            fallback when the runtime rejects it.
-#         3. Size-aware attempt scaling: smaller models get more retry
+#         3. Thinking suppression (reasoning_effort=none) with the same
+#            capability-mismatch fallback — reasoning models must not
+#            spend the whole token budget on chain-of-thought.
+#         4. Size-aware attempt scaling: smaller models get more retry
 #            budget instead of a failure wall.
 # BREAKS IF DELETED: Every engine regresses to trusting the bare model;
 #       format errors resurface as "model kept producing invalid
@@ -81,6 +84,9 @@ def policy_for(model_id: str) -> dict[str, Any]:
           "system_addendum": str,     # appended to every system prompt
           "max_attempts": int,        # feedback-retry budget
           "json_mode": True,          # ask the runtime for JSON output
+          "disable_thinking": True,   # reasoning_effort=none on every
+                                      # call (runtime-rejection fallback
+                                      # handled in pipeline)
         }
 
     The addendum is universal (it helps every size); attempts scale for
@@ -97,6 +103,7 @@ def policy_for(model_id: str) -> dict[str, Any]:
         "system_addendum": JSON_DISCIPLINE_ADDENDUM,
         "max_attempts": max_attempts,
         "json_mode": True,
+        "disable_thinking": True,
     }
 
 
