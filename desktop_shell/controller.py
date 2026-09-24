@@ -974,9 +974,14 @@ class ShellController:
         payload: dict[str, Any] = {
             "wav": str(wav_path),
             "mp3": None,
-            "duration_seconds": round(len(result.wav_bytes) / 2
-                                      / max(result.sample_rate, 1), 1),
+            # WAV duration = PCM bytes / 2 / rate; subtract the 44-byte
+            # RIFF header so the reported length matches the player.
+            "duration_seconds": round(
+                max(0, len(result.wav_bytes) - 44) / 2
+                / max(result.sample_rate, 1), 1),
             "voice": result.voice_used,
+            "chars": len(text),
+            "words": len(text.split()),
         }
         if result.mp3_bytes:
             payload["mp3"] = str(self.storage.save_artifact(
@@ -993,12 +998,20 @@ class ShellController:
                          co_host_name: str = "Maya",
                          voice_a: Optional[str] = None,
                          voice_b: Optional[str] = None) -> FlowResult:
-        """Script generation (Guardrail Loop) + two-voice render -> WAV/MP3."""
+        """Script generation (Guardrail Loop) + two-voice render -> WAV/MP3.
+
+        Length contract: the script is word-budgeted for `duration_minutes`
+        (see podcast_script.make_length_validator). After the first render,
+        if actual audio is under 92% of the target we re-render once at a
+        slower speed (floor 0.70×) so the file reaches the requested length.
+        """
         from engines.audio_engine import voice_catalog
         from engines.audio_engine.podcast_audio import (
             render_podcast_to_audio,
         )
         from engines.audio_engine.podcast_script import (
+            SHORT_RENDER_RATIO,
+            MIN_STRETCH_SPEED,
             generate_script_from_topic,
         )
 
@@ -1009,10 +1022,11 @@ class ShellController:
         co_host = (co_host_name or "Maya").strip() or "Maya"
         if co_host == host:
             raise ValueError("Co-host needs a different name than the host")
+        target_minutes = max(1, int(duration_minutes))
         script = generate_script_from_topic(
             topic,
             num_segments=int(num_segments),
-            duration_minutes=int(duration_minutes),
+            duration_minutes=target_minutes,
             host_name=host, co_host_name=co_host,
             language=voice_catalog.language_name(language),
             level=level,
@@ -1023,13 +1037,33 @@ class ShellController:
             voice_map[host] = voice_a
         if voice_b:
             voice_map[co_host] = voice_b
-        try:
-            audio = render_podcast_to_audio(script, include_mp3=True,
-                                            voice_map=voice_map or None)
-        except FileNotFoundError as exc:
-            self._ensure_voice(exc)
-            audio = render_podcast_to_audio(script, include_mp3=True,
-                                            voice_map=voice_map or None)
+
+        def _render(speed: float = 1.0):
+            try:
+                return render_podcast_to_audio(script, include_mp3=True,
+                                               voice_map=voice_map or None,
+                                               speed=speed)
+            except FileNotFoundError as exc:
+                self._ensure_voice(exc)
+                return render_podcast_to_audio(script, include_mp3=True,
+                                               voice_map=voice_map or None,
+                                               speed=speed)
+
+        audio = _render()
+        target_seconds = float(target_minutes * 60)
+        if target_seconds > 0 and audio.duration_seconds < (
+                target_seconds * SHORT_RENDER_RATIO):
+            # Slow narration stretches duration ~1/speed. Clamp so we never
+            # go below the quality floor; report actual length honestly.
+            stretch_speed = max(
+                MIN_STRETCH_SPEED,
+                min(1.0, audio.duration_seconds / target_seconds),
+            )
+            logger.info(
+                "Podcast short (%.0fs < %.0fs target); re-render at %.2fx",
+                audio.duration_seconds, target_seconds, stretch_speed)
+            audio = _render(speed=stretch_speed)
+
         existing = set(self.storage.list_artifacts("exports"))
         base = unique_artifact_name(existing,
                                     f"podcast-{self._slug(topic, 'episode')}.wav")
@@ -1043,14 +1077,17 @@ class ShellController:
             "mp3": None,
             "segments": len(script.segments),
             "duration_seconds": audio.duration_seconds,
+            "target_minutes": target_minutes,
+            "target_seconds": target_seconds,
             "title": script.title,
             "speakers": sorted({seg.speaker for seg in script.segments}),
         }
         if audio.mp3_bytes:
             payload["mp3"] = str(self.storage.save_artifact(
                 "exports", f"{base}.mp3", audio.mp3_bytes))
-        logger.info("Podcast generated: %s (%d segments)",
-                    script.title, len(script.segments))
+        logger.info("Podcast generated: %s (%d segments, %.0fs / %.0fs target)",
+                    script.title, len(script.segments),
+                    audio.duration_seconds, target_seconds)
         return FlowResult(True, payload=payload)
 
     # -- campaign mode (Campaign tier, PROFIT_PLAN §2/§6) --------------------

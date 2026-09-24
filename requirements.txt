@@ -38,5 +38,5 @@ pytest-cov==7.0.0       # coverage gate used by run_checks.sh
 reportlab==5.0.1         # test-only: generates sample PDFs for parser tests
 
 # --- optional audio backends (not required for the mocked suite) ---
-# piper-tts==1.7.0       # default TTS backend (pulls onnxruntime); install for real narration
+piper-tts==1.8.0         # default TTS backend (pulls onnxruntime); required for real narration/audiobook/podcast audio
 # kokoro==not-implemented  # placeholder backend; see PRODUCTION_PLAN P2.1

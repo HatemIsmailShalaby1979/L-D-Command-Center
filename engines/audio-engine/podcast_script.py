@@ -47,6 +47,22 @@ DEFAULT_DURATION_MINUTES = 15
 DEFAULT_NUM_SEGMENTS = 5
 SEGMENT_SECONDS_PER_MINUTE = 90  # each segment ~90 seconds = 1.5 min
 
+# ---------------------------------------------------------------------------
+# Length compliance (2026-09-24)
+# ---------------------------------------------------------------------------
+# Root cause of "15-minute" podcasts rendering as ~10 seconds: TTS duration
+# follows WORD COUNT, not the model-invented `duration_seconds` metadata.
+# Measured live: Piper en_US-lessac-medium @ speed 1.0 ≈ 205.6 WPM.
+# Plan the prompt at ~200 WPM so content lands near the target even before
+# the controller's stretch re-render; reject scripts below 170×0.9 = 153
+# words/minute of requested duration (short enough that 0.70× stretch
+# still can't reach ~92% of target).
+TARGET_SPEAKING_WPM = 200
+MIN_CONTENT_WPM = 170           # floor for the validator
+WORD_BUDGET_TOLERANCE = 0.90    # accept 90%+ of the planned word budget
+MIN_STRETCH_SPEED = 0.70        # never slow narration below 0.70×
+SHORT_RENDER_RATIO = 0.92       # re-render if actual < 92% of target
+
 # A full episode (intro + dialogue + conclusion) is LONG. A tight
 # max_tokens budget is what makes a 7B-12B local model "keep producing
 # bad output": it hits the wall mid-JSON, or truncates the closing
@@ -57,6 +73,17 @@ PODCAST_MAX_TOKENS = 8192
 # 7B-12B models need more feedback rounds to satisfy the strict
 # two-speaker conversation validator — never a failure wall.
 PODCAST_MAX_ATTEMPTS = 5
+
+
+def words_for_duration(duration_minutes: int, wpm: int = TARGET_SPEAKING_WPM) -> int:
+    """Planned word budget so narration hits `duration_minutes` at `wpm`."""
+    return max(1, int(duration_minutes) * max(1, wpm))
+
+
+def segment_word_budget(total_words: int, num_segments: int) -> int:
+    """Even per-segment word target (intro/conclusion may run short)."""
+    n = max(1, int(num_segments))
+    return max(40, round(total_words / n))
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +242,45 @@ def validate_podcast_script(data: dict[str, Any]) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 
 
+def content_word_count(data: dict[str, Any]) -> int:
+    """Total spoken words across every segment's content."""
+    total = 0
+    for seg in data.get("segments") or []:
+        if isinstance(seg, dict):
+            total += len(str(seg.get("content") or "").split())
+    return total
+
+
+def make_length_validator(duration_minutes: int,
+                          min_wpm: int = MIN_CONTENT_WPM,
+                          tolerance: float = WORD_BUDGET_TOLERANCE):
+    """Factory: schema validation + a word-count floor for the target length.
+
+    `validate_podcast_script` alone cannot see the requested duration, so
+    generation binds the target through this closure. The plain callable
+    stays importable for tests and callers that only need schema checks.
+    """
+    min_words = max(1, int(duration_minutes * max(1, min_wpm)
+                           * float(tolerance)))
+
+    def validator(data: dict[str, Any]) -> tuple[bool, list[str]]:
+        ok, errors = validate_podcast_script(data)
+        if not ok:
+            return ok, errors
+        words = content_word_count(data)
+        if words < min_words:
+            errors = list(errors) + [
+                f"content has only {words} words; a ~{duration_minutes}-minute "
+                f"episode needs at least {min_words} words at "
+                f"{min_wpm} WPM — expand every segment's spoken content so "
+                "the audio actually reaches the requested length"
+            ]
+            return False, errors
+        return True, []
+
+    return validator
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -267,10 +333,16 @@ def generate_podcast_script(
         topic = journey.get("topic", "General Topic")
 
     # Auto-scale segments to match the requested duration
+    duration_minutes = max(1, int(duration_minutes))
     total_seg_seconds = duration_minutes * 60
     num_segments = max(num_segments,
                        round(total_seg_seconds / SEGMENT_SECONDS_PER_MINUTE))
     seg_dur = round(total_seg_seconds / num_segments)
+
+    # Word budget is the real length contract: TTS duration follows words,
+    # not the model-invented duration_seconds field.
+    total_words = words_for_duration(duration_minutes)
+    seg_words = segment_word_budget(total_words, num_segments)
 
     parsed = run_guardrail_loop(
         PromptRegistry(),
@@ -282,12 +354,14 @@ def generate_podcast_script(
             "num_segments": num_segments,
             "duration_minutes": duration_minutes,
             "segment_duration_seconds": seg_dur,
+            "segment_words": seg_words,
+            "total_words": total_words,
             "host_name": host_name,
             "co_host_name": co_host_name,
             "language": language,
             "level": level,
         },
-        validator=validate_podcast_script,
+        validator=make_length_validator(duration_minutes),
         model=model,
         max_tokens=max_tokens,
         max_attempts=max_attempts,
