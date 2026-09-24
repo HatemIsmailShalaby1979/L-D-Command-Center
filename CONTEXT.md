@@ -142,16 +142,22 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
 - **Generation Pipeline** — the single deep module in the Model Layer that
   owns the whole Guardrail Loop for every artifact type; engines register a
   template + validator, never hand-roll the loop.
-- **Model Policy** — the injected skills tier (2026-09-05): the JSON
-  discipline addendum appended to every system prompt, response_format
-  JSON-mode with runtime-rejection fallback, and the size-aware attempt
-  budget (<7B models get more retries, never a failure wall). Lives in
+- **Model Policy** — the injected skills tier (2026-09-05, hardened
+  2026-09-24): the JSON discipline addendum appended to every system
+  prompt, response_format JSON-mode with runtime-rejection fallback,
+  thinking suppression (`reasoning_effort=none` with the same
+  capability-mismatch fallback — reasoning models must not burn the
+  token budget on chain-of-thought), and the size-aware attempt budget
+  (<7B models get more retries, never a failure wall). Lives in
   model-layer/policy.py.
 - **Truncation Repair** — when the model hits the token limit mid-JSON
   (finish_reason == 'length'), the extractor salvages every complete
-  member and closes the structure instead of failing the attempt. The
-  "unaccepted format" wall for 7B-14B models is closed by this plus the
-  8192-token pipeline budget.
+  member and closes the structure instead of failing the attempt. If
+  salvage fails, the pipeline DOUBLES `max_tokens` for the retry
+  (up to `MAX_TOKENS_CEILING` = 32768) and feeds completeness-oriented
+  feedback — concision advice appears only once the ceiling is reached.
+  The "unaccepted format" wall for 7B-14B models is closed by repair +
+  escalation + the 8192-token starting budget.
 - **Voice Catalog** — the one table mapping (language, role) to a concrete
   TTS voice; Narration and podcast rendering resolve voices only through it.
 - **Guardrail Loop** — render prompt → call model → extract JSON → validate

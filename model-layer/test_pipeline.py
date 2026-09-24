@@ -346,3 +346,91 @@ class TestDisciplineAddendum:
                      variables={"topic": "t"}, retry_template="retry",
                      validator=always_valid, model="qwen3-14b")
         assert excinfo.value.attempt == 3
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-24 hardening: thinking suppression + budget escalation
+# ---------------------------------------------------------------------------
+
+class TestThinkingSuppression:
+    def test_request_carries_reasoning_effort_none(self, registry):
+        client = ScriptedClient(content_response(GOOD_JSON))
+        generate(registry, client, template="gen", variables={"topic": "t"},
+                 validator=always_valid)
+        assert client.requests[0].extra.get("reasoning_effort") == "none"
+
+    def test_runtime_rejection_falls_back_without_consuming_attempt(
+            self, registry):
+        # A runtime that does not support reasoning_effort answers 400;
+        # the pipeline drops the field and retries the SAME attempt.
+        client = ScriptedClient(
+            ApiError("reasoning_effort is not supported by this model",
+                     status_code=400),
+            content_response(GOOD_JSON),
+        )
+        result = generate(registry, client, template="gen",
+                          variables={"topic": "t"}, validator=always_valid)
+        assert result["topic"] == "t"
+        assert len(client.requests) == 2
+        assert "reasoning_effort" not in client.requests[1].extra
+
+    def test_unrelated_400_still_raises_even_with_thinking_on(self, registry):
+        client = ScriptedClient(
+            ApiError("temperature out of range", status_code=400),
+            content_response(GOOD_JSON),
+        )
+        with pytest.raises(ApiError):
+            generate(registry, client, template="gen",
+                     variables={"topic": "t"}, validator=always_valid)
+
+
+class TestBudgetEscalation:
+    def test_truncated_attempt_doubles_max_tokens_for_retry(self, registry):
+        # The budget's failure, not the model's verbosity: a truncated
+        # attempt escalates max_tokens for its retry.
+        client = ScriptedClient(
+            truncated_response("only prose before the cut, no JSON object"),
+            content_response(GOOD_JSON),
+        )
+        result = generate(registry, client, template="gen",
+                          variables={"topic": "t"}, retry_template="retry",
+                          validator=always_valid)
+        assert result["topic"] == "t"
+        assert client.requests[0].max_tokens == 8192
+        assert client.requests[1].max_tokens == 16384
+
+    def test_repeated_truncation_climbs_to_ceiling(self, registry):
+        client = ScriptedClient(
+            truncated_response("no json"),
+            truncated_response("no json"),
+            content_response(GOOD_JSON),
+        )
+        result = generate(registry, client, template="gen",
+                          variables={"topic": "t"}, retry_template="retry",
+                          validator=always_valid, max_attempts=3)
+        assert result["topic"] == "t"
+        assert [r.max_tokens for r in client.requests] == [8192, 16384,
+                                                           32768]
+
+    def test_escalation_never_exceeds_ceiling(self, registry):
+        from model_layer.pipeline import MAX_TOKENS_CEILING
+        client = ScriptedClient(*[truncated_response("no json")] * 3)
+        with pytest.raises(SchemaValidationError):
+            generate(registry, client, template="gen",
+                     variables={"topic": "t"}, retry_template="retry",
+                     validator=always_valid, max_attempts=3,
+                     max_tokens=MAX_TOKENS_CEILING)
+        assert all(r.max_tokens == MAX_TOKENS_CEILING
+                   for r in client.requests)
+
+    def test_ceiling_truncation_feedback_asks_for_concision(self, registry):
+        from model_layer.pipeline import MAX_TOKENS_CEILING
+        client = ScriptedClient(
+            truncated_response("no json"),
+            content_response(GOOD_JSON),
+        )
+        generate(registry, client, template="gen",
+                 variables={"topic": "t"}, retry_template="retry",
+                 validator=always_valid, max_tokens=MAX_TOKENS_CEILING)
+        assert "token limit" in registry.rendered[1][1]["errors"]
+        assert "concise" in registry.rendered[1][1]["errors"]

@@ -195,7 +195,9 @@ class LmStudioClient:
       - Prompt rendering (handled by prompts.py)
     """
 
-    def __init__(self, base_url: str = None, timeout: int = 300) -> None:
+    def __init__(self, base_url: str = None, timeout: int = 600) -> None:
+        # 600s: escalated token budgets (up to MAX_TOKENS_CEILING=32768)
+        # at ~40 tok/s local generation can exceed the old 300s cap.
         if base_url is None:
             scanned = scan_local_endpoints()
             if scanned:
