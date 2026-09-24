@@ -50,6 +50,18 @@ SAMPLE_SCRIPT = PodcastScript(
 )
 
 
+def _audio(duration_seconds: float = 600.0) -> MagicMock:
+    """Render mock. Default is long enough that DEFAULT_DURATION_MINUTES
+    (10 min → 600s target) never triggers the length stretch re-render."""
+    return MagicMock(
+        wav_bytes=b"test",
+        mp3_bytes=b"",
+        duration_seconds=duration_seconds,
+        total_segments=3,
+        backend_used="PIPER",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test ImmersionResult
 # ---------------------------------------------------------------------------
@@ -98,13 +110,7 @@ class TestGenerateImmersionPodcast:
     def test_calls_script_generation(self, mock_render, mock_generate):
         """Should call podcast script generation."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         result = generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
 
@@ -126,13 +132,7 @@ class TestGenerateImmersionPodcast:
     def test_calls_audio_rendering(self, mock_render, mock_generate):
         """Should call audio rendering with the generated script."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         result = generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
 
@@ -148,13 +148,7 @@ class TestGenerateImmersionPodcast:
     def test_passes_num_segments(self, mock_render, mock_generate):
         """Should pass num_segments to script generation."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG, num_segments=10)
 
@@ -166,13 +160,7 @@ class TestGenerateImmersionPodcast:
     def test_passes_duration_minutes(self, mock_render, mock_generate):
         """Should pass duration_minutes to script generation."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio(1800.0)  # ≥92% of 30-min target
 
         generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG, duration_minutes=30)
 
@@ -184,13 +172,7 @@ class TestGenerateImmersionPodcast:
     def test_passes_include_mp3(self, mock_render, mock_generate):
         """Should pass include_mp3 to audio rendering."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG, include_mp3=False)
 
@@ -202,13 +184,7 @@ class TestGenerateImmersionPodcast:
     def test_passes_output_path(self, mock_render, mock_generate):
         """Should pass output_path to audio rendering."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG, output_path="/tmp/output")
 
@@ -220,13 +196,7 @@ class TestGenerateImmersionPodcast:
     def test_passes_speed(self, mock_render, mock_generate):
         """Should pass speed to audio rendering."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG, speed=0.8)
 
@@ -238,18 +208,44 @@ class TestGenerateImmersionPodcast:
     def test_returns_immersion_result(self, mock_render, mock_generate):
         """Should return an ImmersionResult."""
         mock_generate.return_value = SAMPLE_SCRIPT
-        mock_render.return_value = MagicMock(
-            wav_bytes=b"test",
-            mp3_bytes=b"",
-            duration_seconds=10.0,
-            total_segments=3,
-            backend_used="PIPER",
-        )
+        mock_render.return_value = _audio()
 
         result = generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
 
         assert isinstance(result, ImmersionResult)
         assert result.script == SAMPLE_SCRIPT
+
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
+    def test_rerenders_slower_when_short(self, mock_render, mock_generate):
+        """When audio < 92% of target, re-render once at reduced speed."""
+        mock_generate.return_value = SAMPLE_SCRIPT
+        short = _audio(300.0)       # 300s < 552s (0.92 × 600s)
+        stretched = _audio(560.0)
+        calls = []
+        def fake_render(script, **kw):
+            calls.append(kw)
+            return short if len(calls) == 1 else stretched
+        mock_render.side_effect = fake_render
+
+        result = generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
+
+        assert len(calls) == 2
+        # 300/600 = 0.5; scale = max(0.70, min(0.9, 0.9*0.5)) = 0.70
+        assert calls[0]["speed"] == DEFAULT_SPEED
+        assert calls[1]["speed"] == pytest.approx(0.70)
+        assert result.duration_seconds == 560.0
+
+    @patch("engines.language_lab.immersion.generate_podcast_script")
+    @patch("engines.language_lab.immersion.render_podcast_to_audio")
+    def test_no_second_render_when_at_target(self, mock_render, mock_generate):
+        """Actual ≥92% of target → exactly one render."""
+        mock_generate.return_value = SAMPLE_SCRIPT
+        mock_render.return_value = _audio(600.0)
+
+        generate_immersion_podcast(SAMPLE_TOPIC, SAMPLE_TARGET_LANG)
+
+        assert mock_render.call_count == 1
 
     @patch("engines.language_lab.immersion.generate_podcast_script")
     def test_raises_on_empty_topic(self, mock_generate):

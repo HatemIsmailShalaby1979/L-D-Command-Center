@@ -27,7 +27,12 @@ from typing import Any, Optional
 
 from engines.audio_engine import voice_catalog
 from engines.audio_engine.podcast_audio import PodcastAudioResult, render_podcast_to_audio
-from engines.audio_engine.podcast_script import PodcastScript, generate_podcast_script
+from engines.audio_engine.podcast_script import (
+    MIN_STRETCH_SPEED,
+    SHORT_RENDER_RATIO,
+    PodcastScript,
+    generate_podcast_script,
+)
 import logging
 
 from model_layer.client import LmStudioClient
@@ -141,13 +146,31 @@ def generate_immersion_podcast(
         model=model,
     )
 
-    # Render to audio
-    audio = render_podcast_to_audio(
-        script,
-        include_mp3=include_mp3,
-        output_path=output_path,
-        speed=speed,
-    )
+    # Render to audio. Length contract (same as controller.generate_podcast):
+    # if actual < 92% of the requested minutes, re-render once slower so the
+    # file reaches the target. Duration ~ 1/speed, so scale by the shortfall.
+    def _render(render_speed: float) -> PodcastAudioResult:
+        return render_podcast_to_audio(
+            script,
+            include_mp3=include_mp3,
+            output_path=output_path,
+            speed=render_speed,
+        )
+
+    audio = _render(speed)
+    target_seconds = float(max(1, int(duration_minutes)) * 60)
+    if target_seconds > 0 and audio.duration_seconds < (
+            target_seconds * SHORT_RENDER_RATIO):
+        stretch_speed = max(
+            MIN_STRETCH_SPEED,
+            min(speed, speed * (audio.duration_seconds / target_seconds)),
+        )
+        if stretch_speed < speed:
+            logger.info(
+                "Immersion podcast short (%.0fs < %.0fs target); "
+                "re-render at %.2fx",
+                audio.duration_seconds, target_seconds, stretch_speed)
+            audio = _render(stretch_speed)
 
     return ImmersionResult(script=script, audio=audio)
 
