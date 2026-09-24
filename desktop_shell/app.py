@@ -85,14 +85,10 @@ ERROR_ACTIONS = {
     "unexpected": "Check the log for details and restart if needed.",
 }
 
-# 2026-09-05 owner directive: Journey topic generation and Audio Studio
-# are FROZEN â€” Study Studio already ships those. The app's focus is the
-# Language Lab, Career Development, and Paradise Playground. Frozen
-# sections stay visible (their artifacts still open/export) but their
-# GENERATION buttons are disabled with a pointer to Study Studio.
-FROZEN_NOTE = ("Frozen for now â€” topic + audio generation live in the "
-               "Study Studio app. This tab keeps browsing/exporting your "
-               "existing artifacts.")
+# 2026-09-05 owner directive (superseded 2026-09-24): Journey topic
+# generation and Audio Studio were FROZEN because Study Studio shipped
+# them; both are ACTIVE again — generation buttons are enabled.
+# FROZEN_NOTE kept only for any residual frozen UI copy; banners removed.
 
 
 def _open_path(path: str) -> None:
@@ -461,10 +457,12 @@ def run() -> None:  # pragma: no cover â€” needs a display
                 output.insert("end", f"\nSaved interactive HTML -> {saved.payload}")
                 _open_path(str(saved.payload))
 
-        if not last_journey and generate_btn.instate(["disabled"]):
-            return  # frozen: no generation, exports still work
+        if not topic_var.get().strip():
+            messagebox.showinfo("Learning Journey",
+                                "Enter a topic to generate.")
+            return
         run_async(work, done, busy=generate_btn,
-                  busy_text="Generatingâ€¦")
+                  busy_text="Generating…")
 
     def do_save_journey():
         """Save the current journey HTML to a user-selected location."""
@@ -499,9 +497,8 @@ def run() -> None:  # pragma: no cover â€” needs a display
             output.insert("end", f"\nExported {fmt} -> {saved.payload}")
 
     actions = ttk.Frame(journey_tab); actions.pack(fill="x", pady=4)
-    generate_btn = ttk.Button(actions, text="Generate (frozen)",
-                              command=do_generate_journey,
-                              state="disabled")
+    generate_btn = ttk.Button(actions, text="Generate",
+                              command=do_generate_journey)
     generate_btn.pack(side="left")
     ttk.Button(actions, text="Save asâ€¦",
                command=do_save_journey).pack(side="left", padx=4)
@@ -1049,10 +1046,15 @@ def run() -> None:  # pragma: no cover â€” needs a display
         if not res:
             pod_status.set("Podcast failed.")
             return show_error(res)
+        actual = res.payload["duration_seconds"]
+        target = res.payload.get("target_seconds")
+        length_note = ""
+        if target:
+            length_note = f" (target {int(target)}s)"
         pod_status.set(f"'{res.payload['title']}' ready â€” "
                        f"{res.payload['segments']} segments, "
                        f"voices: {', '.join(res.payload['speakers'])}, "
-                       f"{res.payload['duration_seconds']}s. Opening playerâ€¦")
+                       f"{actual:.0f}s{length_note}. Opening playerâ€¦")
         nonlocal last_podcast
         last_podcast = res.payload["mp3"] or res.payload["wav"]
         if last_podcast:

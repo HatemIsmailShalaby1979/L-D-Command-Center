@@ -75,36 +75,43 @@ class TestGenerateJourneyFlow:
     @pytest.fixture(autouse=True)
     def _patch_gen(self, monkeypatch):
         import engines.journey_core.generator as gen
+        # Keep the real module around; every test patches through
+        # monkeypatch so teardown restores generate_journey (otherwise
+        # engines/test_integration sees our boom and dies).
         self.gen = gen
+        self.monkeypatch = monkeypatch
         yield
+        monkeypatch.undo()
 
     def test_success_returns_journey(self, storage):
-        self.gen.generate_journey = lambda **kw: {"topic": kw["topic"], "cards": []}
+        self.monkeypatch.setattr(
+            self.gen, "generate_journey",
+            lambda **kw: {"topic": kw["topic"], "cards": []})
         result = make_controller(OkClient(), storage).generate_journey("Python basics", "beginner")
         assert result.ok and result.payload["topic"] == "Python basics"
 
     def test_input_error_maps_to_input_kind(self, storage):
         def boom(**kw): raise ValueError("Invalid level 'expert'")
-        self.gen.generate_journey = boom
+        self.monkeypatch.setattr(self.gen, "generate_journey", boom)
         result = make_controller(OkClient(), storage).generate_journey("t", "expert")
         assert result.error_kind == "input"
 
     def test_connection_error_maps_to_no_model_with_actionable_detail(self, storage):
         def boom(**kw): raise LmConnectionError("refused")
-        self.gen.generate_journey = boom
+        self.monkeypatch.setattr(self.gen, "generate_journey", boom)
         result = make_controller(OkClient(), storage).generate_journey("t", "beginner")
         assert result.error_kind == "no_model"
         assert "localhost:1234" in result.detail  # E6: actionable message
 
     def test_validation_error_maps_to_bad_output(self, storage):
         def boom(**kw): raise SchemaValidationError(["bad"], 3)
-        self.gen.generate_journey = boom
+        self.monkeypatch.setattr(self.gen, "generate_journey", boom)
         result = make_controller(OkClient(), storage).generate_journey("t", "beginner")
         assert result.error_kind == "bad_output"
 
     def test_surprise_exception_maps_to_unexpected(self, storage):
         def boom(**kw): raise KeyError("surprise")
-        self.gen.generate_journey = boom
+        self.monkeypatch.setattr(self.gen, "generate_journey", boom)
         result = make_controller(OkClient(), storage).generate_journey("t", "beginner")
         assert result.error_kind == "unexpected"
 
@@ -265,7 +272,8 @@ class TestAudioStudio:
         res = ctrl.generate_audiobook("The three little pigs", "en", 1.0)
         assert res.ok
         assert res.payload["mp3"].endswith(".mp3")
-        assert res.payload["duration_seconds"] == round(7/22050, 1)
+        assert res.payload["duration_seconds"] == round(
+            max(0, len(b"WAVDATA") - 44) / 2 / 22050, 1)
         assert captured["voice"] == "en_US-lessac-medium"
 
     def test_audiobook_empty_text_maps_to_input(self, storage):
@@ -284,19 +292,58 @@ class TestAudioStudio:
             title="Tea episode")
         audio = SimpleNamespace(wav_bytes=b"W", mp3_bytes=b"M",
                                 duration_seconds=70.0)
+        render_calls = []
+        def fake_render(s, **kw):
+            render_calls.append(kw)
+            return audio
         captured = {}
         monkeypatch.setattr(ps, "generate_script_from_topic",
                             lambda topic, **kw: captured.update(kw) or script)
-        monkeypatch.setattr(pa, "render_podcast_to_audio",
-                            lambda s, **kw: audio)
+        monkeypatch.setattr(pa, "render_podcast_to_audio", fake_render)
         ctrl = make_controller(OkClient(), storage)
-        res = ctrl.generate_podcast("tea history", language="es")
+        # 1-minute target: 70s >= 92% of 60s, so a single render is enough.
+        res = ctrl.generate_podcast("tea history", language="es",
+                                    duration_minutes=1)
         assert res.ok and res.payload["segments"] == 2
         assert res.payload["wav"].endswith(".wav")
         assert "podcast-tea-history.json" in storage.list_artifacts("podcast_scripts")
         assert captured["language"] == "Spanish"  # catalog name, not code
         assert captured["co_host_name"] == "Maya"
         assert res.payload["speakers"] == ["Alex", "Maya"]
+        assert res.payload["target_seconds"] == 60.0
+        assert res.payload["duration_seconds"] == 70.0
+        assert len(render_calls) == 1  # hit target, no stretch re-render
+
+    def test_podcast_rerenders_slower_when_short(self, storage, monkeypatch):
+        """When audio < 92% of target, re-render once at reduced speed."""
+        import engines.audio_engine.podcast_audio as pa
+        import engines.audio_engine.podcast_script as ps
+        from types import SimpleNamespace
+
+        script = SimpleNamespace(
+            segments=[SimpleNamespace(duration_seconds=30, speaker="Alex"),
+                      SimpleNamespace(duration_seconds=40, speaker="Maya")],
+            to_dict=lambda: {"title": "T"},
+            title="Tea episode")
+        short = SimpleNamespace(wav_bytes=b"W", mp3_bytes=b"M",
+                                duration_seconds=30.0)
+        stretched = SimpleNamespace(wav_bytes=b"W2", mp3_bytes=b"M2",
+                                    duration_seconds=60.0)
+        render_calls = []
+        def fake_render(s, **kw):
+            render_calls.append(kw)
+            return short if len(render_calls) == 1 else stretched
+        monkeypatch.setattr(ps, "generate_script_from_topic",
+                            lambda topic, **kw: script)
+        monkeypatch.setattr(pa, "render_podcast_to_audio", fake_render)
+        ctrl = make_controller(OkClient(), storage)
+        res = ctrl.generate_podcast("tea history", duration_minutes=1)
+        assert res.ok
+        assert len(render_calls) == 2
+        # 30/60 = 0.5, clamped to MIN_STRETCH_SPEED 0.70
+        assert render_calls[1]["speed"] == pytest.approx(0.70)
+        assert res.payload["duration_seconds"] == 60.0
+        assert res.payload["target_seconds"] == 60.0
 
     def test_missing_voice_downloads_on_demand_and_retries(self, storage,
                                                            monkeypatch):

@@ -5,7 +5,8 @@
 Shared task queue for multi-agent coordination. Status values: OPEN, CLAIMED:<agent>, DONE:<agent>, BLOCKED:<reason>.
 See `BOOT_ROOT.md` — Multi-Agent Coordination Protocol.
 
-DONE:claude-code: model-layer client for LM Studio's local API with schema-validated responses and retry-on-failure
+DONE:opencode: model-layer client for LM Studio's local API with schema-validated responses and retry-on-failure
+DONE:opencode: podcast/audiobook length compliance — word-budget prompt + make_length_validator (MIN_CONTENT_WPM×tolerance floor bound to requested minutes) + controller stretch re-render (≤0.70×, if actual <92% of target) + audiobook duration excludes 44-byte WAV header; +8 tests; suite 1058 passed / 7 deselected; also fixed TestGenerateJourneyFlow pollution of generate_journey (monkeypatch.setattr)
 DONE:claude-code: journey-core HTML card generator for a single topic+level (renderer module + generator)
 DONE:claude-code: export-engine plain-text and PDF output from a journey
 

@@ -26,9 +26,14 @@ from engines.audio_engine.podcast_script import (
     generate_podcast_script,
     generate_script_from_journey,
     generate_script_from_topic,
+    make_length_validator,
+    words_for_duration,
+    content_word_count,
     DEFAULT_HOST_NAME,
     DEFAULT_DURATION_MINUTES,
     DEFAULT_NUM_SEGMENTS,
+    MIN_CONTENT_WPM,
+    WORD_BUDGET_TOLERANCE,
 )
 
 
@@ -50,37 +55,79 @@ SAMPLE_JOURNEY = {
 }
 
 
-def _make_valid_script_dict() -> dict:
-    """Factory that returns a fresh copy of VALID_SCRIPT_DICT on each call."""
+def _pad_words(phrase: str, n: int) -> str:
+    """Repeat `phrase` until it has at least `n` whitespace-separated words."""
+    base = (phrase + " ").split()
+    if not base:
+        base = ["word"]
+    out = []
+    while len(out) < n:
+        out.extend(base)
+    return " ".join(out[:n])
+
+
+def _make_valid_script_dict(*, duration_minutes: int = 15,
+                            min_words: bool = True) -> dict:
+    """Factory that returns a fresh valid script.
+
+    With min_words=True (default), each segment's content is padded to the
+    length validator's word floor so generate_podcast_script() accepts it.
+    Conversation-contract tests that only need structure can pass
+    min_words=False.
+    """
+    # 15 min × 170 WPM × 0.90 tolerance ≈ 2295 words total.
+    # Intro/conclusion ~10%, body ~80% split across monologue+dialogue.
+    if min_words:
+        # Pad past the validator floor: intro/body rounding can leave the
+        # fixture one or two words short of the exact threshold.
+        total_target = int(words_for_duration(
+            duration_minutes,
+            wpm=int(MIN_CONTENT_WPM * WORD_BUDGET_TOLERANCE)) * 1.05) + 5
+        intro_w = max(30, total_target // 10)
+        body_w = max(40, (total_target - 2 * intro_w) // 2)
+        c_intro = _pad_words("Welcome to our episode about Python!", intro_w)
+        c_monologue = _pad_words(
+            "Python is a versatile language used for scripts and web apps.",
+            body_w)
+        c_dialogue = _pad_words(
+            "Let us discuss some examples and practical patterns together.",
+            body_w)
+        c_conclusion = _pad_words("Thanks for listening to the show!",
+                                  intro_w + 20)  # buffer for floor
+    else:
+        c_intro = "Welcome to our episode about Python!"
+        c_monologue = "Python is a versatile language..."
+        c_dialogue = "Let's discuss some examples."
+        c_conclusion = "Thanks for listening!"
     return {
         "topic": SAMPLE_TOPIC,
         "title": "Python for Beginners Episode",
         "host_name": "Alex",
         "co_host_name": "Maya",
-        "duration_minutes": 15,
+        "duration_minutes": duration_minutes,
         "segments": [
             {
                 "type": "intro",
                 "speaker": "Alex",
-                "content": "Welcome to our episode about Python!",
+                "content": c_intro,
                 "duration_seconds": 60,
             },
             {
                 "type": "monologue",
                 "speaker": "Maya",
-                "content": "Python is a versatile language...",
+                "content": c_monologue,
                 "duration_seconds": 300,
             },
             {
                 "type": "dialogue",
                 "speaker": "Alex",
-                "content": "Let's discuss some examples.",
+                "content": c_dialogue,
                 "duration_seconds": 240,
             },
             {
                 "type": "conclusion",
                 "speaker": "Maya",
-                "content": "Thanks for listening!",
+                "content": c_conclusion,
                 "duration_seconds": 60,
             },
         ],
@@ -89,7 +136,7 @@ def _make_valid_script_dict() -> dict:
 
 
 # Keep the old name for backward compat, but make it a factory call result
-VALID_SCRIPT_DICT = _make_valid_script_dict()
+VALID_SCRIPT_DICT = _make_valid_script_dict(min_words=False)
 
 SAMPLE_SCRIPT = PodcastScript(
     topic=SAMPLE_TOPIC,
@@ -248,6 +295,44 @@ class TestValidatePodcastScript:
 
 
 
+class TestLengthValidator:
+    """Word-budget contract: TTS duration follows content words."""
+
+    def test_words_for_duration(self):
+        assert words_for_duration(5) == 5 * 200
+        assert words_for_duration(1, wpm=100) == 100
+
+    def test_content_word_count(self):
+        data = _make_valid_script_dict(min_words=False)
+        assert content_word_count(data) > 0
+        assert content_word_count({"segments": []}) == 0
+
+    def test_validator_accepts_padded_script(self):
+        data = _make_valid_script_dict(duration_minutes=5)
+        # Build validator for same duration
+        v = make_length_validator(5)
+        ok, errors = v(data)
+        assert ok, errors
+
+    def test_validator_rejects_thin_script(self):
+        data = _make_valid_script_dict(min_words=False, duration_minutes=15)
+        v = make_length_validator(15)
+        ok, errors = v(data)
+        assert not ok
+        assert any("words" in e and "length" in e for e in errors)
+
+    def test_plain_schema_validator_ignores_word_budget(self):
+        """validate_podcast_script stays schema-only (tests/conversation)."""
+        data = _make_valid_script_dict(min_words=False, duration_minutes=15)
+        ok, errors = validate_podcast_script(data)
+        assert ok, errors
+
+    def test_segment_word_budget_floor(self):
+        from engines.audio_engine.podcast_script import segment_word_budget
+        assert segment_word_budget(800, 6) >= 40
+        assert segment_word_budget(10, 6) == 40  # floor
+
+
 class _ScriptedClient:
     """Fake LmStudioClient returning queued raw strings; records requests."""
     def __init__(self, *raw_outputs):
@@ -283,15 +368,22 @@ class TestGeneratePodcastScriptErrors:
 class TestGeneratePodcastScript:
     """Tests for generate_podcast_script() success cases."""
 
+    @staticmethod
+    def _client_for(duration_minutes: int = 15, *extra_outputs):
+        """Scripted client returning a length-compliant script for duration."""
+        payload = json.dumps(
+            _make_valid_script_dict(duration_minutes=duration_minutes))
+        return _ScriptedClient(payload, *extra_outputs)
+
     def test_generates_from_topic(self):
-        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        client = self._client_for()
         script = generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
         assert isinstance(script, PodcastScript)
         assert script.topic == SAMPLE_TOPIC
         assert len(client.requests) == 1
 
     def test_generates_from_journey(self):
-        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        client = self._client_for()
         script = generate_podcast_script(journey=SAMPLE_JOURNEY, client=client)
         assert isinstance(script, PodcastScript)
         # The journey's topic must appear in the user prompt
@@ -300,30 +392,38 @@ class TestGeneratePodcastScript:
         assert len(client.requests) == 1
 
     def test_passes_num_segments(self):
-        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        client = self._client_for()
         generate_podcast_script(topic=SAMPLE_TOPIC, num_segments=10, client=client)
         user_prompt = client.requests[0].messages[1]["content"]
         assert "10" in user_prompt
 
     def test_passes_duration_minutes(self):
-        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
-        generate_podcast_script(topic=SAMPLE_TOPIC, duration_minutes=30, client=client)
+        client = self._client_for(duration_minutes=30)
+        generate_podcast_script(topic=SAMPLE_TOPIC, duration_minutes=30,
+                                client=client)
         user_prompt = client.requests[0].messages[1]["content"]
         assert "30" in user_prompt
 
+    def test_prompt_carries_word_budget(self):
+        """Word budget (not duration_seconds) is what drives TTS length."""
+        client = self._client_for()
+        generate_podcast_script(topic=SAMPLE_TOPIC, duration_minutes=5,
+                                client=client)
+        user_prompt = client.requests[0].messages[1]["content"]
+        # 5 min × 200 WPM planned total must appear in the prompt.
+        assert "1000" in user_prompt  # total_words
+        assert "words" in user_prompt.lower()
+
     def test_passes_host_name(self):
-        # NOTE: podcast template does not yet interpolate {host_name}
-        # (template gap tracked by PRODUCTION_PLAN P3.1); for now assert
-        # the call happens and the variable reaches the registry.
-        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
-        script = generate_podcast_script(topic=SAMPLE_TOPIC, host_name="Custom Host", client=client)
+        client = self._client_for()
+        script = generate_podcast_script(topic=SAMPLE_TOPIC,
+                                         host_name="Custom Host", client=client)
         assert isinstance(script, PodcastScript)
         assert len(client.requests) == 1
 
     def test_prompt_carries_language_level_and_host(self):
         """P3.1: template must interpolate language, level, and host_name."""
-        from engines.audio_engine.podcast_script import DEFAULT_HOST_NAME
-        client = _ScriptedClient(json.dumps(VALID_SCRIPT_DICT))
+        client = self._client_for()
         generate_podcast_script(
             topic=SAMPLE_TOPIC, num_segments=5, host_name="Klara",
             language="German", level="advanced", client=client,
@@ -333,11 +433,20 @@ class TestGeneratePodcastScript:
         assert "advanced" in user_prompt
         assert "Klara" in user_prompt
 
+    def test_length_validator_rejects_thin_content(self):
+        """Thin content must fail the length floor and trigger a retry."""
+        thin = json.dumps(_make_valid_script_dict(min_words=False))
+        fat = json.dumps(_make_valid_script_dict())
+        client = _ScriptedClient(thin, fat)
+        script = generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
+        assert isinstance(script, PodcastScript)
+        assert len(client.requests) == 2
+
     def test_retries_on_validation_failure(self):
         """Should retry when initial validation fails."""
         client = _ScriptedClient(
             json.dumps({"invalid": "data"}),
-            json.dumps(VALID_SCRIPT_DICT),
+            json.dumps(_make_valid_script_dict()),
         )
         script = generate_podcast_script(topic=SAMPLE_TOPIC, client=client)
         assert isinstance(script, PodcastScript)
@@ -439,6 +548,18 @@ class TestConversationContract:
         system, user, _ = PromptRegistry().render("podcast_script_generate", {
             "topic": "t", "num_segments": 6, "duration_minutes": 5,
             "segment_duration_seconds": 50,
+            "segment_words": 167, "total_words": 1000,
             "host_name": "Alex", "co_host_name": "Maya",
             "language": "English", "level": "beginner"})
         assert "Maya" in user and "EXACTLY TWO hosts" in user
+
+    def test_retry_template_carries_word_budget(self):
+        from model_layer.prompts import PromptRegistry
+        _, user, _ = PromptRegistry().render("podcast_script_retry", {
+            "errors": "content too short", "topic": "t",
+            "num_segments": 6, "duration_minutes": 5,
+            "segment_duration_seconds": 50,
+            "segment_words": 167, "total_words": 1000,
+            "host_name": "Alex", "co_host_name": "Maya",
+            "language": "English", "level": "beginner"})
+        assert "1000" in user and "WORD COUNT" in user

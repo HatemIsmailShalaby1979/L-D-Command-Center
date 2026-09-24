@@ -30,6 +30,15 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
 - **Podcast Script** — ordered Segments (intro/monologue/dialogue/conclusion)
   assigned to named Speakers.
 - **Segment** — one spoken turn: speaker, content, estimated duration.
+  Audio length is determined by the segment's **word count** (TTS ~205
+  WPM measured on Piper), never by the model-invented `duration_seconds`
+  metadata alone.
+- **Length Compliance** — the podcast length contract (2026-09-24):
+  generation word-budgets content at `TARGET_SPEAKING_WPM` (200) for the
+  requested minutes, `make_length_validator` rejects scripts below
+  `MIN_CONTENT_WPM × tolerance` (170×0.9), and the controller re-renders
+  once at ≤0.70× speed if actual audio is under 92% of target. Audiobook
+  duration excludes the 44-byte WAV header.
 - **Speaker / Voice** — a script Speaker maps to exactly one TTS Voice;
   distinct Speakers get distinct Voices.
 
@@ -195,4 +204,4 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
   voice-model weights; standalone voice ships as an opt-in download.
 
 ---
-UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
+UPDATE 2026-09-24 — Podcast/audiobook length compliance: word-budget validation + prompt budget + controller stretch re-render (Segment/Length Compliance above). Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
