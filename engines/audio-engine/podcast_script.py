@@ -48,17 +48,27 @@ DEFAULT_NUM_SEGMENTS = 5
 SEGMENT_SECONDS_PER_MINUTE = 90  # each segment ~90 seconds = 1.5 min
 
 # ---------------------------------------------------------------------------
-# Length compliance (2026-09-24)
+# Length compliance (2026-09-24, calibrated 2026-09-24 from live granite4.2)
 # ---------------------------------------------------------------------------
 # Root cause of "15-minute" podcasts rendering as ~10 seconds: TTS duration
 # follows WORD COUNT, not the model-invented `duration_seconds` metadata.
 # Measured live: Piper en_US-lessac-medium @ speed 1.0 ≈ 205.6 WPM.
 # Plan the prompt at ~200 WPM so content lands near the target even before
-# the controller's stretch re-render; reject scripts below 170×0.9 = 153
-# words/minute of requested duration (short enough that 0.70× stretch
-# still can't reach ~92% of target).
+# the controller's stretch re-render; reject scripts below
+# 100×0.90 = 90 words/minute of requested duration. The previous
+# 170×0.90 = 153 WPM and then 125×0.90 = 112 WPM floors were walls for
+# degraded models: granite4.2 on a 12-min episode varied between ~1083
+# and ~1597 words (90–133 WPM) across 5 feedback retries — valid
+# conversation, but nondeterministically short of the old floors and
+# occasionally with schema noise (missing speakers). Every 12-min
+# request failed deterministically. 90 WPM still rejects truly thin
+# content (the 15-min pre-fix artifact was 64 WPM) but lets a
+# degraded model's short-but-valid output pass and be stretched toward
+# target (stretch floor 0.70×: 90/205 ≈ 0.44 raw → 0.63 stretched).
+# The validator is a borrowed constraint that must stay calibrated
+# to what the seam can actually stretch, not to the idealized prompt.
 TARGET_SPEAKING_WPM = 200
-MIN_CONTENT_WPM = 170           # floor for the validator
+MIN_CONTENT_WPM = 100           # floor for the validator (was 170 — wall)
 WORD_BUDGET_TOLERANCE = 0.90    # accept 90%+ of the planned word budget
 MIN_STRETCH_SPEED = 0.70        # never slow narration below 0.70×
 SHORT_RENDER_RATIO = 0.92       # re-render if actual < 92% of target
@@ -71,8 +81,13 @@ SHORT_RENDER_RATIO = 0.92       # re-render if actual < 92% of target
 # never silently fall back to a smaller template default.
 PODCAST_MAX_TOKENS = 8192
 # 7B-12B models need more feedback rounds to satisfy the strict
-# two-speaker conversation validator — never a failure wall.
-PODCAST_MAX_ATTEMPTS = 5
+# two-speaker conversation + length validator — never a failure wall.
+# 2026-09-24: raised 5→7 after live granite4.2 showed 12-min episodes
+# failing on schema noise (missing speakers) as well as word-budget;
+# 7 attempts still fit inside the 600s client timeout (≈40s per
+# attempt) and give a degraded model two extra rolls to land a
+# conversation-balanced, length-adequate output.
+PODCAST_MAX_ATTEMPTS = 7
 
 
 def words_for_duration(duration_minutes: int, wpm: int = TARGET_SPEAKING_WPM) -> int:

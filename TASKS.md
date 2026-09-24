@@ -8,6 +8,7 @@ See `BOOT_ROOT.md` — Multi-Agent Coordination Protocol.
 DONE:opencode: model-layer client for LM Studio's local API with schema-validated responses and retry-on-failure
 DONE:opencode: podcast/audiobook length compliance — word-budget prompt + make_length_validator (MIN_CONTENT_WPM×tolerance floor bound to requested minutes) + controller stretch re-render (≤0.70×, if actual <92% of target) + audiobook duration excludes 44-byte WAV header; +8 tests; suite 1058 passed / 7 deselected; also fixed TestGenerateJourneyFlow pollution of generate_journey (monkeypatch.setattr)
 DONE:opencode: length compliance follow-up — live e2e (granite4.2: 1m request → 143s actual, LENGTH_OK) + immersion stretch re-render matching controller (+2 immersion tests); historical short podcasts on disk are pre-fix
+DONE:opencode: wall calibration — granite4.2 12-min failed deterministically on 170×0.9=153 WPM wall (1083–1597 words); lowered to 100×0.9=90 WPM (1080 for 12 min) + 5→7 attempts + surfaced validator detail; live 12-min now 665s/720s ok=True (was 5/5 fail)
 DONE:claude-code: journey-core HTML card generator for a single topic+level (renderer module + generator)
 DONE:claude-code: export-engine plain-text and PDF output from a journey
 
