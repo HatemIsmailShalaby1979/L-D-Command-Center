@@ -133,8 +133,18 @@ def _flow(fn):
             return FlowResult(False, error_kind="no_model", detail=str(exc))
         except SchemaValidationError as exc:
             logger.warning("Model output rejected after retries: %s", exc)
-            return FlowResult(False, error_kind="bad_output",
-                              detail="The model kept producing invalid content — try rephrasing or lowering card count.")
+            # Surface the real validator reason (word-budget, speaker balance,
+            # etc.) instead of the generic "card count" story — the change
+            # trace from screen to store is only visible if the seam tells the
+            # truth (scalable-code: borrowed constraints are only useful when
+            # their errors are readable).
+            detail = "The model kept producing invalid content — try rephrasing or lowering card count."
+            if getattr(exc, "errors", None):
+                # Keep the detail glanceable but specific: first two errors + attempt count.
+                err_text = "; ".join(str(e) for e in exc.errors[:2])
+                if err_text:
+                    detail = f"After {exc.attempt} attempt(s): {err_text}"
+            return FlowResult(False, error_kind="bad_output", detail=detail)
         except (ValueError,) as exc:
             return FlowResult(False, error_kind="input", detail=str(exc))
         except Exception as exc:  # noqa: BLE001 — the shell's last line of defense

@@ -33,12 +33,17 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
   Audio length is determined by the segment's **word count** (TTS ~205
   WPM measured on Piper), never by the model-invented `duration_seconds`
   metadata alone.
-- **Length Compliance** — the podcast length contract (2026-09-24):
-  generation word-budgets content at `TARGET_SPEAKING_WPM` (200) for the
-  requested minutes, `make_length_validator` rejects scripts below
-  `MIN_CONTENT_WPM × tolerance` (170×0.9), and both the controller and the
-  immersion path re-render once at ≤0.70× speed if actual audio is under
-  92% of target. Audiobook duration excludes the 44-byte WAV header.
+- **Length Compliance** — the podcast length contract (2026-09-24,
+  calibrated live on granite4.2): generation word-budgets content at
+  `TARGET_SPEAKING_WPM` (200) for the requested minutes,
+  `make_length_validator` rejects scripts below `MIN_CONTENT_WPM ×
+  tolerance` (100×0.9 = 90 WPM — lowered from 170×0.9 after 12-min
+  podcasts plateaued at 1083–1597 words and failed every time),
+  and both the controller and the immersion path re-render once at
+  ≤0.70× speed if actual audio is under 92% of target. Audiobook
+  duration excludes the 44-byte WAV header. The validator is a
+  borrowed constraint, not a wall — degraded models still pass and
+  the UI shows actual vs target length honestly.
 - **Speaker / Voice** — a script Speaker maps to exactly one TTS Voice;
   distinct Speakers get distinct Voices.
 

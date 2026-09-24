@@ -68,12 +68,15 @@ ERROR_TITLES = {
 
 ERROR_ACTIONS = {
     "no_model": "Start LM Studio and load a model via the model picker.",
-    "bad_output": "The pipeline now repairs truncated/malformed JSON "
-                   "automatically and gives 7B-12B models extra retry "
-                   "rounds with a full 8192-token budget. If this still "
-                   "happens, pick a different 7B-12B model in the "
-                   "dropdown and run Probe model once — the verdict "
-                   "shows what it can produce.",
+    "bad_output": "The pipeline repairs truncated/malformed JSON, escalates "
+                   "the token budget up to 32768 when cut off, and gives "
+                   "7B-12B models extra retries — plus the podcast validator "
+                   "accepts 112+ words/min and the renderer stretches short "
+                   "audio to 92% of target. If this still happens, try a "
+                   "shorter Length (minutes), pick a different model in the "
+                   "dropdown and run Probe model once — the verdict shows what "
+                   "it can produce. The dialog's detail line is the real "
+                   "validator reason, not a generic card-count hint.",
     "input": "Fill in all required fields correctly.",
     "connector": "Check the service documentation or try again later.",
     "license": "Activate a Pro key to remove all limits, or wait for "
