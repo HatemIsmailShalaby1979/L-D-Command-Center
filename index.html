@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="L&D Command Center â€” the language school + career coach that runs on your own laptop. No subscription AI. No cloud. No data leaving your machine.">
+<meta name="description" content="L&D Command Center: a desktop language school and career coach that runs on your own machine. Local-first, no cloud, component of Helix Codex. Status snapshot 2026-09-23.">
 <title>L&D Command Center</title>
 <style>
 :root{--bg:#07111f;--panel:#0d1b2e;--text:#edf4ff;--muted:#a8b8ce;--accent:#76a9ff;--line:#1d3552;--green:#4caf50}
@@ -12,13 +12,13 @@
 </head>
 <body><main>
 <nav><strong>L&D Command Center</strong><a href="https://github.com/HatemIsmailShalaby1979/L-D-Command-Center">View source on GitHub</a></nav>
-<header><span class="tag">V1 ship in progress</span><h1>The language school + career coach that runs on your laptop.</h1><p class="lead">No subscription AI. No cloud. No data leaving your machine. Generate bilingual lesson packs, tailor resumes, search job boards, and prepare full application packages â€” all offline, all private, all free to start.</p><p class="status"><strong>Current status (2026-09-23):</strong> Endpoint auto-detect active (ollama 11434 / LM Studio 1234). E2E smoke complete (see E2E_SMOKE_REPORT.md). Quality guard + humor/tips active. Policy gate pass; rollback via previous archive. Small boring change shipped â€” owner this session.</p></header>
+<header><span class="tag">V1 ship in progress</span><h1>The language school and career coach that runs on your laptop.</h1><p class="lead">No subscription AI. No cloud. No data leaving your machine. Generate bilingual lesson packs, tailor resumes, search job boards, and prepare full application packages. All offline, all private, all free to start.</p><p class="status"><strong>Status, snapshot 2026-09-23:</strong> Endpoint auto-detect active (Ollama 11434 / LM Studio 1234). E2E smoke passed (<code>E2E_SMOKE_REPORT.md</code>). Quality guard and humor/tips layer active. Policy gate pass; rollback restores a previous archive from <code>dist/archive</code>. Not verified: no external audit, no client deployment, no revenue.</p></header>
 
-<section><h2>Why this is different</h2><p class="lead">Every competitor pays per-token cloud bills and fights churn with ads. L&D Command Center runs its entire brain on your own machine via LM Studio. Zero marginal cost per user. Privacy as a product feature, not a compliance checkbox. Works offline.</p>
+<section><h2>Why this is different</h2><p class="lead">Every competitor pays per-token cloud bills and fights churn with ads. L&D Command Center runs its whole generation layer on your own machine through LM Studio. Marginal cost per user is zero. Privacy is a product feature here, not a compliance checkbox. It works offline.</p>
 <table>
 <tr><th>Feature</th><th>L&D Command Center</th><th>Duolingo</th><th>Babbel</th><th>LinkedIn Premium</th></tr>
 <tr><td>AI generation</td><td>Local, offline, unlimited</td><td>Cloud, fixed</td><td>Cloud, fixed</td><td>Cloud</td></tr>
-<tr><td>Personalized lessons</td><td>Any topic, 15 languages</td><td>Fixed path</td><td>Fixed path</td><td>N/A</td></tr>
+<tr><td>Personalised lessons</td><td>Any topic; 30 curated packs (Spanish, Japanese, German)</td><td>Fixed path</td><td>Fixed path</td><td>N/A</td></tr>
 <tr><td>Resume tailoring</td><td>Full enhance + cover letter</td><td>N/A</td><td>N/A</td><td>Template fill</td></tr>
 <tr><td>Job-board search</td><td>Greenhouse, Ashby, RemoteOK, Lever</td><td>N/A</td><td>N/A</td><td>Limited</td></tr>
 <tr><td>Application packages</td><td>Resume + cover letter + listing ref</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>
@@ -27,26 +27,42 @@
 </table>
 </section>
 
-<section><h2>Pricing</h2><p class="lead">Three tiers, one executable, no accounts required to try anything. Offline-first license keys â€” no phone-home, no data sent.</p>
+<section><h2>Pricing</h2><p class="lead">Three tiers, one executable, no account required to try anything. Offline-first licence keys: no phone-home, no data sent.</p>
 <table>
-<tr><th>Tier</th><th>Price</th><th>What unlocks</th></tr>
+<tr><th>Tier</th><th>Price</th><th>What the tier includes</th></tr>
 <tr class="price-row"><td><span class="tier tier-free">Free</span></td><td>$0 forever</td><td>Full Language Lab (3 packs/week), 10 E.T. voice turns/week, 1 resume + 5 application packages, 1 exam per level, job search, Playground</td></tr>
-<tr class="price-row"><td><span class="tier tier-pro">Pro</span></td><td>$9/mo آ· $79/yr آ· $149 lifetime</td><td><strong>Unlimited E.T. voice conversations</strong> + unlimited packs + SRS history, unlimited application packages, multi-resume profiles, LinkedIn post studio, unlimited exam retakes</td></tr>
-<tr class="price-row"><td><span class="tier tier-campaign">Campaign</span></td><td>$29/month</td><td>Everything in Pro + Career Campaign mode: apply-tracking, interview prep packs per listing</td></tr>
+<tr class="price-row"><td><span class="tier tier-pro">Pro</span></td><td>$9/mo · $79/yr · $149 lifetime</td><td>Unlimited E.T. voice conversations, unlimited packs with SRS history, unlimited application packages, multi-resume profiles, LinkedIn post studio, unlimited exam retakes</td></tr>
+<tr class="price-row"><td><span class="tier tier-campaign">Campaign</span></td><td>$29/month</td><td>Everything in Pro, plus Career Campaign mode: apply-tracking and interview prep packs per listing</td></tr>
 </table>
-<p style="color:var(--muted);margin-top:16px"><strong>Lifetime launch price: $99 for the first 100 founder keys.</strong> The $149 lifetime anchors the $79/year as cheap. The $9 tier makes $29 look serious. Campaign is where career-switchers land.</p>
+<p style="color:var(--muted);margin-top:16px">Lifetime launch price: $99 for the first 100 founder keys. The $149 lifetime anchors the $79/year. Campaign is where career-switchers land.</p>
 <a class="cta" href="https://github.com/HatemIsmailShalaby1979/L-D-Command-Center">Get L&D Command Center</a>
 </section>
 
 <section><h2>Three focus pillars</h2><div class="grid">
-<article class="card"><h3>Language Lab + E.T.</h3><p>The competitive wedge: a ready-made A1â†’C1 curriculum library in 15 everyday-life domains, live voice conversations with <strong>Mr. &amp; Mrs. E.T.</strong> (mic in, accent + grammar evaluated, persona replies spoken aloud), inclusive level exams with full evaluations, bilingual packs with per-line audio, spaced repetition, deterministic graders. Nothing leaves your machine.</p></article>
-<article class="card"><h3>Career Development</h3><p>The pricing power: upload resume, import GitHub, connect LinkedIn, enhance toward a role, watch job boards, prepare full application packages, draft LinkedIn posts. The whole career campaign loop, offline.</p></article>
-<article class="card"><h3>Skills Arena</h3><p>The practice ground: import your own documents for graded reading packs, write for rubric evaluation with corrected versions, import audio for transcript + comprehension questions, mock full interviews with E.T. Media workspace + connectors stay.</p></article>
+<article class="card"><h3>Language Lab + E.T.</h3><p>The competitive wedge: a ready-made A1 to C1 curriculum library, live voice conversations with <strong>Mr. &amp; Mrs. E.T.</strong> (microphone in, accent and grammar evaluated, persona replies spoken aloud), inclusive level exams with full evaluations, bilingual packs with per-line audio, spaced repetition, and deterministic graders. Nothing leaves your machine.</p></article>
+<article class="card"><h3>Career Development</h3><p>The pricing power: upload a resume, import GitHub, connect LinkedIn, enhance toward a role, watch job boards, prepare full application packages, and draft LinkedIn posts. The whole career campaign loop, offline.</p></article>
+<article class="card"><h3>Skills Arena</h3><p>The practice ground: import your own documents for graded reading packs, write for rubric evaluation with corrected versions, import audio for transcript and comprehension questions, and run mock interviews with E.T.</p></article>
 </div></section>
 
-<section><h2>Evidence before ambition</h2><p class="lead">This project is presented with a clear boundary: what is implemented, what is experimental, and what still requires external validation. It is part of a local-first portfolio built by Hatem Ismail Shalaby.</p><a class="cta" href="https://github.com/HatemIsmailShalaby1979/L-D-Command-Center">Read the repository</a></section>
+<section><h2>Honest boundary</h2><p class="lead">L&D Command Center does not replace a corporate learning and development platform, and it is not a production deployment. The Language Lab, Career, and Playground sections are unfrozen and still changing. The E2E smoke report records one pass, not a continuous suite. There is no external audit of the endpoint handling and no certified data isolation.</p><p>This is not a production deployment claim. There is no external audit, no certified data isolation, and no signed security review. No revenue has been realised.</p></section>
 
-<footer>Hatem Ismail Shaby آ· Operations Architect آ· AI Systems Engineer آ· Founder<br><a href="https://github.com/HatemIsmailShalaby1979">Portfolio and Helix ecosystem</a></footer>
+<section><h2>The founder's story</h2>
+<p>I spent twenty-eight years in contact-centre operations and workforce management. Forecasting, scheduling, adherence, service levels, churn. The same problems appeared in every company I worked in, and none of the tools solved them properly.</p>
+<p>In April 2026 I left that career and started building full time — alone, and teaching myself to write software as I went. The first four tools were published six weeks later, in May and June 2026. Each one took a single operational problem and solved it properly. They were not impressive. They were correct.</p>
+<p>Those four tools converged into one idea: <strong>Helix Codex</strong>, an accountable AI operating organization. Not an autonomous agent. An organization with a constitution, named roles with bounded authority, evidence trails, and a human at every consequential boundary. Helix Prime is its operations core.</p>
+<p>L&D Command Center is a component of Helix Codex. It is maintained by one person, with no team and no funding. It has not been externally audited and it has not made revenue. Where it is unfinished, this document says so.</p>
+</section>
+
+<section><h2>Related work</h2><ul>
+<li><a href="https://github.com/HatemIsmailShalaby1979/Helix-Prime">Helix Prime</a>, the operations core</li>
+<li><a href="https://github.com/HatemIsmailShalaby1979/Helix-Education">Helix Education</a>, event-sourced learning engine</li>
+<li><a href="https://github.com/HatemIsmailShalaby1979/Study-Studio">Study Studio</a>, local-first AI tutor</li>
+<li><a href="https://github.com/HatemIsmailShalaby1979/Blue-Waves-">Blue Waves</a>, content studio</li>
+<li><a href="https://github.com/HatemIsmailShalaby1979/LIVE-Support-Assistant">LIVE Support Assistant</a>, explainable support prototype</li>
+<li><a href="https://github.com/HatemIsmailShalaby1979">Full portfolio</a>, the front door</li>
+</ul></section>
+
+<footer>Built by <strong>Hatem Ismail Shalaby</strong> · Operations Architect · AI Systems Engineer · Founder<br><a href="https://github.com/HatemIsmailShalaby1979">Portfolio and Helix ecosystem</a></footer>
 </main></body></html>
 
-<!-- Updated 2026-09-23: endpoint auto-detect + quality guard + smoke report E2E_SMOKE_REPORT.md -->
+<!-- Snapshot 2026-09-23: endpoint auto-detect, quality guard, E2E_SMOKE_REPORT.md -->
