@@ -22,7 +22,8 @@ openpyxl==3.1.5          # Journey XLSX export (P4.3)
 
 # --- career-engine parsing & integrations ---
 pdfplumber==0.11.10      # resume upload (PDF text extraction)
-requests==2.32.5         # GitHub/LinkedIn/YouTube HTTP integrations
+requests==2.33.0         # GitHub/LinkedIn/YouTube HTTP integrations
+                         # bumped 2026-09-25 from 2.32.5: PYSEC-2026-2275, fixed in 2.33.0
 
 # --- E.T. voice stack (Project E.T., 2026-09-06; verified live on
 #     CPython 3.10.11/Windows: model tiny downloaded+loaded 25.7s,
