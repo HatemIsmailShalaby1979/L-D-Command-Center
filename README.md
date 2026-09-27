@@ -2,7 +2,9 @@
 
 **Status: working, V1 ship in progress. Snapshot 2026-09-23.**
 
-Verified on 2026-09-23: endpoint auto-detect is active (Ollama 11434 / LM Studio 1234), the quality guard and humor/tips layer are live, the E2E smoke report passed, and the rollback path is `dist/archive`. Not verified: no external audit, no client deployment, and no revenue.
+Verified on 2026-09-23: endpoint auto-detect is active (Ollama 11434 / LM Studio 1234), the quality guard and humor/tips layer are live, the rollback path is `dist/archive`, and the E2E smoke run's import and endpoint checks passed. **The smoke run was not a clean pass overall** — see the table below and `E2E_SMOKE_REPORT.md`. Not verified: no external audit, no client deployment, and no revenue.
+
+Note on status: the repository has a published release `v1.0.0` tagged "First Public Release" (2026-08-27), which predates this snapshot. That tag is a source drop, not a finished V1 — the sections below are still changing.
 
 L&D Command Center is a component of **Helix Codex**, the accountable AI operating organization. It is a desktop learning, language, and career workstation that runs on the user's own machine.
 
@@ -14,11 +16,32 @@ L&D Command Center is a component of **Helix Codex**, the accountable AI operati
 | Quality guard + humor/tips layer | Active | `model-layer/quality_guard.py` |
 | Frozen sections | Correct | Journey and Audio |
 | Unfrozen sections | In progress | Language Lab, Career, Playground |
-| E2E smoke | Passed | `E2E_SMOKE_REPORT.md` |
+| E2E smoke | Mixed — see below | `E2E_SMOKE_REPORT.md` |
 | Policy gate | Pass | Rollback restores a previous archive from `dist/archive` |
 | Changelog | Current | `AGENT_LOG.md`, `INVESTIGATOR_NOTE_PHASE1.md` |
 
 Every row above is dated 2026-09-23 and has not been re-measured since.
+
+### What the E2E smoke run actually recorded
+
+Earlier revisions of this file summarised the run as "passed". The report does not
+say that. Read it and it records a mix:
+
+| Area | Result in the report |
+|---|---|
+| Endpoint / client auto-scan | PASS — finds 11434, base URL correct |
+| Pipeline / policy (truncation repair, retry budget) | PASS |
+| Language Lab, Career, Playground, Flagship, E.T. | PASS on module import; generation blocked by local model speed, documented as a constraint |
+| Export / PDF / DOCX | PASS on module presence |
+| Direct generation | **TIMEOUT** at 60 s — model too slow for this hardware |
+| Audio / Journey / Studio | **FROZEN BY DESIGN** — disabled at `app.py` 86–90, not broken |
+| UI / app launch | **BLOCKED** by a tkinter Tcl environment problem (`app_start.log`) |
+| GitHub / LinkedIn connection | **UNVERIFIED** — not reproducer-tested in that session |
+
+So the honest summary is: the import, endpoint, policy, and export layers check
+out; the window could not be launched in that environment, generation exceeded
+the 60-second budget on that hardware, and two integrations were not tested. The
+report is a single run, not a continuous suite.
 
 ## Quick start
 
@@ -83,7 +106,11 @@ Feature counts above are as of 2026-09-23.
 
 ## Honest boundary
 
-L&D Command Center does not replace a corporate learning and development platform, and it is not a production deployment. The Language Lab, Career, and Playground sections are unfrozen and still changing. The E2E smoke report records one pass, not a continuous suite. There is no external audit of the endpoint handling.
+L&D Command Center does not replace a corporate learning and development platform, and it is not a production deployment. The Language Lab, Career, and Playground sections are unfrozen and still changing. The E2E smoke report records one run, and that run was mixed rather than clean — see the table above. There is no external audit of the endpoint handling.
+
+The pricing tiers on `index.html` are a plan, not an offer: there is no payment
+path, no account system, and no customer. The competitor prices shown there are
+third-party figures with no source recorded in this repository.
 
 This is not a production deployment claim. There is no external audit, no certified data isolation, and no signed security review. No revenue has been realised.
 

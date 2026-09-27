@@ -12,7 +12,7 @@
 </head>
 <body><main>
 <nav><strong>L&D Command Center</strong><a href="https://github.com/HatemIsmailShalaby1979/L-D-Command-Center">View source on GitHub</a></nav>
-<header><span class="tag">V1 ship in progress</span><h1>The language school and career coach that runs on your laptop.</h1><p class="lead">No subscription AI. No cloud. No data leaving your machine. Generate bilingual lesson packs, tailor resumes, search job boards, and prepare full application packages. All offline, all private, all free to start.</p><p class="status"><strong>Status, snapshot 2026-09-23:</strong> Endpoint auto-detect active (Ollama 11434 / LM Studio 1234). E2E smoke passed (<code>E2E_SMOKE_REPORT.md</code>). Quality guard and humor/tips layer active. Policy gate pass; rollback restores a previous archive from <code>dist/archive</code>. Not verified: no external audit, no client deployment, no revenue.</p></header>
+<header><span class="tag">V1 ship in progress</span><h1>The language school and career coach that runs on your laptop.</h1><p class="lead">No subscription AI. No cloud. No data leaving your machine. Generate bilingual lesson packs, tailor resumes, search job boards, and prepare full application packages. All offline, all private, all free to start.</p><p class="status"><strong>Status, snapshot 2026-09-23:</strong> Endpoint auto-detect active (Ollama 11434 / LM Studio 1234). E2E smoke run <strong>mixed, not a clean pass</strong> &mdash; imports, endpoint scan, policy and export layers passed; the window launch was BLOCKED by a tkinter environment problem, generation timed out at 60&nbsp;s on this hardware, and two integrations were untested (<code>E2E_SMOKE_REPORT.md</code>). Quality guard and humor/tips layer active. Policy gate pass; rollback restores a previous archive from <code>dist/archive</code>. Not verified: no external audit, no client deployment, no revenue.</p></header>
 
 <section><h2>Why this is different</h2><p class="lead">Every competitor pays per-token cloud bills and fights churn with ads. L&D Command Center runs its whole generation layer on your own machine through LM Studio. Marginal cost per user is zero. Privacy is a product feature here, not a compliance checkbox. It works offline.</p>
 <table>
@@ -28,6 +28,7 @@
 </section>
 
 <section><h2>Pricing</h2><p class="lead">Three tiers, one executable, no account required to try anything. Offline-first licence keys: no phone-home, no data sent.</p>
+<p style="color:var(--muted);border-left:3px solid var(--accent);padding:10px 14px;background:rgba(118,169,255,.06)"><strong>These tiers are a plan, not an offer.</strong> There is no payment path, no account system, and no customer yet. The competitor prices in the table above are third-party figures quoted without a source or date in this repository; treat them as indicative only. No revenue has been realised.</p>
 <table>
 <tr><th>Tier</th><th>Price</th><th>What the tier includes</th></tr>
 <tr class="price-row"><td><span class="tier tier-free">Free</span></td><td>$0 forever</td><td>Full Language Lab (3 packs/week), 10 E.T. voice turns/week, 1 resume + 5 application packages, 1 exam per level, job search, Playground</td></tr>
@@ -44,7 +45,7 @@
 <article class="card"><h3>Skills Arena</h3><p>The practice ground: import your own documents for graded reading packs, write for rubric evaluation with corrected versions, import audio for transcript and comprehension questions, and run mock interviews with E.T.</p></article>
 </div></section>
 
-<section><h2>Honest boundary</h2><p class="lead">L&D Command Center does not replace a corporate learning and development platform, and it is not a production deployment. The Language Lab, Career, and Playground sections are unfrozen and still changing. The E2E smoke report records one pass, not a continuous suite. There is no external audit of the endpoint handling and no certified data isolation.</p><p>This is not a production deployment claim. There is no external audit, no certified data isolation, and no signed security review. No revenue has been realised.</p></section>
+<section><h2>Honest boundary</h2><p class="lead">L&D Command Center does not replace a corporate learning and development platform, and it is not a production deployment. The Language Lab, Career, and Playground sections are unfrozen and still changing. The E2E smoke report records one run, and that run was mixed rather than clean. There is no external audit of the endpoint handling and no certified data isolation.</p><p>This is not a production deployment claim. There is no external audit, no certified data isolation, and no signed security review. No revenue has been realised.</p></section>
 
 
 
