@@ -1,14 +1,53 @@
+<div align="center">
+
 # L&D Command Center
 
-**Status: working, V1 ship in progress. Snapshot 2026-09-23.**
+**A desktop learning, language, and career workstation that runs on your machine.**
 
-Verified on 2026-09-23: endpoint auto-detect is active (Ollama 11434 / LM Studio 1234), the quality guard and humor/tips layer are live, the rollback path is `dist/archive`, and the E2E smoke run's import and endpoint checks passed. **The smoke run was not a clean pass overall** — see the table below and `E2E_SMOKE_REPORT.md`. Not verified: no external audit, no client deployment, and no revenue.
+![Status](https://img.shields.io/badge/status-V1%20ship%20in%20progress-yellow)
+![Licence](https://img.shields.io/badge/licence-MIT-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
 
-Note on status: the repository has a published release `v1.0.0` tagged "First Public Release" (2026-08-27), which predates this snapshot. That tag is a source drop, not a finished V1 — the sections below are still changing.
+</div>
 
-L&D Command Center is a component of **Helix Codex**, the accountable AI operating organization. It is a desktop learning, language, and career workstation that runs on the user's own machine.
+## One-line identity
 
-## Release status, snapshot 2026-09-23
+L&D Command Center is a desktop learning, language, and career workstation that runs
+on the user's own machine — a tool for building skills, not a platform that manages
+people.
+
+> [!NOTE]
+> **Operating principle.** A workstation should do one thing per screen and never pretend to be a platform. The parts that are frozen are frozen for a reason; the parts still moving say so. A language-lab drill and a resume builder are different jobs and are built as different, named sections rather than one dashboard pretending to be a system of record.
+
+## What it does
+
+- **Language Lab**: 30 curated lesson packs (Spanish, Japanese, German) with audio, flashcards, and grammar drills.
+- **E.T. Conversation**: voice chat with persona-driven tutors, microphone input and accent feedback.
+- **Level Exams**: A1 to C1 final tests with recommendations.
+- **Career Development**: resume builder, GitHub and LinkedIn import, job search, cover letters, interview prep.
+- **Skills Arena**: reading, writing, listening practice built from the user's own files.
+- **Placement Quiz**: 12-item adaptive placement test (A1 to B1).
+
+Feature counts above are as of 2026-09-23.
+
+## How it fits Helix Codex
+
+L&D Command Center is a **component** — a desktop learning, language, and career
+workstation. It is an **independent repository with no shared codebase** with Helix
+Prime. No data pipeline is wired to the core today. It is portfolio-adjacent and
+technically independent.
+
+## Architecture
+
+- `desktop_shell/app.py` — the PyWebView shell entry point.
+- `model-layer/quality_guard.py` — the quality guard and humor/tips layer.
+- Section modules — Language Lab, Career, Playground, Audio, Journey, each with its own frozen/unfrozen state.
+- `dist/archive` — the rollback target for the policy gate.
+- Endpoint auto-detect for Ollama (`11434`) / LM Studio (`1234`).
+
+## Production status & test coverage
+
+Stated plainly and dated. Last measured 2026-09-23; not re-measured since.
 
 | Item | State | Evidence |
 |---|---|---|
@@ -16,103 +55,30 @@ L&D Command Center is a component of **Helix Codex**, the accountable AI operati
 | Quality guard + humor/tips layer | Active | `model-layer/quality_guard.py` |
 | Frozen sections | Correct | Journey and Audio |
 | Unfrozen sections | In progress | Language Lab, Career, Playground |
-| E2E smoke | Mixed — see below | `E2E_SMOKE_REPORT.md` |
+| E2E smoke | **Mixed** — see below | `E2E_SMOKE_REPORT.md` |
 | Policy gate | Pass | Rollback restores a previous archive from `dist/archive` |
-| Changelog | Current | `AGENT_LOG.md`, `INVESTIGATOR_NOTE_PHASE1.md` |
 
-Every row above is dated 2026-09-23 and has not been re-measured since.
+> [!WARNING]
+> What the E2E smoke run actually recorded (one run, not a continuous suite): endpoint and client auto-scan, pipeline policy, and export layers PASS. The UI window launch was **BLOCKED** by a tkinter Tcl environment problem. Direct generation **TIMEOUT** at 60 s on that hardware. Audio/Journey/Studio were **FROZEN BY DESIGN**, not broken. GitHub/LinkedIn connection was **UNVERIFIED** in that session. No external audit, no certified data isolation, no signed security review, no revenue. The pricing tiers on `index.html` are a plan, not an offer: no payment path, no account system, no customer.
 
-### What the E2E smoke run actually recorded
+## Run it
 
-Earlier revisions of this file summarised the run as "passed". The report does not
-say that. Read it and it records a mix:
-
-| Area | Result in the report |
-|---|---|
-| Endpoint / client auto-scan | PASS — finds 11434, base URL correct |
-| Pipeline / policy (truncation repair, retry budget) | PASS |
-| Language Lab, Career, Playground, Flagship, E.T. | PASS on module import; generation blocked by local model speed, documented as a constraint |
-| Export / PDF / DOCX | PASS on module presence |
-| Direct generation | **TIMEOUT** at 60 s — model too slow for this hardware |
-| Audio / Journey / Studio | **FROZEN BY DESIGN** — disabled at `app.py` 86–90, not broken |
-| UI / app launch | **BLOCKED** by a tkinter Tcl environment problem (`app_start.log`) |
-| GitHub / LinkedIn connection | **UNVERIFIED** — not reproducer-tested in that session |
-
-So the honest summary is: the import, endpoint, policy, and export layers check
-out; the window could not be launched in that environment, generation exceeded
-the 60-second budget on that hardware, and two integrations were not tested. The
-report is a single run, not a continuous suite.
-
-## Quick start
-
-### Prerequisites
-
-- Python 3.10+
-- LM Studio running at `http://localhost:1234/v1` with a compatible model loaded (for example `google/gemma-4-12b-qat`)
-- Windows 10/11
-
-### Running the app
-
-**Do not run the app from PowerShell.** A PowerShell limitation injects null bytes into Python command arguments. Use one of the methods below instead.
-
-#### Method 1: the launcher (recommended)
+Do not run from PowerShell (a PowerShell limitation injects null bytes into Python
+arguments). Use the launcher or cmd.exe.
 
 ```cmd
 RUN_LDCC.bat
 ```
 
-Double-click `RUN_LDCC.bat` in Windows Explorer.
-
-#### Method 2: Command Prompt (cmd.exe)
+or from cmd.exe:
 
 ```cmd
 cd /d E:\LD_Command_Center
 python -c "import sys; sys.path.insert(0, r'E:\LD_Command_Center'); import desktop_shell.app as app; app.run()"
 ```
 
-#### Method 3: the PyInstaller executable
-
-```cmd
-dist\ldcc.exe
-```
-
-#### Method 4: direct Python execution (from cmd.exe, not PowerShell)
-
-```cmd
-cd /d E:\LD_Command_Center
-python -c "import sys; sys.path.insert(0, r'E:\LD_Command_Center'); import desktop_shell.app as app; app.run()"
-```
-
-### Launch notes
-
-Use `RUN_LDCC.bat` for interpreter selection. The batch probes `.venv` and Python 3.12/3.13/3.11/3.10, and requires `tkinter` and `httpx` to boot cleanly.
-
-## Features
-
-- **Language Lab**: 30 curated lesson packs (Spanish, Japanese, German) with audio, flashcards, and grammar drills
-- **E.T. Conversation**: voice chat with Mr. & Mrs. E.T., persona-driven, with microphone input and accent feedback
-- **Level Exams**: A1 to C1 final tests with recommendations
-- **Career Development**: resume builder, GitHub and LinkedIn import, job search, cover letters, and interview prep
-- **Skills Arena**: reading, writing, and listening practice built from the user's own files
-- **Placement Quiz**: 12-item adaptive placement test (A1 to B1)
-
-Feature counts above are as of 2026-09-23.
-
-## Requirements
-
-- LM Studio at `http://localhost:1234/v1` with a model loaded (for example `google/gemma-4-12b-qat`)
-- Python 3.10+ with the packages listed in `requirements.txt`
-- Windows 10/11
-
-## Honest boundary
-
-L&D Command Center does not replace a corporate learning and development platform, and it is not a production deployment. The Language Lab, Career, and Playground sections are unfrozen and still changing. The E2E smoke report records one run, and that run was mixed rather than clean — see the table above. There is no external audit of the endpoint handling.
-
-The pricing tiers on `index.html` are a plan, not an offer: there is no payment
-path, no account system, and no customer. The competitor prices shown there are
-third-party figures with no source recorded in this repository.
-
-This is not a production deployment claim. There is no external audit, no certified data isolation, and no signed security review. No revenue has been realised.
+Requires Python 3.10+, LM Studio at `http://localhost:1234/v1` with a model loaded
+(e.g. `google/gemma-4-12b-qat`), and `tkinter` + `httpx` to boot cleanly.
 
 ## Related work
 
