@@ -1,14 +1,33 @@
-# gitleaks configuration — path-scoped allowlist.
+# gitleaks configuration — two narrow allowlists.
 #
-# Reason: `engines/career-engine/integrations/test_youtube_summary.py` is a unit
-# test for the YouTube secrets loader. Its fixtures use obviously fake
-# placeholder strings (for example "FAKE_API_KEY_FOR_TESTS_000000") so the
-# loader can be exercised without a real credential. The generic-api-key rule
-# matches those fixtures, which are not secrets.
-#
-# The allowlist is limited to this one test file: any real credential anywhere
-# else in the repository is still reported.
+# [extend] useDefault is required: a supplied config otherwise REPLACES the
+# built-in rule set, so no rules would run at all (a silent false negative).
+[extend]
+useDefault = true
 
+# 1) The unit-test placeholder.
+# Reason: `engines/career-engine/integrations/test_youtube_summary.py` is a unit
+# test for the YouTube secrets loader; it uses the literal string below as an
+# obviously fake stand-in for a real API key. It is matched by the
+# generic-api-key rule but is not a credential.
+#
+# Deliberately NO `paths` field: gitleaks ORs the fields of an allowlist entry,
+# so adding `paths` would allowlist every finding in that file — exactly what
+# this config must not do. Matching the exact placeholder string keeps a new,
+# real-looking key in that same file reportable (proven by a probe scan).
 [[allowlists]]
-description = "Fake API-key fixtures in the YouTube secrets-loader unit test"
-paths = ['''engines/career-engine/integrations/test_youtube_summary\.py$''']
+description = "Fake API-key placeholder used by the YouTube secrets-loader test"
+regexes = ['''FAKE_API_KEY_FOR_TESTS_000000''']
+
+# 2) Historical fixture blobs.
+# Reason: these three commits are the ones that first introduced the old fake
+# fixture strings into that file. Allowlisting the commits keeps the
+# pre-sanitisation history from failing the scan. No `paths` field for the same
+# OR-semantics reason; the only findings these commits carry are the fixtures.
+[[allowlists]]
+description = "Historical fake fixtures in the YouTube secrets-loader test"
+commits = [
+  "09681c358e2d1098219afde1f3ccc1198d7595cd",
+  "bc2ec6c6198f3ef09941a3dfaf076829dc72d73c",
+  "49af093ad8a51022334ebfd8f3199640a8e226c1",
+]

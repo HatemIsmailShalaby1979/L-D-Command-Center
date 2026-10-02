@@ -60,3 +60,6 @@ models/tts/
 
 # personal user data, never commit
 storage/data/
+
+# Downloaded model weights (never commit)
+models/

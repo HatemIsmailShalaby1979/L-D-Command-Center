@@ -226,7 +226,7 @@ class TestYouTubeSearchClient:
 
         # Verify no log call contains the key
         for call in mock_logger.method_calls:
-            assert "AIzaSySecretKey123" not in str(call)
+            assert "FAKE_API_KEY_FOR_TESTS_000000" not in str(call)
 
 
 # ---------------------------------------------------------------------------
@@ -416,7 +416,7 @@ def test_manual_verification():
 
     To verify manually:
     1. Add your YouTube API key to <workspace>/secrets/youtube.secrets:
-       YOUTUBE_API_KEY=AIzaSyYourRealKeyHere
+       YOUTUBE_API_KEY=FAKE_API_KEY_FOR_TESTS_000000
 
     2. Test video search and summarization:
        python -c "
