@@ -1,0 +1,14 @@
+# gitleaks configuration — path-scoped allowlist.
+#
+# Reason: `engines/career-engine/integrations/test_youtube_summary.py` is a unit
+# test for the YouTube secrets loader. Its fixtures use obviously fake
+# placeholder strings (for example "FAKE_API_KEY_FOR_TESTS_000000") so the
+# loader can be exercised without a real credential. The generic-api-key rule
+# matches those fixtures, which are not secrets.
+#
+# The allowlist is limited to this one test file: any real credential anywhere
+# else in the repository is still reported.
+
+[[allowlists]]
+description = "Fake API-key fixtures in the YouTube secrets-loader unit test"
+paths = ['''engines/career-engine/integrations/test_youtube_summary\.py$''']

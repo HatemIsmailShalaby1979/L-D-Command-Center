@@ -122,11 +122,11 @@ class TestApiKeyLoading:
         Contract: _load_api_key should read key from secrets file.
         """
         secrets_file = tmp_path / "youtube.secrets"
-        secrets_file.write_text("YOUTUBE_API_KEY=AIzaSyTestKey123\n", encoding="utf-8")
+        secrets_file.write_text("YOUTUBE_API_KEY=FAKE_API_KEY_FOR_TESTS_000000\n", encoding="utf-8")
 
         key = _load_api_key(secrets_file)
 
-        assert key == "AIzaSyTestKey123"
+        assert key == "FAKE_API_KEY_FOR_TESTS_000000"
 
     def test_returns_none_when_file_missing(self, tmp_path: Path):
         """
@@ -219,7 +219,7 @@ class TestYouTubeSearchClient:
         Contract: API key should never appear in logs or error messages.
         """
         with patch("engines.career_engine.integrations.youtube_summary.logger") as mock_logger:
-            client = YouTubeSearchClient(api_key="AIzaSySecretKey123")
+            client = YouTubeSearchClient(api_key="FAKE_API_KEY_FOR_TESTS_000000")
             # Simulate some logging
             mock_logger.info("Test message")
             mock_logger.warning("Test warning")
