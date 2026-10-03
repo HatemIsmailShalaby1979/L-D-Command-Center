@@ -280,3 +280,26 @@ probe-once, timeout forwarding, and the empty case.
 
 This also explains why the smoke gate was marginal: the artifact was carrying a
 ~19 s sequential socket stall on every cold start.
+
+### Frozen artifact re-measured after the fix
+
+Full pipeline re-run, exit code 0:
+
+    [1/6] 1122 passed, 7 deselected in 19.76s
+    [2/6] POLICY PASS
+    [3/6] archived previous dist\ldcc.exe -> dist\archive\ldcc-20261003-115827.exe
+    [4/6] PyInstaller build (windowed)     -> dist\ldcc.exe
+    [5/6] MANIFEST OK
+    [6/6] VERIFY PASS: window 'L&D Command Center' rendered in ~30s (pid 16044)
+    RELEASE OK: dist\ldcc.exe built, verified, manifest at dist\ldcc-build.json
+
+    ldcc.exe bf41871d 139344533B built 2026-10-03T08:59:49+00:00 3.10.11
+      pyinstaller=6.22.2 upstream=e07f6528381dc00b35b2454538a502cfe88725d0
+
+| Metric | Before the startup fix | After |
+|---|---|---|
+| App start to `mainloop()` (source) | 21.5 s | 4.1 s |
+| Frozen artifact to a rendered window | ~48-69 s | **~30 s** |
+| Offline suite wall time | 22.0 s | 11.8 s |
+
+Headroom against the 240 s gate budget is now ~8x, against ~1.7x before.

@@ -165,8 +165,23 @@ unchanged. Measured:
 
 `TestScanLocalEndpoints` (8 tests) pins the surviving contract: path
 precedence, port order, probe-once, timeout forwarding, and empty-when-nothing-
-answers. The frozen artifact should now clear the smoke gate with far more
-headroom than the 240 s budget it was given.
+answers. The frozen artifact now clears the smoke gate with far more headroom:
+
+| Metric | Before | After |
+|---|---|---|
+| App start to `mainloop()` (source) | 21.5 s | **4.1 s** |
+| Frozen `ldcc.exe` to a rendered window | ~48–69 s | **~30 s** |
+| Offline suite wall time | 22.0 s | **11.8 s** |
+
+Final pipeline run after the fix (exit code 0): `1122 passed, 7 deselected in
+19.76s` → `POLICY PASS` → archived → PyInstaller → `MANIFEST OK` →
+`VERIFY PASS: window rendered in ~30s (pid 16044)` → **RELEASE OK**.
+
+    ldcc.exe bf41871d 139344533B built 2026-10-03T08:59:49+00:00 3.10.11
+      pyinstaller=6.22.2 upstream=e07f6528381dc00b35b2454538a502cfe88725d0
+
+Rollback targets in `dist/archive/`: `ldcc-20261003-115827.exe` (the 240 s-budget
+build) and `ldcc-20261003-114321.exe` (the original 120 s-budget build).
 
 ## Next
 
