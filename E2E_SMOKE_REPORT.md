@@ -89,6 +89,11 @@ hidden.
 
 ## ARTIFACT BUILD + SMOKE GATE - 2026-10-03 (release-2026-10-03, a1c2bf5)
 
+> **SUPERSEDED IN PART - see the CORRECTION section at the end of this file.**
+> The gate-6 FAIL recorded below did not persist, and the root cause it blames
+> (a non-BMP emoji hanging Tcl) is retracted. All six gates pass; the real
+> cause was a smoke-gate timeout budget too tight for a 48-69s cold start.
+
 `desktop_shell/build_release.bat` run against this commit
 (Python 3.10.11 + PyInstaller 6.22.2, the pinned baseline).
 
