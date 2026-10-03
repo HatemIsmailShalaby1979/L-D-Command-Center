@@ -91,6 +91,21 @@ PyInstaller 6.22.2, the pinned baseline):
 **The artifact is verified**: `VERIFY PASS: window 'L&D Command Center' rendered`
 on repeated runs against the same binary.
 
+Final end-to-end run of `build_release.bat` after the budget fix (exit code 0):
+
+    [1/6] 1114 passed, 7 deselected in 22.01s
+    [2/6] POLICY PASS
+    [3/6] archived previous dist\ldcc.exe -> dist\archive\ldcc-20261003-114321.exe
+    [4/6] PyInstaller build (windowed)     -> dist\ldcc.exe
+    [5/6] MANIFEST OK
+    [6/6] VERIFY PASS: window rendered in ~69s (pid 18560)
+    RELEASE OK: dist\ldcc.exe built, verified, manifest at dist\ldcc-build.json
+
+    ldcc.exe 5b6e10bd 139344848B built 2026-10-03T08:46:09+00:00 3.10.11
+      pyinstaller=6.22.2 upstream=15cf1ab36c2730a0ec2785911df5872659189cd5
+
+Rollback target: `dist/archive/ldcc-20261003-114321.exe` (the pre-fix build).
+
 ### Correction — an earlier claim in this note was wrong
 
 The first gate-6 attempt failed with "no window within 120 s", and this note

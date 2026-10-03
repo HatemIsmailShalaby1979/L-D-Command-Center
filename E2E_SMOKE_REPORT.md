@@ -221,3 +221,22 @@ note, this report, the sprint prompt and a commit on the strength of a single
 non-repeating result. The cheap check that would have caught it - run the
 minimal case three times, and run it on the unmodified branch - takes under a
 minute. Do that before naming a cause.
+
+### Final end-to-end run after the fix
+
+`build_release.bat` re-run in full, exit code 0:
+
+    [1/6] 1114 passed, 7 deselected in 22.01s
+    [2/6] POLICY PASS
+    [3/6] archived previous dist\ldcc.exe -> dist\archive\ldcc-20261003-114321.exe
+    [4/6] PyInstaller build (windowed)     -> dist\ldcc.exe
+    [5/6] MANIFEST OK
+    [6/6] VERIFY PASS: window 'L&D Command Center' rendered in ~69s (pid 18560)
+    RELEASE OK: dist\ldcc.exe built, verified, manifest at dist\ldcc-build.json
+
+    ldcc.exe 5b6e10bd 139344848B built 2026-10-03T08:46:09+00:00 3.10.11
+      pyinstaller=6.22.2 upstream=15cf1ab36c2730a0ec2785911df5872659189cd5
+
+Cold-start budget in this run: 240s (the new default). Observed render time:
+~69s. Previous build preserved as the rollback target at
+`dist/archive/ldcc-20261003-114321.exe`.
