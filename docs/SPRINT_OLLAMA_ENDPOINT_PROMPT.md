@@ -249,6 +249,37 @@ unknowns in the same breath as successes.
   if it fails.
 - `dist/archive/` is the rollback target (`rollback_release.bat`).
 
+### Known blocker at gate 6 (found 2026-10-03, pre-existing)
+
+Gates 1–5 pass; gate 6 (windowed-launch smoke) fails because the app hangs
+before rendering. Root cause is already isolated — do not re-derive it:
+
+- The hang is `desktop_shell/et_ui.py:37`, `ttk.LabelFrame(parent,
+  text="👽 Talk with E.T. — live voice conversation practice")`, reached from
+  `app.py` in `run()`. The process shows as *Not Responding*, window title `N/A`.
+- Minimal reproduction: `ttk.LabelFrame(root, text="plain ascii label")` is
+  fine; `ttk.LabelFrame(root, text="\U0001F47D …")` hangs Tcl. On this machine's
+  Tcl-Tk 8.6, a **non-BMP (astral-plane) character in a widget `text=` option
+  hangs the interpreter**.
+- It reproduces on `main` without this sprint's changes, so it is not a
+  regression. 66 non-BMP characters exist across `desktop_shell/*.py` and
+  `engines/language-lab/et_persona.py`; `et_ui.py:37` is merely the first one
+  reached.
+
+**Your task here is to confirm the diagnosis and then escalate, not to invent a
+fix.** Confirm by running the two-line minimal reproduction above. Then report
+to the owner with both candidate fixes and their trade-offs: (a) strip or
+transliterate astral-plane characters from widget `text=` options — small and
+contained, but changes visible UI copy; (b) move the build to a Tcl/Tk version
+that handles surrogate pairs (8.7/9) — no copy change, but a toolchain change
+that touches the packaging baseline. Do not pick one silently; `CONSTITUTION.md`
+§3 requires the owner to choose.
+
+Note also: if you run the pipeline under an agent sandbox, stage [1/6] can
+false-fail with the suite fully green because the sandbox's delete guard trips
+on pytest's `tmp_path` garbage collection. Verify the suite's real exit code
+(`python -m pytest -q; echo $?`) before believing a gate-1 failure.
+
 ## Phase 6 — Report
 
 Report in the repository's register: findings first, then mechanism, then

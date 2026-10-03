@@ -83,3 +83,68 @@ machine), so the LM Studio path was verified by tests only, never live.
 Additive change ships: Ollama is detected, listed, selectable, and probeable;
 LM Studio is untouched. Rollback is `git revert` of the release commit. Nothing
 hidden.
+
+
+---
+
+## ARTIFACT BUILD + SMOKE GATE - 2026-10-03 (release-2026-10-03, a1c2bf5)
+
+`desktop_shell/build_release.bat` run against this commit
+(Python 3.10.11 + PyInstaller 6.22.2, the pinned baseline).
+
+| Stage | Result |
+|---|---|
+| [1/6] Offline suite gate | PASS - 1114 passed, 7 deselected in 20.64s |
+| [2/6] Secrets/artifacts policy gate | PASS - POLICY PASS |
+| [3/6] Archive previous artifact | No previous build to archive |
+| [4/6] PyInstaller build (windowed) | PASS - dist/ldcc.exe, 139,344,905 bytes |
+| [5/6] Write build manifest | PASS - sha256=0477dd86, upstream=a1c2bf5 |
+| [6/6] Windowed-launch smoke gate | **FAIL** - no window within 120s |
+
+**Verdict: artifact built and traceable, but NOT a verified release.** The
+pipeline's own contract stops the release when the smoke gate fails.
+
+### Root cause of the smoke-gate failure - isolated, and PRE-EXISTING
+
+The app hangs during widget construction, before the main window renders.
+`faulthandler.dump_traceback_later` puts the main thread here:
+
+    File "tkinter\__init__.py", line 2601 in __init__
+    File "tkinter\ttk.py", line 552 in __init__
+    File "tkinter\ttk.py", line 773 in __init__
+    File "E://LD_clean//desktop_shell//et_ui.py", line 37 in build_et_panel
+    File "desktop_shell/app.py", line 744 in run
+
+`tasklist /V` shows the process as **Not Responding** with Window Title `N/A`.
+
+**Reproduced identically on `main` (2386ca5) with none of this sprint's changes
+applied** - same file, same line (`app.py` line 676 on main). The defect
+pre-exists this sprint.
+
+**Minimal reproduction** (Python 3.10.11 / Tcl-Tk 8.6, this machine):
+
+    ttk.LabelFrame(root, text="plain ascii label")            -> OK
+    ttk.LabelFrame(root, text="\U0001F47D Talk with E.T.")     -> HANGS
+
+The trigger is a non-BMP (astral-plane) character in a widget `text=` option.
+
+**Blast radius:** 66 non-BMP characters across `desktop_shell/*.py` and
+`engines/language-lab/et_persona.py`. `et_ui.py:37` is the first one reached at
+startup; `exams_ui.py:33`, `lab_ui.py:32`, `skills_ui.py:33/73/173/212` and
+`et_ui.py:171/179` feed the same kind of character to `text=`.
+
+**Not fixed in this sprint** - outside the additive scope, touches the
+E.T. / Language Lab UI owned by a different concern, and CONSTITUTION.md
+section 3 says ambiguity escalates rather than gets silently guessed. Candidate
+fixes for the owner: (a) strip/transliterate astral characters from widget
+`text=` options, or (b) move to a Tcl/Tk build that handles surrogate pairs
+(8.7/9).
+
+### Note on this sandbox
+
+The first pipeline run false-failed at stage [1/6] with the offline suite at
+100% green: the WorkBuddy sandbox's safe-delete guard intercepted pytest's
+tmp_path garbage collection and returned non-zero, which the batch `if
+errorlevel 1` read as a test failure. Re-running outside the sandbox gave
+`1114 passed, 7 deselected`. This is an artifact of the agent sandbox only - it
+does not affect a normal shell or CI.
