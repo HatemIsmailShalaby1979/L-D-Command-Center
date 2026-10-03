@@ -296,8 +296,16 @@ recorded in `E2E_SMOKE_REPORT.md`.
 
 Note also: if you run the pipeline under an agent sandbox, stage [1/6] can
 false-fail with the suite fully green because the sandbox's delete guard trips
-on pytest's `tmp_path` garbage collection. Verify the suite's real exit code
-(`python -m pytest -q; echo $?`) before believing a gate-1 failure.
+on pytest's `tmp_path` garbage collection and its non-zero exit is read by the
+batch script's `if errorlevel 1`. The documented fix is to raise the guard's
+threshold — verified in-sandbox on 2026-10-03:
+
+    CODEBUDDY_SAFE_DELETE_BULK_THRESHOLD=200000 python -m pytest -q
+    # -> 1122 passed, 7 deselected in 15.13s, exit code 0, summary line intact
+
+Confirm the suite's real exit code (`python -m pytest -q; echo $?`) before
+believing a gate-1 failure. This is an agent-sandbox artifact only; a normal
+shell and CI are unaffected.
 
 ## Phase 6 — Report
 
