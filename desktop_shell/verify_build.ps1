@@ -17,12 +17,14 @@
 #   2  INVALID - usage / exe missing
 #
 # Escape hatches (documented in docs/DEPLOYMENT_PIPELINE.md):
-#   LDCC_SKIP_SMOKE=1  -> PASS without launching (headless / bastion hosts)
+#   LDCC_SKIP_SMOKE=1        -> PASS without launching (headless / bastion hosts)
+#   LDCC_SMOKE_TIMEOUT=<sec> -> override the window wait (default 240s; see
+#                               the budget rationale below)
 # ---------------------------------------------------------------------------
 
 param(
     [string]$ExePath,
-    [int]$TimeoutSec = 120,
+    [int]$TimeoutSec = 240,
     [string]$WindowTitle = "L&D Command Center"
 )
 
@@ -31,6 +33,23 @@ $ErrorActionPreference = "Stop"
 if ($null -ne $env:LDCC_SKIP_SMOKE) {
     Write-Host "VERIFY SKIPPED (LDCC_SKIP_SMOKE set by caller)"
     exit 0
+}
+
+# Budget rationale (measured 2026-10-03, CPython 3.10.11 + PyInstaller 6.22.2):
+# the frozen onefile artifact cold-boots to a rendered window in ~69 s on the
+# owner's machine - Tcl init, _MEI extraction, imports, then a UI build that
+# alone measures 20.2 s (3 runs from source, identical). The previous 120 s
+# default left under 2x headroom, and a contended machine (concurrent builds,
+# AV scanning, other Python processes) pushed a healthy artifact past it - a
+# false FAIL with no code defect behind it. 240 s restores ~3.5x headroom.
+if ($env:LDCC_SMOKE_TIMEOUT) {
+    $parsed = 0
+    if ([int]::TryParse($env:LDCC_SMOKE_TIMEOUT, [ref]$parsed) -and $parsed -gt 0) {
+        $TimeoutSec = $parsed
+        Write-Host "VERIFY timeout overridden to ${TimeoutSec}s (LDCC_SMOKE_TIMEOUT)"
+    } else {
+        Write-Host "VERIFY WARNING: LDCC_SMOKE_TIMEOUT='$env:LDCC_SMOKE_TIMEOUT' is not a positive integer; using ${TimeoutSec}s"
+    }
 }
 
 if (-not $ExePath) {

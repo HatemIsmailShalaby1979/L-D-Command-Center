@@ -249,31 +249,39 @@ unknowns in the same breath as successes.
   if it fails.
 - `dist/archive/` is the rollback target (`rollback_release.bat`).
 
-### Known blocker at gate 6 (found 2026-10-03, pre-existing)
+### Gate 6: cold-start budget — resolved, and a cautionary note
 
-Gates 1–5 pass; gate 6 (windowed-launch smoke) fails because the app hangs
-before rendering. Root cause is already isolated — do not re-derive it:
+Gate 6 originally failed with "no window within 120 s". The cause was a **gate
+budget that was too tight for this artifact**, not an application defect. It is
+already fixed; do not re-derive it.
 
-- The hang is `desktop_shell/et_ui.py:37`, `ttk.LabelFrame(parent,
-  text="👽 Talk with E.T. — live voice conversation practice")`, reached from
-  `app.py` in `run()`. The process shows as *Not Responding*, window title `N/A`.
-- Minimal reproduction: `ttk.LabelFrame(root, text="plain ascii label")` is
-  fine; `ttk.LabelFrame(root, text="\U0001F47D …")` hangs Tcl. On this machine's
-  Tcl-Tk 8.6, a **non-BMP (astral-plane) character in a widget `text=` option
-  hangs the interpreter**.
-- It reproduces on `main` without this sprint's changes, so it is not a
-  regression. 66 non-BMP characters exist across `desktop_shell/*.py` and
-  `engines/language-lab/et_persona.py`; `et_ui.py:37` is merely the first one
-  reached.
+Measured on the owner's machine (CPython 3.10.11 + PyInstaller 6.22.2):
 
-**Your task here is to confirm the diagnosis and then escalate, not to invent a
-fix.** Confirm by running the two-line minimal reproduction above. Then report
-to the owner with both candidate fixes and their trade-offs: (a) strip or
-transliterate astral-plane characters from widget `text=` options — small and
-contained, but changes visible UI copy; (b) move the build to a Tcl/Tk version
-that handles surrogate pairs (8.7/9) — no copy change, but a toolchain change
-that touches the packaging baseline. Do not pick one silently; `CONSTITUTION.md`
-§3 requires the owner to choose.
+| Measurement | Value |
+|---|---|
+| UI build from source to `mainloop()` | 20.2 s (3 runs, identical) |
+| Frozen `dist/ldcc.exe` to a rendered window | ~69 s, then ~48 s |
+| Old budget / new budget | 120 s / **240 s** |
+
+`desktop_shell/verify_build.ps1` now defaults to 240 s and honours
+`LDCC_SMOKE_TIMEOUT=<seconds>`; `docs/DEPLOYMENT_PIPELINE.md` documents both.
+All six gates pass against `dist/ldcc.exe` built from `a1c2bf5`.
+
+**A trap worth knowing about, because I fell into it.** While diagnosing that
+failure I saw a `faulthandler` stack inside widget construction at 25 s and a
+Windows *Not Responding* status, and concluded that a non-BMP emoji in a widget
+`text=` option was hanging Tcl. **That was wrong.** The minimal case passes 3/3,
+an 11-case astral/BMP matrix passes on Python 3.10.11 and 3.12.10, and the app
+reaches `mainloop()` cleanly. A process building widgets before any message pump
+exists legitimately reports *Not Responding*, and a slow build legitimately sits
+inside a widget constructor for tens of seconds. Both were misread as a
+deadlock.
+
+The lesson applies to your own work here: **one observation is not a
+reproduction.** Before naming a cause, run the minimal case at least three
+times, and run it on an unmodified branch. It takes under a minute and it is the
+difference between a real finding and a plausible story. The retraction is
+recorded in `E2E_SMOKE_REPORT.md`.
 
 Note also: if you run the pipeline under an agent sandbox, stage [1/6] can
 false-fail with the suite fully green because the sandbox's delete guard trips

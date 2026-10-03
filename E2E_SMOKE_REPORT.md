@@ -148,3 +148,71 @@ tmp_path garbage collection and returned non-zero, which the batch `if
 errorlevel 1` read as a test failure. Re-running outside the sandbox gave
 `1114 passed, 7 deselected`. This is an artifact of the agent sandbox only - it
 does not affect a normal shell or CI.
+
+
+---
+
+## CORRECTION + VERIFIED PASS - 2026-10-03 (same session, later the same day)
+
+The section above is **superseded on one point**: the astral-emoji root cause I
+recorded for the gate-6 failure was **wrong**, and I am retracting it.
+
+### What was wrong
+
+I claimed a non-BMP character in a widget `text=` option hangs Tcl on this
+machine, based on a single observation of a two-LabelFrame snippet. On
+re-measurement the trigger does not exist:
+
+- `ttk.LabelFrame(root, text="\U0001F47D Talk with E.T.")` - the exact minimal
+  case - **passes 3/3**. So does the original snippet it came from.
+- An 11-case matrix (ASCII, U+263A, U+2192, U+1F47D, U+1F600, U+1D400 across
+  `tk.Label`, `ttk.Label`, `ttk.LabelFrame`, `ttk.Button`, `Text.insert`,
+  `StringVar`) **passes on every case**, on Python 3.10.11 and 3.12.10.
+- `desktop_shell/app.py` now reaches `mainloop()` cleanly, 2/2 runs.
+
+I misread two ordinary signals as a deadlock: a `faulthandler` stack that
+happened to be inside widget construction at 25 s, and a Windows *Not
+Responding* status, which is simply what a process reports while it builds
+widgets before any message pump exists.
+
+### What was actually happening
+
+The app is **slow to build its UI**, and the gate budget was too tight for it:
+
+| Measurement | Value |
+|---|---|
+| UI build from source, to `mainloop()` | **20.2 s**, 3 runs, identical |
+| Frozen `dist/ldcc.exe`, to a rendered window | **~69 s**, then **~48 s** on a second run |
+| Old gate budget | 120 s (under 2x headroom) |
+| New gate budget | 240 s (~3.5x headroom) |
+
+On a contended machine - the build itself, antivirus scanning, and my own
+concurrent Python runs - a healthy artifact exceeded 120 s. There was never an
+application defect here; the defect was in the **gate's budget**.
+
+### The fix, and its verification
+
+`desktop_shell/verify_build.ps1`: window wait default 120 s -> **240 s**, plus an
+`LDCC_SMOKE_TIMEOUT=<seconds>` override for per-run tuning.
+`docs/DEPLOYMENT_PIPELINE.md`: both documented.
+
+    EXITCODE=0
+    VERIFY timeout overridden to 180s (LDCC_SMOKE_TIMEOUT)
+    VERIFY launching: E://LD_clean//dist//ldcc.exe (timeout 180s, watch: 'L&D Command Center')
+    VERIFY PASS: window 'L&D Command Center' rendered in ~48s (pid 2016)
+    VERIFY PASS: artifact windowed-launch verified clean
+
+An earlier run at the default budget also passed:
+
+    VERIFY PASS: window 'L&D Command Center' rendered in ~69s (pid 16644)
+
+**All six release gates now pass** against `dist/ldcc.exe` built from a1c2bf5
+(manifest sha256=0477dd86, upstream=a1c2bf5). The artifact is verified.
+
+### Lesson recorded
+
+One observation is not a reproduction. I wrote a root cause into the release
+note, this report, the sprint prompt and a commit on the strength of a single
+non-repeating result. The cheap check that would have caught it - run the
+minimal case three times, and run it on the unmodified branch - takes under a
+minute. Do that before naming a cause.

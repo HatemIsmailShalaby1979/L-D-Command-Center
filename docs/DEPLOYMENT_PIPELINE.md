@@ -40,8 +40,14 @@ The interpreter is auto-selected: Python 3.10 with PyInstaller first, then
 **CPython 3.10.11 + PyInstaller 6.22.2** — the version pair the artifact is
 verified against.
 
-Escape hatch: set `LDCC_SKIP_SMOKE=1` to make the smoke gate pass-through
-without launching (used where a GUI session is unavailable).
+Escape hatches: set `LDCC_SKIP_SMOKE=1` to make the smoke gate pass-through
+without launching (used where a GUI session is unavailable), and
+`LDCC_SMOKE_TIMEOUT=<seconds>` to override the window wait. The default is
+**240 s**, sized from a measured cold start of ~69 s for the frozen onefile
+artifact (2026-10-03, CPython 3.10.11 + PyInstaller 6.22.2; the UI build alone
+is 20.2 s). The earlier 120 s default left under 2x headroom and produced a
+false FAIL on a contended machine — see the correction note in
+`E2E_SMOKE_REPORT.md`.
 
 ## Rollback
 

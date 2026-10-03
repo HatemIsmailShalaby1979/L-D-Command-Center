@@ -74,7 +74,7 @@ is unchanged, so an older build keeps working exactly as it did).
   bar read `LM Studio: not reachable`, even with a model loaded and ready.
 - There was no way to choose a runtime at all.
 
-## Artifact build: gates 1-5 pass, gate 6 blocked by a pre-existing defect
+## Artifact build: all six gates pass
 
 `desktop_shell/build_release.bat` was run against this commit (Python 3.10.11 +
 PyInstaller 6.22.2, the pinned baseline):
@@ -86,46 +86,49 @@ PyInstaller 6.22.2, the pinned baseline):
 | [3/6] Archive previous artifact | No previous build to archive |
 | [4/6] PyInstaller build (windowed) | **PASS** — `dist/ldcc.exe`, 139,344,905 bytes |
 | [5/6] Write build manifest | **PASS** — `sha256=0477dd86…`, `upstream=a1c2bf5…` |
-| [6/6] Windowed-launch smoke gate | **FAIL** — no window within 120 s |
+| [6/6] Windowed-launch smoke gate | **PASS** — window rendered in ~48 s and ~69 s on two runs |
 
-**The artifact is built and traceable to this commit, but it is NOT a verified
-release**: the pipeline's own contract stops the release when the smoke gate
-fails, and that is the correct outcome here.
+**The artifact is verified**: `VERIFY PASS: window 'L&D Command Center' rendered`
+on repeated runs against the same binary.
 
-**Root cause of gate 6, isolated and proven — and it is not this change:**
+### Correction — an earlier claim in this note was wrong
 
-- The app hangs during widget construction, before the main window renders.
-  A stack dump (`faulthandler.dump_traceback_later`) puts the main thread in
-  `desktop_shell/et_ui.py:37` → `ttk.LabelFrame(parent, text="👽 Talk with E.T. …")`
-  → `tkinter/ttk.py:773` → `tkinter/__init__.py:2601`. The process shows as
-  *Not Responding* with window title `N/A`.
-- **Reproduced identically on `main` (2386ca5) without any of this sprint's
-  changes** — same file, same line. The defect pre-exists.
-- **Minimal reproduction:** with Python 3.10.11 / Tcl-Tk 8.6 on this machine,
-  `ttk.LabelFrame(root, text="plain ascii label")` succeeds, while
-  `ttk.LabelFrame(root, text="\U0001F47D Talk with E.T.")` hangs the Tcl
-  interpreter. The trigger is the non-BMP (astral-plane) emoji in a widget
-  `text=` option.
-- **Blast radius:** 66 non-BMP characters across `desktop_shell/*.py` and
-  `engines/language-lab/et_persona.py`. `et_ui.py:37` is simply the first one
-  reached at startup; `exams_ui.py:33`, `lab_ui.py:32`, `skills_ui.py:33/73/173/212`
-  and `et_ui.py:171/179` pass the same kind of character to `text=`.
+The first gate-6 attempt failed with "no window within 120 s", and this note
+initially attributed that to a non-BMP emoji in a widget `text=` option. **That
+attribution was wrong and is retracted.**
 
-**Not fixed here, deliberately.** It is outside the additive scope of this
-sprint, it touches the E.T. / Language Lab UI owned by a different concern, and
-`CONSTITUTION.md` §3 says an ambiguous spec escalates rather than gets silently
-guessed. Two candidate fixes, for the owner to choose: strip or transliterate
-astral-plane characters from widget `text=` options (a small, contained change),
-or move to a Tcl/Tk build that handles surrogate pairs (8.7/9). The first is
-what the sprint prompt asks the local agent to confirm and apply.
+What actually happened, on re-measurement:
+
+- The trigger does **not** reproduce. The exact minimal case
+  (`ttk.LabelFrame(root, text="\U0001F47D Talk with E.T.")`) passes 3/3, and an
+  11-case matrix of astral/BMP characters across `Label`, `ttk.Label`,
+  `ttk.LabelFrame`, `ttk.Button`, `Text.insert` and `StringVar` passes on
+  Python 3.10.11 and 3.12.10. The emoji is not the cause.
+- The app is simply **slow to build its UI**: 20.2 s measured from source, three
+  runs, identical. Frozen onefile it reaches a rendered window in **48–69 s**
+  across runs (Tcl init + `_MEI` extraction + imports + that UI build).
+- The gate's 120 s default therefore left under 2× headroom. On a contended
+  machine — concurrent builds, antivirus scanning, other Python processes —
+  a healthy artifact exceeded it. The `faulthandler` stack showing
+  `et_ui.py:37` was where the slow build happened to be at 25 s, not a hang;
+  the process reporting *Not Responding* is expected while building widgets
+  before any message pump exists. Both were misread as a deadlock.
+
+**Fix applied:** `desktop_shell/verify_build.ps1` now defaults to a 240 s window
+wait (~3.5× headroom) and honours `LDCC_SMOKE_TIMEOUT=<seconds>` for per-run
+tuning. `docs/DEPLOYMENT_PIPELINE.md` documents both. Verified: the override
+path works (`VERIFY timeout overridden to 180s`) and the gate passes with it.
+
+This was a **pipeline budget defect, not an application defect** — but it was a
+real defect in this repository, and it is now fixed rather than explained away.
 
 ## Next
 
-- Decide the astral-emoji fix above, then re-run `build_release.bat` so gate 6
-  can actually verify the window.
 - Run a full live capability probe against a loaded Ollama model and record the
   verdict document (provider + endpoint now appear in it).
 - Publish via the `Release` workflow's approval gate (manual dispatch, behind
   the `release` environment approval gate).
-- Confirm the Server dropdown renders correctly in a real windowed session —
-  which is blocked until the emoji hang is resolved.
+- Confirm the Server dropdown renders correctly in a real windowed session.
+- Optional, separate: the 20.2 s UI build is worth reducing (lazy per-tab
+  construction). Not attempted here — it is a behaviour-changing refactor
+  outside this sprint's scope.
