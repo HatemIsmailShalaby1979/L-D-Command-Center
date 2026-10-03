@@ -1,11 +1,17 @@
 # desktop-shell/controller.py
 #
 # WHAT: The shell controller — every engine interaction the desktop UI
-#       needs, behind one testable object with typed results.
+#       needs, behind one testable object with typed results. Also the
+#       seam that owns which local inference server (Ollama, LM Studio,
+#       any OpenAI-compatible runtime) the app is talking to.
 # WHY:  P5.2/P5.3 of docs/PRODUCTION_PLAN.md. Tkinter cannot run headless,
 #       so ALL logic lives here and the UI layer (app.py) stays thin:
 #       call controller, map FlowResult.error_kind to a dialog. Typed
 #       errors surface as kinds, never as tracebacks (E6).
+#       2026-10-03 (owner directive): endpoint discovery is additive —
+#       list_local_servers/select_endpoint sit alongside the existing
+#       health + model-listing methods, and a caller-supplied client is
+#       never replaced by a switch.
 # BREAKS IF DELETED: The UI has no way to reach engines; error taxonomy
 #       would be hand-rolled in widget callbacks.
 
@@ -19,7 +25,17 @@ from pathlib import Path
 from typing import Any, Optional
 
 from engines.playground_bridge.import_inbox import unique_artifact_name
-from model_layer.client import ApiError, ConnectionError, LmStudioClient
+from model_layer.client import (
+    ApiError,
+    ConnectionError,
+    LocalServer,
+    LmStudioClient,
+    client_for_server,
+    discover_local_servers,
+    provider_kind_for_url,
+    provider_label,
+    server_for_kind,
+)
 from model_layer.pipeline import DEFAULT_MODEL
 from model_layer.schema import SchemaValidationError
 from storage.licensing import (
@@ -125,9 +141,10 @@ def _flow(fn):
         try:
             return fn(self, *args, **kwargs)
         except ConnectionError as exc:
-            logger.warning("LM Studio unreachable: %s", exc)
+            logger.warning("Local model server unreachable: %s", exc)
             return FlowResult(False, error_kind="no_model",
-                              detail="LM Studio is not reachable at localhost:1234 — start it and load a model.")
+                              detail=("No local model server reachable — start LM Studio "
+                                      "(localhost:1234) or Ollama (localhost:11434) and load a model."))
         except ApiError as exc:
             logger.warning("Model API error: %s", exc)
             return FlowResult(False, error_kind="no_model", detail=str(exc))
@@ -170,6 +187,10 @@ class ShellController:
         licenses: Optional[LicenseStore] = None,
         machine_id: Optional[str] = None,
     ) -> None:
+        # A client passed in by a caller (tests, or an engine wiring a
+        # specific runtime) is authoritative: endpoint switching must
+        # never silently replace it.
+        self._client_injected = client is not None
         self.client = client if client is not None else LmStudioClient()
         self.storage = storage if storage is not None else default_storage()
         self.model = model
@@ -180,6 +201,116 @@ class ShellController:
         self.machine_id = machine_id
         self.licenses = licenses or LicenseStore(self.storage,
                                                  machine_id=machine_id)
+        # Which local server the UI believes it is talking to. Inferred
+        # from the client's base_url for free (no sockets); discovery
+        # replaces it when the user picks a detected server.
+        self.active_server: Optional[LocalServer] = self._server_from_client()
+        # Last discovery result, so picking a server never re-probes the
+        # machine a second time within one UI action. The flag (not the
+        # list) tracks "have we probed yet" — an empty result is a real
+        # answer ("nothing is running") and must not force a re-probe.
+        self._detected: list[LocalServer] = []
+        self._detection_done = False
+
+    # -- endpoints (Ollama / LM Studio / any OpenAI-compatible runtime) -----
+
+    def _server_from_client(self) -> Optional[LocalServer]:
+        """Best-effort LocalServer describing the current client, derived
+        from its base_url alone. None when the client has no base_url
+        (a test double) — never guesses a port.
+
+        The URL wins over the class: LmStudioClient() with no arguments
+        auto-scans and can legitimately land on Ollama's port, and the
+        UI must not call that runtime "LM Studio".
+        """
+        base_url = getattr(self.client, "base_url", None)
+        if not isinstance(base_url, str) or not base_url:
+            return None
+        kind = provider_kind_for_url(base_url)
+        if kind == "openai_compatible":
+            declared = getattr(self.client, "provider_kind", None)
+            if isinstance(declared, str) and declared:
+                kind = declared
+        native_url = None
+        if kind == "ollama":
+            native_url = (base_url[:-3].rstrip("/")
+                          if base_url.endswith("/v1") else base_url)
+        return LocalServer(kind=kind, base_url=base_url,
+                           label=provider_label(kind), native_url=native_url)
+
+    def active_provider_label(self) -> str:
+        """Human name of the runtime the controller is talking to."""
+        if self.active_server is not None:
+            return self.active_server.label
+        name = getattr(self.client, "provider_name", None)
+        return name if isinstance(name, str) and name else "Local model server"
+
+    def active_endpoint(self) -> Optional[str]:
+        """Base URL currently in use, or None when unknown."""
+        return getattr(self.client, "base_url", None)
+
+    @_flow
+    def list_local_servers(self, *, refresh: bool = False) -> FlowResult:
+        """Detect local inference servers — Ollama (11434), LM Studio
+        (1234), and any other OpenAI-compatible runtime — and report the
+        models each one lists. Offline-safe: unreachable ports are simply
+        absent from the payload.
+
+        The result is cached for the session; pass refresh=True (the
+        UI's Reload) to probe the machine again.
+        """
+        if refresh or not self._detection_done:
+            self._detected = discover_local_servers()
+            self._detection_done = True
+        servers = self._detected
+        logger.info("Detected %d local server(s): %s", len(servers),
+                    ", ".join(s.label for s in servers) or "none")
+        return FlowResult(True, payload=[s.as_dict() for s in servers])
+
+    @_flow
+    def select_endpoint(self, kind_or_url: str) -> FlowResult:
+        """Point the controller at a detected local server, identified by
+        provider kind ('ollama' / 'lm_studio') or by exact base_url.
+
+        Refuses politely when nothing matches instead of guessing, and
+        leaves an explicitly injected client untouched.
+        """
+        if not self._detection_done:
+            self._detected = discover_local_servers()
+            self._detection_done = True
+        servers = self._detected
+        target = self._match_server(servers, kind_or_url)
+        if target is None:
+            found = ", ".join(s.label for s in servers) or "none"
+            return FlowResult(
+                False, error_kind="no_model",
+                detail=(f"No detected local server matches '{kind_or_url}'. "
+                        f"Detected: {found}."))
+        self.active_server = target
+        if not self._client_injected:
+            self.client = client_for_server(target)
+        logger.info("Active endpoint: %s (%s)", target.label, target.base_url)
+        return FlowResult(True, payload=target.as_dict())
+
+    @staticmethod
+    def _match_server(servers: list[LocalServer],
+                      kind_or_url: str) -> Optional[LocalServer]:
+        """Resolve a server by exact base_url first, then by kind, then
+        by display label — exact matches beat fuzzy ones."""
+        wanted = (kind_or_url or "").strip()
+        if not wanted:
+            return None
+        for server in servers:
+            if server.base_url.rstrip("/") == wanted.rstrip("/"):
+                return server
+        lowered = wanted.lower()
+        by_kind = server_for_kind(servers, lowered)
+        if by_kind is not None:
+            return by_kind
+        for server in servers:
+            if server.label.lower() == lowered:
+                return server
+        return None
 
     # -- health -----------------------------------------------------------
 
@@ -192,7 +323,9 @@ class ShellController:
         if self.client.is_available():
             return FlowResult(True, payload="ready")
         return FlowResult(False, error_kind="no_model",
-                          detail="LM Studio is not responding on localhost:1234.")
+                          detail=("not responding — start LM Studio "
+                                  "(localhost:1234) or Ollama (localhost:11434) "
+                                  "and load a model."))
 
     # -- capabilities -------------------------------------------------------
 

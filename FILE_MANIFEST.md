@@ -38,15 +38,15 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 
 | Path | Responsibility |
 |------|---------------|
-| `/model-layer/README.md` | LM Studio client, prompt templates, schema validation, retry logic — the guardrail layer ensuring correctness independent of model size. |
+| `/model-layer/README.md` | Local inference clients (Ollama, LM Studio, OpenAI-compatible), endpoint discovery, prompt templates, schema validation, retry logic — the guardrail layer ensuring correctness independent of model size. |
 | `/storage/README.md` | Local persistence for journeys, exports, preferences, cached outputs; Notion SOP sync. |
 | `/storage/persistence.py` | Storage engine v1 — file-backed artifact store (journeys/resumes/scripts/audio/exports) + preferences; LDCC_DATA_DIR override (P5.1); set_preference() docs P8.12 (job_watch schema) |
 | `/storage/secrets.py` | The one secrets-file adapter — parse_secrets_file/load_secret with deterministic scan order; integrations keep only their validity policies (P5.1) |
 | `/storage/test_persistence.py` | 14 tests: roundtrips, kind isolation, name validation, preference defaults/cross-instance persistence |
 | `/storage/test_secrets.py` | 9 tests: comment/first-'=' parsing, explicit-path precedence, sorted scan fallback, empty-value policy |
 | `/desktop-shell/README.md` | Packaging and installer pipeline for the desktop-native, offline-first executable. |
-| `/desktop-shell/controller.py` | Shell controller — the entire engine surface behind typed FlowResults; all UI behavior, headless-tested (P5.2/P5.3); career agent: search_jobs_now/check_job_watchlist/save_job_watchlist (keyless board hunting with seen-URL diff; company rosters resolve explicit-arg > job_sources preference > engine contact-center/CX defaults), save_job_sources (persist per-board company rosters), prepare_application (enhance+cover letter+PDF/DOCX+listing.txt), upload_resume (PDF/DOCX/TXT), import_github_projects + fetch_linkedin_profile (career_identity memory: cached projects/profile served offline, actionable 404/rate-limit/token guidance), draft_linkedin_post (validated human-style draft, saved locally) + publish_linkedin_post (explicit confirm gate), get/clear_career_identity; playground seam: connector roster (keyless-first: pollinations, HF image/music, figma) with quota-note payloads, run_connector_job storing into media/generated, import_files/scan_import_inbox/list+load media, "connector" error kind |
-| `/desktop-shell/app.py` | Tkinter UI — tab order per 2026-09-05 focus directive (Language Lab flagship first, Career, Playground, then frozen Journey + Audio Studio with Study-Studio pointer banners and disabled generate buttons); async runner (worker thread + queue-marshalled callbacks, window never freezes during generation); Language Lab: 15 languages, saved-pack reopen list; Career: identity restore on boot, cached/offline badges, LinkedIn post studio (draft → edit → explicit-confirm publish); exit_nocontinue |
+| `/desktop-shell/controller.py` | Shell controller — the entire engine surface behind typed FlowResults; all UI behavior, headless-tested (P5.2/P5.3); 2026-10-03 endpoint seam: `list_local_servers` (cached detection), `select_endpoint`, `active_provider_label`/`active_endpoint` (a caller-injected client is never replaced); career agent: search_jobs_now/check_job_watchlist/save_job_watchlist (keyless board hunting with seen-URL diff; company rosters resolve explicit-arg > job_sources preference > engine contact-center/CX defaults), save_job_sources (persist per-board company rosters), prepare_application (enhance+cover letter+PDF/DOCX+listing.txt), upload_resume (PDF/DOCX/TXT), import_github_projects + fetch_linkedin_profile (career_identity memory: cached projects/profile served offline, actionable 404/rate-limit/token guidance), draft_linkedin_post (validated human-style draft, saved locally) + publish_linkedin_post (explicit confirm gate), get/clear_career_identity; playground seam: connector roster (keyless-first: pollinations, HF image/music, figma) with quota-note payloads, run_connector_job storing into media/generated, import_files/scan_import_inbox/list+load media, "connector" error kind |
+| `/desktop-shell/app.py` | Tkinter UI — 2026-10-03 header Server dropdown (Ollama / LM Studio / OpenAI-compatible, detected off the UI thread on startup and on Reload) plus provider-named health bar and error copy; tab order per 2026-09-05 focus directive (Language Lab flagship first, Career, Playground, then frozen Journey + Audio Studio with Study-Studio pointer banners and disabled generate buttons); async runner (worker thread + queue-marshalled callbacks, window never freezes during generation); Language Lab: 15 languages, saved-pack reopen list; Career: identity restore on boot, cached/offline badges, LinkedIn post studio (draft → edit → explicit-confirm publish); exit_nocontinue |
 | `/desktop-shell/test_controller.py` | ~90 controller tests: health, journey flow, typed-error mapping (no_model/bad_output/input/unexpected/connector), render+persist, export routing, library roundtrip, capabilities probe, playground import/inbox/connectors, career agent flows (search_jobs_now incl. saved-roster and engine-default fallback, watchlist diff + legacy-shape fallback, save_job_sources explicit-skip semantics, prepare_application, upload_resume, import_github incl. identity persistence/offline cache/404/rate-limit guidance, fetch_linkedin incl. identity persistence/no-token guidance/offline cache, enhance target-role memory, draft+publish LinkedIn post incl. confirm gate), podcast length stretch re-render, audiobook WAV-header duration, PDF unicode regression |
 | `/desktop-shell/ldcc.spec` | PyInstaller spec for the single-file `ldcc` executable (P5.4); secrets/voices deliberately not bundled |
 | `/docs/README.md` | Supplementary documentation — design notes, research, architecture decisions (non-governance, non-code). |
@@ -61,13 +61,15 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 
 | Path | Reason |
 |------|--------|
-| `/model-layer/client.py` | Real LM Studio HTTP client (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check; 300s timeout (CPU inference of 8K-token outputs on 7B-14B models takes minutes) |
+| `/model-layer/client.py` | Local inference client layer (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check, 600s timeout; 2026-10-03 adds `discover_local_servers()` / `LocalServer` / `OllamaClient` (native `/api/tags` model-listing fallback) and `client_for_server()`; `LmStudioClient` and `scan_local_endpoints` unchanged |
 | `/model-layer/schema.py` | Journey JSON schema + validate_journey() + SchemaValidator retry loop + hardened extract_json_from_text (noise/BOM strip, MMdd blocks, fences, Python-literal fix, string-aware balanced-span scan) + repair_truncated_json (finish_reason=length salvage) |
 | `/model-layer/policy.py` | Model-aware generation policy (2026-09-05): JSON_DISCIPLINE_ADDENDUM injected into every system prompt, size-aware attempt budget (<7B gets 5 attempts), JSON-mode flag, estimate_model_size canonical home |
 | `/model-layer/test_extraction.py` | 22 tests: fences/think-blocks/prose/literals/braces-in-strings extraction, truncation repair salvage rules |
 | `/model-layer/prompts.py` | PromptRegistry with journey_generate, journey_retry, cover_letter_generate, and lesson_verify templates, {placeholder} rendering, schema_key wiring |
 | `/model-layer/pipeline.py` | Generation Pipeline — the single Guardrail Loop (render→call→extract→validate→retry→typed error) every engine generates through; owns model-id defaults, transient-error policy, 8192-token budget, truncation repair on finish_reason=length, response_format JSON mode with runtime-rejection fallback, policy addendum injection |
 | `/model-layer/test_pipeline.py` | 24 contract tests for the Pipeline via a ScriptedClient matching the real LmStudioClient interface (retry counts, feedback formatting, error taxonomy, truncation repair, JSON-mode fallback, discipline addendum, size-aware budgets) |
+| `/model-layer/capabilities.py` | Task profiles + one-shot capability probe grading the loaded model per task family; 2026-10-03 records `provider` and `endpoint` in the verdict and prefixes the provider label in `summarize_verdict` |
+| `/model-layer/test_client.py` | 37 tests (2026-10-03): discovery heuristics (Ollama `/api/tags`, LM Studio `/v1/models`, junk payloads, `OLLAMA_HOST`, extra roots), `OllamaClient` listing/availability fallback, and a regression guard proving the legacy LM Studio path is unchanged; no sockets opened — the single HTTP seam is injected |
 
 ## Journey-Core Engine (implementation)
 
@@ -212,6 +214,13 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/engines/playground-bridge/connectors_pollinations.py` | P7.11 Pollinations keyless image adapter — single GET with urlencoded prompt path + width/height/model/seed/nologo query; content-type guard rejects in-band error pages; injectable transport; failures are data |
 | `/engines/playground-bridge/test_connectors_pollinations.py` | 10 tests: URL shape incl. defaults and encoding, optional param flow, empty-prompt no-network fast-fail, non-200, empty body, text/html rejection, transport exception mapping, none-auth capability note |
 
+## Release Notes
+
+| Path | Reason |
+|------|--------|
+| `/RELEASE_NOTE_2026_10_03.md` | App Owner release note for the Ollama endpoint release — what changed, what it cost, what broke, rollback path |
+| `/docs/SPRINT_OLLAMA_ENDPOINT_PROMPT.md` | Self-contained sprint prompt for a local coding agent: the full Ollama-endpoint sprint with tasks, acceptance criteria, and evidence requirements |
+
 ## Notes
 
 - 2026-08-24: owner amended vision (Phase 7). TASKS.md carries P7.1–P7.12; plan in docs/PLAYGROUND_AND_LANGUAGE_LAB_PLAN.md.
@@ -231,3 +240,6 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 
 ---
 UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
+
+---
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

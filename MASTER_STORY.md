@@ -10,7 +10,8 @@ file is the source of truth until the owner amends it.
 ## Vision
 
 A free, offline-first, desktop-only Learning & Development command
-center. One local model (via LM Studio) is the sole generation brain for
+center. One local model — hosted by Ollama, LM Studio, or any other
+OpenAI-compatible local runtime — is the sole generation brain for
 every output the app produces — text, interactive HTML, documents, and
 audio. It runs on modest, older hardware, not just modern laptops.
 Nothing about it depends on a hosted API or a subscription.
@@ -63,9 +64,9 @@ type; cloud or local origin does not matter.
 
 ## Core Engine Philosophy
 
-- One local model, LM Studio-hosted, 3B+ parameters, tool-calling
-  capable, does all generation, analysis, editing, and summarization of
-  documents.
+- One local model, hosted locally (Ollama or LM Studio — both are
+  detected automatically), 3B+ parameters, tool-calling capable, does
+  all generation, analysis, editing, and summarization of documents.
 - The app must not depend on model size for quality. Skills, plugins,
   and guardrails engineered into the app itself are what prevent
   hallucination and instability — not a bigger model. See
@@ -110,3 +111,6 @@ All resolved as of 2026-08-25:
 
 ---
 UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
+
+---
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

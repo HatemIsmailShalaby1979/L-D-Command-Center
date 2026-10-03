@@ -276,3 +276,42 @@ class TestSummarizeVerdict:
         assert "translations may need review" in line
         assert "grammar explanations may need review" in line
         assert "summaries may be shallow" not in line  # that profile stayed ready
+
+
+# ---------------------------------------------------------------------------
+# Provider attribution (2026-10-03: Ollama and LM Studio are both first-class)
+# ---------------------------------------------------------------------------
+
+class TestProviderAttribution:
+    def test_verdict_records_provider_and_endpoint(self, store):
+        client = FakeProbeClient()
+        client.provider_kind = "ollama"
+        client.base_url = "http://localhost:11434/v1"
+        verdict = probe_model_capabilities(client, storage=store)
+        assert verdict["provider"] == "ollama"
+        assert verdict["endpoint"] == "http://localhost:11434/v1"
+
+    def test_provider_defaults_when_the_client_declares_none(self, store):
+        verdict = probe_model_capabilities(FakeProbeClient(), storage=store)
+        assert verdict["provider"] == "local"
+        assert verdict["endpoint"] is None
+
+    def test_explicit_provider_overrides_the_client(self, store):
+        verdict = probe_model_capabilities(
+            FakeProbeClient(), storage=store,
+            provider="lm_studio", endpoint="http://localhost:1234/v1")
+        assert verdict["provider"] == "lm_studio"
+        assert verdict["endpoint"] == "http://localhost:1234/v1"
+
+    def test_summary_names_the_provider_when_recorded(self, store):
+        client = FakeProbeClient()
+        client.provider_kind = "ollama"
+        line = summarize_verdict(
+            probe_model_capabilities(client, storage=store))
+        assert line.startswith("Ollama · ")
+        assert line.endswith(": ready")
+
+    def test_summary_unchanged_for_verdicts_without_a_provider(self):
+        doc = {"model_id": "m", "estimated_params_b": 12.0,
+               "overall": "ready", "tasks": {}}
+        assert summarize_verdict(doc) == "m (~12B): ready"

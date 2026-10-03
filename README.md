@@ -43,15 +43,37 @@ technically independent.
 - `model-layer/quality_guard.py` — the quality guard and humor/tips layer.
 - Section modules — Language Lab, Career, Playground, Audio, Journey, each with its own frozen/unfrozen state.
 - `dist/archive` — the rollback target for the policy gate.
-- Endpoint auto-detect for Ollama (`11434`) / LM Studio (`1234`).
+- `model-layer/client.py` — local server discovery and the inference clients.
+
+## Inference backends
+
+One local model is the sole generation brain. Which runtime hosts it is the
+user's choice, and the app detects it rather than assuming:
+
+| Backend | Default endpoint | Detection | Model listing | Probe |
+|---|---|---|---|---|
+| Ollama | `http://localhost:11434/v1` | `/api/tags` + `/v1/models` | `/v1/models`, falling back to native `/api/tags` | Yes |
+| LM Studio | `http://localhost:1234/v1` | `/v1/models` | `/v1/models` | Yes |
+| Any OpenAI-compatible server | port 8080 / 5000, or `OLLAMA_HOST` | `/v1/models` | `/v1/models` | Yes |
+
+Both runtimes speak the OpenAI chat-completions protocol, so generation,
+the Guardrail Loop, the model policy levers, and the capability probe are
+identical whichever one is running. On startup the app probes localhost,
+fills the **Server** dropdown with every runtime that answered, fills the
+**Model** dropdown from the selected server's own listing, and probes the
+chosen model on demand. `OLLAMA_HOST` is honoured when Ollama was moved
+off its default port.
 
 ## Production status & test coverage
 
-Stated plainly and dated. Last measured 2026-09-23; not re-measured since.
+Stated plainly and dated. Last measured 2026-10-03; not re-measured since.
 
 | Item | State | Evidence |
 |---|---|---|
-| Endpoint auto-detect | Active | Ollama 11434 / LM Studio 1234 |
+| Ollama auto-detect | Active | `discover_local_servers()` + `/api/tags` fallback; `model-layer/test_client.py` |
+| LM Studio auto-detect | Active | Port 1234, `scan_local_endpoints` unchanged |
+| Server + model pickers | Active | `desktop_shell/app.py` header dropdowns |
+| Capability probe (both runtimes) | Active | `probe_model_capabilities` records provider + endpoint |
 | Quality guard + humor/tips layer | Active | `model-layer/quality_guard.py` |
 | Frozen sections | Correct | Journey and Audio |
 | Unfrozen sections | In progress | Language Lab, Career, Playground |
@@ -77,12 +99,16 @@ cd /d E:\LD_Command_Center
 python -c "import sys; sys.path.insert(0, r'E:\LD_Command_Center'); import desktop_shell.app as app; app.run()"
 ```
 
-Requires Python 3.10+, LM Studio at `http://localhost:1234/v1` with a model loaded
-(e.g. `google/gemma-4-12b-qat`), and `tkinter` + `httpx` to boot cleanly.
+Requires Python 3.10+ and one local inference server with a model loaded —
+Ollama at `http://localhost:11434/v1` (e.g. `granite4.2:latest`) or LM Studio
+at `http://localhost:1234/v1` (e.g. `google/gemma-4-12b-qat`) — plus
+`tkinter` and `httpx` to boot cleanly. Start whichever you prefer; the app
+detects it and lists its models in the Model dropdown.
 
 ## Related work
 
 - [Full portfolio](https://github.com/HatemIsmailShalaby1979/HatemIsmailShalaby1979) — how this project fits the wider work
+- [Release notes](./RELEASE_NOTE_2026_10_03.md) — what changed in the Ollama endpoint release
 
 ## Author
 
@@ -91,3 +117,6 @@ Built by Hatem Ismail Shalaby, Contact Centre Operations & AI Implementation Lea
 ## Licence
 
 MIT
+
+---
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

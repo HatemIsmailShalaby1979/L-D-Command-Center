@@ -1,8 +1,9 @@
 # model-layer/capabilities.py
 #
 # WHAT: Capability profiles for the app's task families plus a one-shot
-#       probe that grades whatever model LM Studio has loaded, storing the
-#       verdict through Storage (P7.1).
+#       probe that grades whatever model the active local server (Ollama,
+#       LM Studio, or any OpenAI-compatible runtime) has loaded, storing
+#       the verdict through Storage (P7.1).
 # WHY:  Small local models do not need plugins to drive this app — the
 #       Generation Pipeline is the wheel. What size changes is how often
 #       the retry loop fires and which tasks are realistic at all
@@ -10,6 +11,9 @@
 #       that reality into honest UX: the shell health bar shows
 #       "ready" or "degraded: <task> may need review" instead of magic.
 #       The probe never blocks generation; it informs it.
+#       2026-10-03: the probe is provider-agnostic by construction (it
+#       only uses the client seam), and now records WHICH runtime was
+#       graded so a verdict is attributable to Ollama or LM Studio.
 # BREAKS IF DELETED: The shell loses per-task readiness; users discover
 #       small-model limits by failure instead of by warning.
 
@@ -21,7 +25,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
-from model_layer.client import ApiError, LmStudioClient
+from model_layer.client import ApiError, LmStudioClient, provider_label
 from model_layer.pipeline import generate as run_guardrail_loop
 from model_layer.policy import estimate_model_size  # canonical home
 from model_layer.prompts import PromptRegistry
@@ -316,37 +320,54 @@ def probe_model_capabilities(
     client: LmStudioClient,
     *,
     storage: Optional[Storage] = None,
+    provider: Optional[str] = None,
+    endpoint: Optional[str] = None,
 ) -> dict[str, Any]:
     """
-    Contract: grade the model LM Studio currently has loaded, one shot
-    per task family — NO feedback retries, because a first-try miss is
-    exactly what the probe measures.
+    Contract: grade the model the active local server currently has
+    loaded, one shot per task family — NO feedback retries, because a
+    first-try miss is exactly what the probe measures.
+
+    Provider-agnostic: the probe only touches the client seam
+    (list_models + generate), so Ollama, LM Studio, and any other
+    OpenAI-compatible runtime are graded by exactly the same code path.
 
     Returns the verdict document:
 
         {
           "model_id": ..., "estimated_params_b": <float|null>,
           "probed_at": "<ISO timestamp>", "overall": "ready|degraded|failed",
+          "provider": "<ollama|lm_studio|...>", "endpoint": "<base_url>",
           "tasks": {<profile name>: {"status": ..., "detail": ...}},
         }
 
     The document is saved under storage kind "capabilities" (named after
     the model) and recorded as the current verdict via preferences.
 
+    Args:
+        client: the active local-model client (its provider_kind and
+            base_url are recorded in the verdict).
+        storage: persistence seam; defaults to the install's store.
+        provider: override the recorded provider key.
+        endpoint: override the recorded endpoint URL.
+
     Raises:
-        ConnectionError / ApiError: LM Studio unreachable or broken;
+        ConnectionError / ApiError: the server is unreachable or broken;
             nothing is graded and nothing is stored.
-        ApiError: LM Studio reports no loaded model.
+        ApiError: the server reports no loaded model.
     """
     storage = storage if storage is not None else default_storage()
 
     models = client.list_models()
     if not models:
         raise ApiError(
-            "LM Studio has no model loaded — load one before probing capabilities."
+            "The active local server reports no model loaded — load one "
+            "before probing capabilities."
         )
     model_id = models[0]
     size = estimate_model_size(model_id)
+    provider = provider or getattr(client, "provider_kind", None) or "local"
+    endpoint = endpoint or getattr(client, "base_url", None)
 
     registry = PromptRegistry()
     tasks: dict[str, dict[str, str]] = {}
@@ -384,6 +405,8 @@ def probe_model_capabilities(
         "model_id": model_id,
         "estimated_params_b": size,
         "probed_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "provider": provider,
+        "endpoint": endpoint,
         "overall": overall,
         "tasks": tasks,
     }
@@ -414,11 +437,18 @@ def summarize_verdict(verdict: dict[str, Any]) -> str:
     Contract: one health-bar line for a verdict document, e.g.
 
         gpt-local-8b (~8B): ready
+        Ollama · granite4.2:14b (~14B): degraded — translations may need review
         gpt-local-8b (~8B): degraded — translations may need review; ...
+
+    The provider prefix appears only when the verdict recorded one, so
+    verdicts written before 2026-10-03 still summarize unchanged.
     """
     model_id = verdict.get("model_id", "?")
     size = verdict.get("estimated_params_b")
     head = f"{model_id}" + (f" (~{size:g}B)" if size else "")
+    provider = verdict.get("provider")
+    if isinstance(provider, str) and provider:
+        head = f"{provider_label(provider)} · {head}"
     problems = [
         f"{name}: {record.get('detail') or profile.review_note}"
         if record.get("status") == "failed"

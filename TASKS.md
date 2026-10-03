@@ -16,6 +16,8 @@ DONE:claude-code: career-engine resume schema and generation with model-layer re
 DONE:claude-code: wire Resume objects into export-engine (PDF + DOCX support), add career-engine integration test covering generate→enhance→export→GitHub→LinkedIn→YouTube (all mocked)
 DONE:claude-code: add TTS client to model-layer with Piper (default) and Kokoro-82M (optional) backends, backend-agnostic synthesize() interface
 
+DONE:codex: 2026-10-03 Ollama endpoint support (owner directive) — `discover_local_servers()` (Ollama 11434 via /api/tags + /v1/models, LM Studio 1234, 8080/5000, OLLAMA_HOST), `OllamaClient` with native `/api/tags` listing fallback, `LocalServer` + `client_for_server()`; shell gains a Server dropdown (detected off the UI thread) with a provider-named health bar and provider-neutral error copy; capability verdicts record provider + endpoint; +50 tests (1114 passed / 7 live deselected); docs, release note and sprint prompt updated. Additive only — LM Studio path pinned by regression tests.
+
 --- Production plan queue (IDs are canonical — see /docs/PRODUCTION_PLAN.md; review report: /tmp/architecture-review-20260824-094204.html) ---
 
 DONE:opencode: P0.0 git initialized on main, baseline commit 09681c3, tagged audit-2026-08-24; secrets/OS cruft verified excluded (D1 resolved)
@@ -148,3 +150,6 @@ UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality g
 DONE:opencode: 2026-09-23 session — auto-detect endpoint (client.py scan_local_endpoints), quality guard (model-layer/quality_guard.py), frozen-state verified, smoke_headless.py 19/0, rebuild started, docs updated (28 .md + 4 .html), branch merged to main (3075a7a).
 DONE:opencode: LIVE desktop run verified — TCLLIBRARY repaired, run_now.py window active, ldcc.exe PID 14416 started/stopped clean.
 BLOCKED:owner (updated 2026-09-23): LIVE smoke with loaded model — CLI model load blocked by Vulkan UUID bug on this host; reproduction done (ollama endpoint reachable, direct call TIMEOUT 60s — data); fix requires driver/model-load environment change, not code change.
+
+---
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

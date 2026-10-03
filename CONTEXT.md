@@ -151,8 +151,28 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
 
 ## Platform concepts
 
-- **Model Layer** — the guardrail tier: LM Studio client, prompt templates,
-  schema validation, retry logic. Correctness comes from here, not model size.
+- **Model Layer** — the guardrail tier: local inference clients (Ollama, LM
+  Studio, any OpenAI-compatible runtime), prompt templates, schema validation,
+  retry logic. Correctness comes from here, not model size.
+- **Local Server** (2026-10-03) — one detected local inference runtime: a
+  provider kind (`ollama` | `lm_studio` | `openai_compatible`), its
+  OpenAI-compatible base URL, and the model ids it reported. Produced by
+  `discover_local_servers()` in `model-layer/client.py`.
+- **Endpoint Discovery** (2026-10-03) — probing localhost (11434 Ollama,
+  1234 LM Studio, 8080, 5000, plus whatever `OLLAMA_HOST` names) with two
+  requests per candidate: Ollama's native `GET /api/tags` and the
+  OpenAI-compatible `GET /v1/models`. A runtime is reported when either
+  answers with a model list; nothing is guessed, and an unreachable port is
+  simply absent.
+- **Server Picker** (2026-10-03) — the shell's Server dropdown: one row per
+  detected Local Server, labelled with base URL and model count. Choosing one
+  re-points the controller (`select_endpoint`) and refills the Model dropdown
+  from that server's own listing. The Model dropdown and the Probe model
+  button behave identically whichever server is selected.
+- **Provider Attribution** (2026-10-03) — capability verdicts record
+  `provider` and `endpoint`, so a stored verdict names the runtime that
+  produced it and the health bar reads `Ollama: ready` or `LM Studio: ready`
+  instead of assuming one.
 - **Generation Pipeline** — the single deep module in the Model Layer that
   owns the whole Guardrail Loop for every artifact type; engines register a
   template + validator, never hand-roll the loop.
@@ -210,3 +230,6 @@ applies). Source of truth for the vision itself is `MASTER_STORY.md`.
 
 ---
 UPDATE 2026-09-24 — Podcast/audiobook length compliance: word-budget validation + prompt budget + stretch re-render in controller AND immersion path (Segment/Length Compliance above). Live e2e: granite4.2 via ollama generated a 1-min podcast at 143s actual (LENGTH_OK). Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
+
+---
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

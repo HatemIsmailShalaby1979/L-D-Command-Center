@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="L&D Command Center: a desktop language school and career coach that runs on your own machine. Local-first, no cloud, component of Helix Codex. Status snapshot 2026-09-23.">
+<meta name="description" content="L&D Command Center: a desktop language school and career coach that runs on your own machine. Local-first, no cloud, component of Helix Codex. Status snapshot 2026-10-03.">
 <title>L&D Command Center</title>
 <style>
 :root{--bg:#07111f;--panel:#0d1b2e;--text:#edf4ff;--muted:#a8b8ce;--accent:#76a9ff;--line:#1d3552;--green:#4caf50}
@@ -12,7 +12,7 @@
 </head>
 <body><main>
 <nav><strong>L&D Command Center</strong><a href="https://github.com/HatemIsmailShalaby1979/L-D-Command-Center">View source on GitHub</a></nav>
-<header><span class="tag">V1 ship in progress</span><h1>The language school and career coach that runs on your laptop.</h1><p class="lead">No subscription AI. No cloud. No data leaving your machine. Generate bilingual lesson packs, tailor resumes, search job boards, and prepare full application packages. All offline, all private, all free to start.</p><p class="status"><strong>Status, snapshot 2026-09-23:</strong> Endpoint auto-detect active (Ollama 11434 / LM Studio 1234). E2E smoke run <strong>mixed, not a clean pass</strong> &mdash; imports, endpoint scan, policy and export layers passed; the window launch was BLOCKED by a tkinter environment problem, generation timed out at 60&nbsp;s on this hardware, and two integrations were untested (<code>E2E_SMOKE_REPORT.md</code>). Quality guard and humor/tips layer active. Policy gate pass; rollback restores a previous archive from <code>dist/archive</code>. Not verified: no external audit, no client deployment, no revenue.</p></header>
+<header><span class="tag">V1 ship in progress</span><h1>The language school and career coach that runs on your laptop.</h1><p class="lead">No subscription AI. No cloud. No data leaving your machine. Generate bilingual lesson packs, tailor resumes, search job boards, and prepare full application packages. All offline, all private, all free to start.</p><p class="status"><strong>Status, snapshot 2026-10-03:</strong> Ollama and LM Studio are both first-class &mdash; local servers are auto-detected, their models fill the Server + Model dropdowns, and Probe model grades whichever runtime is selected. E2E smoke run <strong>mixed, not a clean pass</strong> &mdash; imports, endpoint scan, policy and export layers passed; the window launch was BLOCKED by a tkinter environment problem, generation timed out at 60&nbsp;s on this hardware, and two integrations were untested (<code>E2E_SMOKE_REPORT.md</code>). Quality guard and humor/tips layer active. Policy gate pass; rollback restores a previous archive from <code>dist/archive</code>. Not verified: no external audit, no client deployment, no revenue.</p></header>
 
 <section><h2>Why this is different</h2><p class="lead">Every competitor pays per-token cloud bills and fights churn with ads. L&D Command Center runs its whole generation layer on your own machine through LM Studio. Marginal cost per user is zero. Privacy is a product feature here, not a compliance checkbox. It works offline.</p>
 <table>
@@ -61,4 +61,4 @@
 <footer>Built by Hatem Ismail Shalaby, Contact Centre Operations & AI Implementation Lead | WFM & CX Transformation. Background: <a href="https://github.com/HatemIsmailShalaby1979">Portfolio and Helix ecosystem</a></footer>
 </main></body></html>
 
-<!-- Snapshot 2026-09-23: endpoint auto-detect, quality guard, E2E_SMOKE_REPORT.md -->
+<!-- Snapshot 2026-10-03: Ollama + LM Studio auto-detect, server/model pickers, provider-attributed probe, quality guard, E2E_SMOKE_REPORT.md -->

@@ -159,6 +159,119 @@ class TestCapabilities:
         assert result.payload == summarize_verdict(doc)
 
 
+class TestEndpointDetection:
+    """2026-10-03 owner directive: Ollama is a first-class endpoint, not
+    an afterthought — detection, selection, and provider naming all work
+    without touching the legacy LM Studio path."""
+
+    SERVERS = (
+        {"kind": "ollama", "label": "Ollama",
+         "base_url": "http://localhost:11434/v1",
+         "native_url": "http://localhost:11434",
+         "models": ["granite4.2:latest", "qwen2.5:7b"]},
+        {"kind": "lm_studio", "label": "LM Studio",
+         "base_url": "http://localhost:1234/v1", "native_url": None,
+         "models": ["google/gemma-4-12b-qat"]},
+    )
+
+    def make(self, storage, monkeypatch, *, servers=None):
+        from model_layer.client import LocalServer
+        rows = self.SERVERS if servers is None else servers
+        detected = [
+            LocalServer(kind=row["kind"], base_url=row["base_url"],
+                        label=row["label"], models=tuple(row["models"]),
+                        native_url=row["native_url"])
+            for row in rows
+        ]
+        monkeypatch.setattr("model_layer.client.scan_local_endpoints",
+                            lambda timeout=2.0: [])
+        monkeypatch.setattr("desktop_shell.controller.discover_local_servers",
+                            lambda **kw: list(detected))
+        return ShellController(storage=storage)
+
+    def test_lists_detected_servers_with_their_models(self, storage,
+                                                      monkeypatch):
+        res = self.make(storage, monkeypatch).list_local_servers()
+        assert res.ok
+        assert [s["kind"] for s in res.payload] == ["ollama", "lm_studio"]
+        assert res.payload[0]["models"] == ["granite4.2:latest", "qwen2.5:7b"]
+        assert res.payload[0]["model_count"] == 2
+
+    def test_switching_to_ollama_swaps_the_client(self, storage, monkeypatch):
+        ctrl = self.make(storage, monkeypatch)
+        ctrl.list_local_servers()          # fills the detection cache
+        res = ctrl.select_endpoint("ollama")
+        assert res.ok and res.payload["kind"] == "ollama"
+        assert ctrl.client.base_url == "http://localhost:11434/v1"
+        assert ctrl.client.provider_kind == "ollama"
+        assert ctrl.active_provider_label() == "Ollama"
+        assert ctrl.active_endpoint() == "http://localhost:11434/v1"
+
+    def test_switching_by_base_url(self, storage, monkeypatch):
+        ctrl = self.make(storage, monkeypatch)
+        ctrl.list_local_servers()
+        res = ctrl.select_endpoint("http://localhost:1234/v1")
+        assert res.ok and res.payload["kind"] == "lm_studio"
+        assert ctrl.active_provider_label() == "LM Studio"
+
+    def test_unknown_endpoint_is_refused_not_guessed(self, storage,
+                                                     monkeypatch):
+        ctrl = self.make(storage, monkeypatch)
+        ctrl.list_local_servers()
+        res = ctrl.select_endpoint("vllm")
+        assert not res and res.error_kind == "no_model"
+        assert "vllm" in res.detail
+
+    def test_injected_client_is_never_replaced(self, storage, monkeypatch):
+        from model_layer.client import LocalServer
+        monkeypatch.setattr("model_layer.client.scan_local_endpoints",
+                            lambda timeout=2.0: [])
+        monkeypatch.setattr(
+            "desktop_shell.controller.discover_local_servers",
+            lambda **kw: [LocalServer(kind="ollama",
+                                      base_url="http://localhost:11434/v1",
+                                      label="Ollama")])
+        injected = OkClient()
+        ctrl = make_controller(injected, storage)
+        ctrl.list_local_servers()
+        assert ctrl.select_endpoint("ollama").ok
+        assert ctrl.client is injected      # the injected seam survives
+
+    def test_no_servers_detected_is_an_empty_ok_payload(self, storage,
+                                                        monkeypatch):
+        res = self.make(storage, monkeypatch, servers=[]).list_local_servers()
+        assert res.ok and res.payload == []
+
+    def test_detection_is_cached_until_refreshed(self, storage, monkeypatch):
+        calls = []
+
+        def fake_discover(**kw):
+            calls.append(kw)
+            return []
+
+        monkeypatch.setattr("model_layer.client.scan_local_endpoints",
+                            lambda timeout=2.0: [])
+        monkeypatch.setattr("desktop_shell.controller.discover_local_servers",
+                            fake_discover)
+        ctrl = ShellController(storage=storage)
+        ctrl.list_local_servers()
+        ctrl.list_local_servers()
+        assert len(calls) == 1
+        ctrl.list_local_servers(refresh=True)
+        assert len(calls) == 2
+
+    def test_default_construction_infers_ollama_from_the_port(self, storage,
+                                                              monkeypatch):
+        """The legacy auto-scan can land on 11434; the UI must then say
+        Ollama, not LM Studio."""
+        monkeypatch.setattr(
+            "model_layer.client.scan_local_endpoints",
+            lambda timeout=2.0: ["http://localhost:11434/v1"])
+        ctrl = ShellController(storage=storage)
+        assert ctrl.active_provider_label() == "Ollama"
+        assert ctrl.active_endpoint() == "http://localhost:11434/v1"
+
+
 class TestPlayground:
     class FakeConnector:
         name = "fake-gen"

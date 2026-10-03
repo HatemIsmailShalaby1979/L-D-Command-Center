@@ -56,7 +56,7 @@ if not _FROZEN:
     _install_source_aliases()
 
 ERROR_TITLES = {
-    "no_model": "LM Studio not reachable",
+    "no_model": "Local model server not reachable",
     "bad_output": "Model output rejected",
     "input": "Check your input",
     "connector": "Generation service failed",
@@ -67,7 +67,9 @@ ERROR_TITLES = {
 }
 
 ERROR_ACTIONS = {
-    "no_model": "Start LM Studio and load a model via the model picker.",
+    "no_model": "Start LM Studio (localhost:1234) or Ollama (localhost:11434), "
+                "load a model, press Reload, then pick the server and the model "
+                "in the dropdowns.",
     "bad_output": "The pipeline repairs truncated/malformed JSON, escalates "
                    "the token budget up to 32768 when cut off, and gives "
                    "7B-12B models extra retries — plus the podcast validator "
@@ -220,7 +222,7 @@ def run() -> None:  # pragma: no cover â€” needs a display
         messagebox.showerror(title, message)
 
     # -- header -----------------------------------------------------------
-    status = tk.StringVar(value="checking LM Studioâ€¦")
+    status = tk.StringVar(value="checking local model servers...")
     header = ttk.Frame(root); header.pack(fill="x", padx=10, pady=8)
     health_label = tk.Label(header, textvariable=status, fg="#445566",
                             font=("Segoe UI", 11))
@@ -229,6 +231,56 @@ def run() -> None:  # pragma: no cover â€” needs a display
                command=lambda: refresh_health()).pack(side="left", padx=6)
     ttk.Button(header, text="Probe model",
                command=lambda: run_probe()).pack(side="left")
+
+    # server picker - Ollama (11434), LM Studio (1234), or any other
+    # OpenAI-compatible runtime found on localhost. Detected on startup;
+    # choosing a server re-points the controller and refills the model
+    # dropdown from that server's own listing.
+    server_var = tk.StringVar()
+    _server_options: dict = {}
+    _server_combos: list = []
+
+    def _apply_servers(servers, *, adopt: bool = True):
+        """Tk-side: fill the server picker from a detection result.
+        Adopts the first detected server when the active endpoint is not
+        among them (first run, or the server the app started on stopped)."""
+        _server_options.clear()
+        labels = []
+        for server in servers:
+            label = f"{server['label']} · {server['base_url']}"
+            count = server.get("model_count") or 0
+            if count:
+                label += f" · {count} model(s)"
+            _server_options[label] = server
+            labels.append(label)
+        for combo in _server_combos[:]:
+            try:
+                combo.configure(values=labels)
+            except tk.TclError:
+                _server_combos.remove(combo)
+        active = ctrl.active_endpoint()
+        chosen = next((label for label, server in _server_options.items()
+                       if server["base_url"] == active), None)
+        if chosen is None and adopt and servers:
+            chosen = labels[0]
+            ctrl.select_endpoint(servers[0]["kind"])
+        server_var.set(chosen or "no local server detected")
+
+    def refresh_servers():
+        """Probe the machine again and refill the server picker."""
+        res = ctrl.list_local_servers(refresh=True)
+        _apply_servers(list(res.payload or []) if res.ok else [])
+        return _server_options
+
+    def on_server_selected(_event=None):
+        server = _server_options.get(server_var.get())
+        if server is None:
+            return
+        res = ctrl.select_endpoint(server["kind"])
+        if not res:
+            return show_error(res)
+        refresh_model_picker()
+        refresh_health()
 
     # model picker — ALWAYS visible in the header; the user sees and
     # chooses exactly what LM Studio is running. Reload re-queries the
@@ -259,6 +311,12 @@ def run() -> None:  # pragma: no cover â€” needs a display
             ctrl.model = picked
         refresh_health()
 
+    def reload_all():
+        """Reload = re-detect local servers, then refill the model list."""
+        refresh_servers()
+        refresh_model_picker()
+        refresh_health()
+
     model_frame = ttk.Frame(header); model_frame.pack(side="right", padx=4)
     ttk.Label(model_frame, text="Model",
               font=("Segoe UI", 11, "bold")).pack(side="left", padx=(0, 6))
@@ -268,21 +326,31 @@ def run() -> None:  # pragma: no cover â€” needs a display
     model_combo.bind("<<ComboboxSelected>>", on_model_selected)
     _model_combos.append(model_combo)
     ttk.Button(model_frame, text="Reload",
-               command=refresh_model_picker,
+               command=reload_all,
                width=8).pack(side="left", padx=(4, 0))
     refresh_model_picker()
 
+    server_frame = ttk.Frame(header); server_frame.pack(side="right", padx=4)
+    ttk.Label(server_frame, text="Server",
+              font=("Segoe UI", 11, "bold")).pack(side="left", padx=(0, 6))
+    server_combo = ttk.Combobox(server_frame, textvariable=server_var,
+                                state="readonly", width=34)
+    server_combo.pack(side="left")
+    server_combo.bind("<<ComboboxSelected>>", on_server_selected)
+    _server_combos.append(server_combo)
+
     def refresh_health():
+        provider = ctrl.active_provider_label()
         res = ctrl.check_model_health()
         if res.ok:
             cap = ctrl.capability_summary()
-            line = "LM Studio: ready"
+            line = f"{provider}: ready"
             if cap.ok and cap.payload:
                 line += f" | {cap.payload}"
             status.set(line)
             health_label.config(fg="green")
         else:
-            status.set(f"LM Studio: {res.detail}")
+            status.set(f"{provider}: {res.detail}")
             health_label.config(fg="red")
         _refresh_quickstart()
         _refresh_license()
@@ -869,7 +937,7 @@ def run() -> None:  # pragma: no cover â€” needs a display
     # loaded model can actually produce.
     pod_model_frame = ttk.LabelFrame(
         studio_tab,
-        text="Generation model — pick what LM Studio runs for podcasts / audiobooks")
+        text="Generation model — pick what your local server runs for podcasts / audiobooks")
     pod_model_frame.pack(fill="x", padx=6, pady=6)
     ttk.Label(pod_model_frame, text="Model",
               font=("Segoe UI", 11, "bold")).pack(side="left", padx=(8, 6),
@@ -1847,7 +1915,23 @@ def run() -> None:  # pragma: no cover â€” needs a display
     refresh_canvas()
     if names_res.ok and names_res.payload:
         connector_var.set(names_res.payload[0])  # fires capability render
-    refresh_health()  # Startup: detect providers, populate dropdown, show status
+    refresh_health()  # Startup: show status before discovery finishes
+    # Detect local servers (Ollama 11434 / LM Studio 1234 / any
+    # OpenAI-compatible runtime) off the UI thread - each probe is a
+    # socket connect - then fill both dropdowns from what answered.
+
+    def _startup_discovery():
+        def work():
+            return ctrl.list_local_servers(refresh=True)
+
+        def done(res):
+            _apply_servers(list(res.payload or []) if res.ok else [])
+            refresh_model_picker()
+            refresh_health()
+
+        run_async(work, done, busy_text="Detecting servers...")
+
+    _startup_discovery()
     root.mainloop()
 
 
