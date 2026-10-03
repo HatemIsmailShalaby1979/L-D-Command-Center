@@ -61,7 +61,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 
 | Path | Reason |
 |------|--------|
-| `/model-layer/client.py` | Local inference client layer (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check, 600s timeout; 2026-10-03 adds `discover_local_servers()` / `LocalServer` / `OllamaClient` (native `/api/tags` model-listing fallback) and `client_for_server()`; `LmStudioClient` and `scan_local_endpoints` unchanged |
+| `/model-layer/client.py` | Local inference client layer (httpx) — OpenAI-compatible /v1/chat/completions with tool calling, typed ApiError subclasses, health check, 600s timeout; 2026-10-03 adds `discover_local_servers()` / `LocalServer` / `OllamaClient` (native `/api/tags` model-listing fallback) and `client_for_server()`; `scan_local_endpoints` keeps its exact contract (same paths, same precedence, same order) but now probes concurrently — measured 18.7s of a 21.5s app start before, 4.1s total after |
 | `/model-layer/schema.py` | Journey JSON schema + validate_journey() + SchemaValidator retry loop + hardened extract_json_from_text (noise/BOM strip, MMdd blocks, fences, Python-literal fix, string-aware balanced-span scan) + repair_truncated_json (finish_reason=length salvage) |
 | `/model-layer/policy.py` | Model-aware generation policy (2026-09-05): JSON_DISCIPLINE_ADDENDUM injected into every system prompt, size-aware attempt budget (<7B gets 5 attempts), JSON-mode flag, estimate_model_size canonical home |
 | `/model-layer/test_extraction.py` | 22 tests: fences/think-blocks/prose/literals/braces-in-strings extraction, truncation repair salvage rules |
@@ -69,7 +69,7 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 | `/model-layer/pipeline.py` | Generation Pipeline — the single Guardrail Loop (render→call→extract→validate→retry→typed error) every engine generates through; owns model-id defaults, transient-error policy, 8192-token budget, truncation repair on finish_reason=length, response_format JSON mode with runtime-rejection fallback, policy addendum injection |
 | `/model-layer/test_pipeline.py` | 24 contract tests for the Pipeline via a ScriptedClient matching the real LmStudioClient interface (retry counts, feedback formatting, error taxonomy, truncation repair, JSON-mode fallback, discipline addendum, size-aware budgets) |
 | `/model-layer/capabilities.py` | Task profiles + one-shot capability probe grading the loaded model per task family; 2026-10-03 records `provider` and `endpoint` in the verdict and prefixes the provider label in `summarize_verdict` |
-| `/model-layer/test_client.py` | 37 tests (2026-10-03): discovery heuristics (Ollama `/api/tags`, LM Studio `/v1/models`, junk payloads, `OLLAMA_HOST`, extra roots), `OllamaClient` listing/availability fallback, and a regression guard proving the legacy LM Studio path is unchanged; no sockets opened — the single HTTP seam is injected |
+| `/model-layer/test_client.py` | 49 tests (2026-10-03): discovery heuristics (Ollama `/api/tags`, LM Studio `/v1/models`, junk payloads, `OLLAMA_HOST`, host-alias dedup, extra roots), `OllamaClient` listing/availability fallback, `scan_local_endpoints` contract (path precedence, port order, probe-once, timeout forwarding), and a regression guard proving the legacy LM Studio path is unchanged; no sockets opened — the HTTP seams are injected |
 
 ## Journey-Core Engine (implementation)
 
@@ -242,4 +242,4 @@ Every file in this workspace and its one-line reason for existing. See `CONSTITU
 UPDATE 2026-09-23 — Endpoint auto-detect (ollama/LM Studio) applied; quality guard (non-robotic + humor/tips) active; e2e smoke report: E2E_SMOKE_REPORT.md. Release judgment: small boring change shipped; rollback via previous archive in build/.
 
 ---
-UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1122 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

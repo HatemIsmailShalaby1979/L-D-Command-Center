@@ -386,3 +386,70 @@ class TestLegacyLmStudioPathUnchanged:
 
     def test_scan_local_endpoints_is_still_exported(self):
         assert callable(client_mod.scan_local_endpoints)
+
+
+class TestScanLocalEndpoints:
+    """The legacy auto-scan keeps its exact contract, but is now concurrent.
+
+    Measured 2026-10-03: the sequential version cost 18.7 s of a 21.5 s
+    application start, because an unbound localhost port on Windows hangs
+    until the timeout instead of refusing. These tests pin the contract that
+    must survive that change - same paths, same precedence, same order - using
+    the `opener` seam so no sockets are opened.
+    """
+
+    PORTS = (11434, 1234, 8080, 5000)
+    PATHS = ("/v1/models", "/", "/api/tags")
+
+    def test_accepts_the_first_path_that_answers(self):
+        seen: list[str] = []
+
+        def opener(url, timeout):
+            seen.append(url)
+            return url == "http://localhost:11434/v1/models"
+
+        assert client_mod.scan_local_endpoints(opener=opener) == [
+            "http://localhost:11434/v1"]
+        # Every candidate is still probed; they just run at once now.
+        assert len(seen) == len(self.PORTS) * len(self.PATHS)
+
+    @pytest.mark.parametrize("path", ["/", "/api/tags"])
+    def test_falls_back_to_root_then_native_tags(self, path):
+        def opener(url, timeout):
+            return url == f"http://localhost:1234{path}"
+
+        assert client_mod.scan_local_endpoints(opener=opener) == [
+            "http://localhost:1234/v1"]
+
+    def test_port_order_is_preserved(self):
+        def opener(url, timeout):
+            return url.endswith("/v1/models") and (
+                ":11434" in url or ":8080" in url)
+
+        assert client_mod.scan_local_endpoints(opener=opener) == [
+            "http://localhost:11434/v1", "http://localhost:8080/v1"]
+
+    def test_nothing_running_returns_empty(self):
+        assert client_mod.scan_local_endpoints(
+            opener=lambda url, timeout: False) == []
+
+    def test_each_url_is_probed_exactly_once(self):
+        seen: list[str] = []
+        client_mod.scan_local_endpoints(
+            opener=lambda url, timeout: seen.append(url) or False)
+        assert len(seen) == len(set(seen))
+        assert len(seen) == len(self.PORTS) * len(self.PATHS)
+
+    def test_timeout_is_forwarded_to_the_opener(self):
+        seen: list[float] = []
+        client_mod.scan_local_endpoints(
+            timeout=7.5, opener=lambda url, timeout: seen.append(timeout) or False)
+        assert set(seen) == {7.5}
+
+    def test_only_the_port_with_a_live_path_is_reported(self):
+        """A port answering on none of its three paths is not reported."""
+        def opener(url, timeout):
+            return ":11434" in url
+
+        assert client_mod.scan_local_endpoints(opener=opener) == [
+            "http://localhost:11434/v1"]

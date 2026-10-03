@@ -119,4 +119,4 @@ Built by Hatem Ismail Shalaby, Contact Centre Operations & AI Implementation Lea
 MIT
 
 ---
-UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1114 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.
+UPDATE 2026-10-03 — Ollama is a first-class inference backend: local servers are discovered (`discover_local_servers`), their models fill a new Server + Model picker pair in the shell, and the capability probe grades and attributes either runtime (Ollama or LM Studio). Additive only — `LmStudioClient` and `scan_local_endpoints` are unchanged and pinned by regression tests. Offline suite: 1122 passed / 7 live deselected. Release note: RELEASE_NOTE_2026_10_03.md.

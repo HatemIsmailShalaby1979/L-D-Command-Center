@@ -40,7 +40,7 @@ byte-for-byte equivalent in behaviour to what it is now.
    - `python -c "import httpx, pytest; print(httpx.__version__, pytest.__version__)"`
      (needs httpx 0.28.1, pytest 9.1.1 per `requirements.txt`)
    - `python -m pytest -q` — record the pass count. This is your baseline.
-     Expect **1114 passed, 7 deselected** on the release branch; **1060 passed,
+     Expect **1122 passed, 7 deselected** on the release branch; **1060 passed,
      7 deselected** on `main` before this sprint.
 5. Check what local runtimes are actually running:
    `curl -s http://localhost:11434/api/tags` (Ollama) and
@@ -259,13 +259,24 @@ Measured on the owner's machine (CPython 3.10.11 + PyInstaller 6.22.2):
 
 | Measurement | Value |
 |---|---|
-| UI build from source to `mainloop()` | 20.2 s (3 runs, identical) |
-| Frozen `dist/ldcc.exe` to a rendered window | ~69 s, then ~48 s |
-| Old budget / new budget | 120 s / **240 s** |
+| Application start to `mainloop()` | **4.1 s** (was 21.5 s — see below) |
+| Frozen `dist/ldcc.exe` to a rendered window | ~48-69 s before the fix; lower after |
+| Gate budget | 240 s (was 120 s) |
 
-`desktop_shell/verify_build.ps1` now defaults to 240 s and honours
+**Where the 21.5 s went, because it is a trap you could fall into too.** It was
+not UI construction. `cProfile` attributed 18.7 s of it to a single call:
+
+    scan_local_endpoints()  ->  18.217s in socket.recv_into
+
+That function probed four ports x three paths **in series** with a 2 s timeout
+each, and on Windows an unbound localhost port hangs until the timeout instead
+of refusing. It now issues the same twelve probes concurrently with an unchanged
+contract. The lesson generalises: when something is slow, profile it before
+theorising about which layer is at fault — I had already published a wrong guess
+once in this session by skipping that step.
+
+`desktop_shell/verify_build.ps1` defaults to 240 s and honours
 `LDCC_SMOKE_TIMEOUT=<seconds>`; `docs/DEPLOYMENT_PIPELINE.md` documents both.
-All six gates pass against `dist/ldcc.exe` built from `a1c2bf5`.
 
 **A trap worth knowing about, because I fell into it.** While diagnosing that
 failure I saw a `faulthandler` stack inside widget construction at 25 s and a

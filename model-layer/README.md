@@ -36,9 +36,17 @@ validation, or prompt processing is possible across any other engine.
    `client_for_server(LocalServer)` picks the right class for a detected server.
 
 The discovery layer is strictly additive. `LmStudioClient()` and
-`scan_local_endpoints()` keep their original signatures and behaviour, so every
-engine that constructs a client with no arguments is unaffected — a change
-verified by `test_client.py::TestLegacyLmStudioPathUnchanged`.
+`scan_local_endpoints()` keep their original signatures, return types and
+selection rules, so every engine that constructs a client with no arguments is
+unaffected — a change verified by `test_client.py::TestLegacyLmStudioPathUnchanged`.
+
+`scan_local_endpoints` did change mechanism, though, and the reason is worth
+recording: it used to probe four ports × three paths **in series**, and because
+an unbound localhost port on Windows hangs until the timeout instead of
+refusing, it cost **18.7 s of a 21.5 s application start**. It now issues the
+same twelve probes concurrently and applies the same "first path that answers
+wins, in port order" rule. Application start measured **4.1 s** after the
+change. `TestScanLocalEndpoints` pins the contract that survived.
 
 ## Generation contract
 

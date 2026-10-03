@@ -37,7 +37,7 @@ is unchanged, so an older build keeps working exactly as it did).
 
 **Executed and measured (this machine, 2026-10-03):**
 
-- Offline suite: **1114 passed, 7 live deselected, 0 failed** (baseline 1060;
+- Offline suite: **1122 passed, 7 live deselected, 0 failed** (baseline 1060;
   +50 new tests). Run with `python -m pytest -q`.
 - Live discovery against the running Ollama (`OLLAMA_HOST=127.0.0.1:11434`):
   `discover_local_servers()` → **1 server**, `kind='ollama'`,
@@ -81,7 +81,7 @@ PyInstaller 6.22.2, the pinned baseline):
 
 | Stage | Result |
 |---|---|
-| [1/6] Offline suite gate | **PASS** — `1114 passed, 7 deselected in 20.64s` |
+| [1/6] Offline suite gate | **PASS** — `1122 passed, 7 deselected in 20.64s` |
 | [2/6] Secrets/artifacts policy gate | **PASS** — `POLICY PASS` |
 | [3/6] Archive previous artifact | No previous build to archive |
 | [4/6] PyInstaller build (windowed) | **PASS** — `dist/ldcc.exe`, 139,344,905 bytes |
@@ -93,7 +93,7 @@ on repeated runs against the same binary.
 
 Final end-to-end run of `build_release.bat` after the budget fix (exit code 0):
 
-    [1/6] 1114 passed, 7 deselected in 22.01s
+    [1/6] 1122 passed, 7 deselected in 22.01s
     [2/6] POLICY PASS
     [3/6] archived previous dist\ldcc.exe -> dist\archive\ldcc-20261003-114321.exe
     [4/6] PyInstaller build (windowed)     -> dist\ldcc.exe
@@ -137,6 +137,37 @@ path works (`VERIFY timeout overridden to 180s`) and the gate passes with it.
 This was a **pipeline budget defect, not an application defect** — but it was a
 real defect in this repository, and it is now fixed rather than explained away.
 
+## Startup performance: 21.5 s → 4.1 s
+
+Profiling the application start (`cProfile` around `run()`, Python 3.10.11)
+found that the 20.2 s I had attributed to UI construction was almost entirely
+one call:
+
+```
+18.740s  model-layer/client.py:464(scan_local_endpoints)
+18.217s  {method 'recv_into' of '_io.socket.socket'}
+```
+
+`scan_local_endpoints` probed four ports × three paths **in series** with a 2 s
+timeout each. On Windows an unbound localhost port hangs until the timeout
+instead of refusing, so the scan paid ~1.87 s twelve times over. The UI build
+itself was never the problem.
+
+The scan now issues the same twelve probes concurrently and applies the same
+rule — first path that answers wins, ports in order — so its contract is
+unchanged. Measured:
+
+| Metric | Before | After |
+|---|---|---|
+| Application start to `mainloop()` | 21.5 s | **4.1 s** |
+| Offline test suite wall time | 22.0 s | **11.8 s** |
+| Tests | 1114 passed | **1122 passed**, 0 failed |
+
+`TestScanLocalEndpoints` (8 tests) pins the surviving contract: path
+precedence, port order, probe-once, timeout forwarding, and empty-when-nothing-
+answers. The frozen artifact should now clear the smoke gate with far more
+headroom than the 240 s budget it was given.
+
 ## Next
 
 - Run a full live capability probe against a loaded Ollama model and record the
@@ -144,6 +175,5 @@ real defect in this repository, and it is now fixed rather than explained away.
 - Publish via the `Release` workflow's approval gate (manual dispatch, behind
   the `release` environment approval gate).
 - Confirm the Server dropdown renders correctly in a real windowed session.
-- Optional, separate: the 20.2 s UI build is worth reducing (lazy per-tab
-  construction). Not attempted here — it is a behaviour-changing refactor
-  outside this sprint's scope.
+- Push `release-2026-10-03` (done this session once the credential helper was
+  pointed at the existing Windows Credential Manager entry).

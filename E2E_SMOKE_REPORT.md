@@ -240,3 +240,43 @@ minute. Do that before naming a cause.
 Cold-start budget in this run: 240s (the new default). Observed render time:
 ~69s. Previous build preserved as the rollback target at
 `dist/archive/ldcc-20261003-114321.exe`.
+
+
+---
+
+## STARTUP PERFORMANCE FIX - 2026-10-03 (follow-up to the smoke-gate budget)
+
+I had reported a "20.2 s UI build". Profiling it (`cProfile` around `run()`)
+showed that claim was also imprecise - the UI build was never the cost:
+
+    18.740s  model-layer/client.py:464(scan_local_endpoints)
+    18.217s  {method 'recv_into' of '_io.socket.socket'}
+     1.030s  desktop_shell/et_ui.py:21(build_et_panel)
+    21.498s  TOTAL (app start to mainloop)
+
+`scan_local_endpoints` probed four ports x three paths **in series**, 2 s timeout
+each. On Windows an unbound localhost port hangs until the timeout rather than
+refusing, so the scan paid ~1.87 s twelve times over. That is what made the
+frozen artifact take ~69 s to show a window and what pushed it past the old
+120 s gate budget.
+
+### The fix
+
+Same twelve probes, same "first path that answers wins, ports in order" rule,
+same return shape - now issued concurrently via `ThreadPoolExecutor`. An
+`opener` keyword-only seam was added so the contract can be tested without
+sockets.
+
+### Measured
+
+| Metric | Before | After |
+|---|---|---|
+| App start to `mainloop()` (source) | 21.5 s | **4.1 s** |
+| Offline suite wall time | 22.0 s | **11.8 s** |
+| Offline suite result | 1114 passed / 0 failed | **1122 passed / 0 failed** |
+
+`TestScanLocalEndpoints` (8 new tests) pins path precedence, port order,
+probe-once, timeout forwarding, and the empty case.
+
+This also explains why the smoke gate was marginal: the artifact was carrying a
+~19 s sequential socket stall on every cold start.
