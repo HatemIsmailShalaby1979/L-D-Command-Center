@@ -2,6 +2,21 @@
 
 # L&D Command Center
 
+
+<!-- badges:start -->
+
+[![CI](https://github.com/HatemIsmailShalaby1979/L-D-Command-Center/actions/workflows/Quality/badge.svg)](https://github.com/HatemIsmailShalaby1979/L-D-Command-Center/actions)
+![licence](https://img.shields.io/badge/licence-MIT-blue)
+[![last commit](https://img.shields.io/github/last-commit/HatemIsmailShalaby1979/L-D-Command-Center)](https://github.com/HatemIsmailShalaby1979/L-D-Command-Center/commits/main)
+![status](https://img.shields.io/badge/ci-success-brightgreen?label=success%20(2026-10-02))
+
+*Measured 2026-10-06 — CI **success**; head `2386ca5` (2026-10-02); Python.*
+
+<!-- No static test or coverage count is shown here: a frozen
+     number decays silently. Run the suite for a current figure;
+     the CI badge above is the live status. -->
+<!-- badges:end -->
+
 **A desktop learning, language, and career workstation that runs on your machine.**
 
 ![Status](https://img.shields.io/badge/status-V1%20ship%20in%20progress-yellow)
